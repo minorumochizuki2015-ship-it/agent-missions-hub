@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from .settings import Settings, get_settings
+from .mcp import build_mcp_server
 
 try:
     # fastmcp は依存に含まれるため、そのまま利用する
@@ -26,9 +27,10 @@ def build_app(settings: Settings | None = None) -> FastAPI:
 
         return {"status": "ok", "app": app_settings.app_name}
 
-    # FastMCP ネイティブマウント（tools/transport 実装は後続で拡張）
+    # FastMCP ネイティブマウント
     if FastMCPServer is not None:
-        server = FastMCPServer(name=app_settings.app_name)
+        # ツールを組み込んだサーバを構築
+        server = build_mcp_server()
 
         mcp_app = server.http_app(
             path="/",
