@@ -1,0 +1,138 @@
+{
+  "plan_id": "20251111-multi-agent-mvp",
+  "created_at": "2025-11-11T00:00:00Z",
+  "summary": "Docs front-matter継続→SafeOps KPI改善→SpecKit導入→UI-Audit周知のMVPプラン",
+  "steps": [
+    {
+      "id": "docs-frontmatter-batch3",
+      "status": "completed",
+      "description": "docs/operations/*, docs/plans/*, docs/templates/README.md等の未対応ファイルへフロントマターを3件ずつ追加し、docs_frontmatter batch3/4として証跡を残す",
+      "entries": [
+        "docs/operations/",
+        "docs/plans/",
+        "docs/templates/README.md"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl",
+        "TRAE SOLO Builder Report.txt"
+      ],
+      "notes": "SHAとbatch_idをci_evidence/Builder Reportに追記"
+    },
+    {
+      "id": "docs-frontmatter-batch5",
+      "status": "completed",
+      "description": "docs/plans 配下と SpecKit 生成物に front-matter (title/description/date/author) を追加し、SSOT を更新する。",
+      "entries": [
+        "docs/plans/20251104_safeops_phase2.md",
+        "docs/plans/README.md",
+        "docs/plans/mvp_development_plan_v1_deprecated.md",
+        "docs/plans/speckit/20251111-multi-agent-mvp/constitution.md",
+        "docs/plans/speckit/20251111-multi-agent-mvp/plan.md",
+        "docs/plans/speckit/20251111-multi-agent-mvp/spec.md",
+        "docs/plans/speckit/20251111-multi-agent-mvp/tasks.md"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl",
+        "TRAE SOLO Builder Report.txt",
+        "multi-agent Work.txt"
+      ],
+      "notes": "docs-frontmatter-5 (ci_evidence) / Builder Report でログ化。"
+    },
+    {
+      "id": "safeops-kpi-improvement",
+      "status": "completed",
+      "description": "scripts/safeops_summary.pyでAPPROVALS×dangerous log突合を実装し、approvals_missingを削減したKPIを反映",
+      "entries": [
+        "scripts/safeops_summary.py",
+        "observability/policy/safeops_kpi.json"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "safeops_kpi_refreshイベントを追記"
+    },
+    {
+      "id": "speckit-pipeline",
+      "status": "completed",
+      "description": "uv tool install specify-cli→./runner -- specify init/check を整備し、docs/plans/speckit/<plan-id>/に生成物を保存、PLAN.jsonと連携",
+      "entries": [
+        "scripts/runner.py",
+        "docs/plans/speckit/20251111-multi-agent-mvp"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl",
+        "TRAE SOLO Builder Report.txt"
+      ],
+      "notes": "spec_kit_bundle (sha=18ea662b8bed084d8b56f066d5891e937d5aa0841c8af695b40561c590499063) / PLAN README 連携完了。"
+    },
+    {
+      "id": "ui-audit-communication",
+      "status": "completed",
+      "description": "READMEとdocs/multi_agent_terminal_ui_spec_v1.mdに最新UI-Auditメトリクスを追記し、ui_audit_doc_updateを記録",
+      "entries": [
+        "README.md",
+        "docs/multi_agent_terminal_ui_spec_v1.md"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "README と docs/multi_agent_terminal_ui_spec_v1.md を更新し、ui_audit_doc_update を ci_evidence へ記録済み。"
+    },
+    {
+      "id": "safeops-audit-20251111",
+      "status": "completed",
+      "description": "AUDIT指摘(PLAN/APPROVALS/CI)に対して SafeOps bootstrap・dangerous logとAPPROVALSの突合・runner経由テストを実施し、docs v2群と Work log を Gate 状況に合わせて更新する",
+      "entries": [
+        "PLAN.json",
+        "plan_diff.json",
+        "APPROVALS.md",
+        "data/logs/current/audit/dangerous_command_events.jsonl",
+        "observability/policy/ci_evidence.jsonl",
+        "observability/policy/safeops_kpi.json",
+        "docs/multi_agent_terminal_checklist_v2.md",
+        "docs/multi_agent_terminal_design_v2.md",
+        "docs/multi_agent_terminal_milestones_v2.md",
+        "multi-agent Work.txt"
+      ],
+      "evidence": [
+        "multi-agent AUDIT.txt",
+        "observability/policy/ci_evidence.jsonl",
+        "observability/policy/safeops_kpi.json"
+      ],
+      "notes": "safeops_summary / safeops_guard / specify check / pytest 実行ログと docs 反映を Gate 合格条件にする"
+    },
+    {
+      "id": "safeops-phase2-ci-hardening",
+      "status": "completed",
+      "description": "Override/Worktree Runbook と `scripts/safeops/worktree_guard.ps1` を整備し、Windows CI (`safeops-phase2.yml`)＋DocLint で SafeOps Phase2 をハードニングする",
+      "entries": [
+        "docs/operations/runbooks/safeops_override_runbook.md",
+        "docs/operations/runbooks/safeops_worktree_runbook.md",
+        "scripts/safeops/worktree_guard.ps1",
+        ".github/workflows/safeops-phase2.yml",
+        "scripts/ci/audit_docs_safeops_consistency.py"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl",
+        "multi-agent Work.txt"
+      ],
+      "notes": "CI ワークフローと runbook のセットで override/worktree の Dry-Run→Apply 証跡を自動化する"
+    },
+    {
+      "id": "orchestrator-api-and-ui-plan",
+      "status": "in_progress",
+      "description": "Orchestrator API 実装（FastAPI）・Next.js ダッシュボード初期化・SafeOps KPI 突合をPLANに明記し、CI証跡の更新フローを整備する",
+      "entries": [
+        "PLAN.json",
+        "apps/orchestrator-api/",
+        "apps/orchestrator-ui/",
+        "observability/policy/safeops_kpi.json"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl",
+        "TRAE SOLO Builder Report.txt"
+      ],
+      "notes": "runner 経由で `npm run lint && npm run test && npm run test:e2e` を実行し、FastAPI 側の `/api/health/ui` を含む最小エンドポイントを追加したうえで SafeOps KPI パネルと連携する"
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - complementary "Docked sidebar" [ref=e4]:
+      - generic [ref=e5]: SafeOps
+      - navigation "Primary" [ref=e6]:
+        - tablist "Navigation phases" [ref=e7]:
+          - button "PLAN" [pressed] [ref=e8] [cursor=pointer]
+          - button "TEST" [ref=e9] [cursor=pointer]
+          - button "REVIEW" [ref=e10] [cursor=pointer]
+          - button "RELEASE" [ref=e11] [cursor=pointer]
+    - generic [ref=e12]:
+      - banner "Header" [ref=e13]:
+        - generic [ref=e14]:
+          - generic [ref=e15]: SafeOps Orchestrator
+          - tablist "Navigation phases" [ref=e16]:
+            - button "PLAN" [pressed] [ref=e17] [cursor=pointer]
+            - button "TEST" [ref=e18] [cursor=pointer]
+            - button "REVIEW" [ref=e19] [cursor=pointer]
+            - button "RELEASE" [ref=e20] [cursor=pointer]
+      - main [ref=e21]:
+        - generic [ref=e23]:
+          - heading "Missions" [level=1] [ref=e24]
+          - paragraph [ref=e26]: No missions found.
+      - contentinfo "Footer" [ref=e27]:
+        - generic [ref=e29]:
+          - generic [ref=e30]: "Activity: n/a"
+          - generic [ref=e31]: "Self-Heal: n/a"
+          - generic [ref=e32]: "Sessions: 0"
+    - region "Context drawer" [ref=e33]:
+      - generic [ref=e35]:
+        - region "SafeOps Timeline" [ref=e36]:
+          - heading "Dangerous Commands Timeline" [level=3] [ref=e37]
+          - generic [ref=e39]: No recent events
+        - region "Approvals Ledger" [ref=e40]:
+          - heading "Approvals" [level=3] [ref=e41]
+          - generic [ref=e42]:
+            - generic [ref=e43]: "pending: 0"
+            - generic [ref=e44]: "approved: 0"
+            - generic [ref=e45]: "rejected: 0"
+            - generic [ref=e46]: "expired: 0"
+        - region "External Signals" [ref=e47]:
+          - heading "External Signals" [level=3] [ref=e48]
+          - generic [ref=e49]:
+            - generic [ref=e50]: No recent signals
+            - generic [ref=e51]: Server n/a • Uptime n/a • Self-Heal 0
+  - region "Notifications alt+T"
+  - alert [ref=e52]
+```

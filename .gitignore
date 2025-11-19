@@ -182,6 +182,11 @@ presentation_test_results*.json
 *.db.new
 coverage.json
 logs/
+!data/
+!data/logs/
+!data/logs/current/
+!data/logs/current/audit/
+!data/logs/current/audit/dangerous_command_events.jsonl
 .sqlite_temp/
 .ruff_cache/
 .mypy_cache/
@@ -198,7 +203,6 @@ tmp
 .mypy_errors_by_file.txt
 .index_migration_errors_*.json
 .artifacts/
-data/logs/
 data/verified/
 data/tmp/
 run_server_clean.sh.txt
@@ -254,3 +258,4 @@ desktop.ini
 test-results/
 playwright-report/
 playwright/.cache/
+!apps/orchestrator-ui/lib/
