@@ -8,8 +8,6 @@ from typing import Iterator
 from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from sqlmodel import Session, select
 
-from .settings import Settings, get_settings
-from .mcp import build_mcp_server
 from .db import (
     Artifact,
     ArtifactCreate,
@@ -26,11 +24,8 @@ from .db import (
     init_db,
 )
 
-try:
-    # fastmcp は依存に含まれるため、そのまま利用する
-    from fastmcp import Server as FastMCPServer  # type: ignore
-except Exception:  # pragma: no cover - import guard
-    FastMCPServer = None
+from .settings import Settings, get_settings
+from .mcp import build_mcp_server
 
 
 def build_app(settings: Settings | None = None) -> FastAPI:
@@ -174,10 +169,12 @@ def build_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(api_router)
 
     # FastMCP ネイティブマウント
-    if FastMCPServer is not None:
-        # ツールを組み込んだサーバを構築
+    try:
         server = build_mcp_server(app_settings)
+    except ImportError:
+        server = None
 
+    if server is not None:
         mcp_app = server.http_app(
             path="/",
             stateless_http=app_settings.stateless_http,

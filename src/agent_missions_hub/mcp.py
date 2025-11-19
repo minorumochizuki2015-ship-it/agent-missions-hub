@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from fastmcp import MCPServer  # type: ignore
+try:  # pragma: no cover - dependency guard
+    from fastmcp import Server as FastMCPServer  # type: ignore
+except ImportError as exc:  # pragma: no cover - fail fast when dependency missing
+    raise ImportError("fastmcp Server API is required. Please upgrade/install fastmcp>=0.3.") from exc
 from sqlmodel import select
 
 from .db import Agent, Message, Project, get_session, init_db
@@ -17,11 +20,11 @@ def _ensure_schema(settings: Settings) -> None:
     init_db(settings.database_url)
 
 
-def build_mcp_server(settings: Settings) -> MCPServer:
+def build_mcp_server(settings: Settings) -> FastMCPServer:
     """FastMCP サーバとツールを構築する。"""
 
     _ensure_schema(settings)
-    server = MCPServer("agent-missions-hub")
+    server = FastMCPServer("agent-missions-hub")
 
     @server.tool()
     def ensure_project(human_key: str) -> Dict[str, str]:
