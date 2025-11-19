@@ -7,8 +7,8 @@
 ### 1.1 基盤とAPI
 - [x] FastMCP ネイティブマウント + stateless_http=true（`src/agent_missions_hub/http.py`）
 - [x] ensure_project / create_agent_identity / send_message を SQLModel バックエンドに接続
-- [ ] missions / task_groups / tasks / artifacts / knowledge の CRUD REST/JSON-RPC 追加
-- [ ] init_db/startup フックで DB マイグレーションを自動実行（`docs/legacy/plans/mvp_implementation_plan.md` 参照）
+- [x] missions / task_groups / tasks / artifacts / knowledge の CRUD REST/JSON-RPC 追加
+- [x] init_db/startup フックで DB マイグレーションを自動実行（`docs/legacy/plans/mvp_implementation_plan.md` 参照）
 - [ ] WorkflowEngine v1（Sequential + self-heal）を CLI から切り出し
 
 ### 1.2 UI / Runner / Health

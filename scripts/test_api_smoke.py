@@ -55,6 +55,7 @@ def main() -> None:
             time.sleep(5)
 
             base_url = f"http://127.0.0.1:{port}/mcp"
+            rest_base = f"http://127.0.0.1:{port}/api"
             health_url = f"http://127.0.0.1:{port}/health"
             headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
@@ -153,6 +154,23 @@ def main() -> None:
             print(f"Status: {resp3.status_code}  Duration: {elapsed3:.0f}ms")
             body3 = resp3.json() if resp3.headers.get("content-type","" ).startswith("application/json") else resp3.text
             print(json.dumps(body3, ensure_ascii=False, indent=2))
+
+            # Test 4 - REST mission CRUD
+            if not project_key:
+                project_key = "C:/tmp/amh-test"
+            mission_payload = {
+                "project_slug": project_key,
+                "title": "smoke-mission",
+                "summary": "smoke mission auto created",
+                "status": "draft",
+            }
+            print("\n[TEST 4] REST missions")
+            resp4 = requests.post(f"{rest_base}/missions", json=mission_payload, timeout=10)
+            print(f"POST /missions Status: {resp4.status_code}")
+            print(resp4.text)
+            resp4_list = requests.get(f"{rest_base}/missions", timeout=10)
+            print(f"GET /missions Status: {resp4_list.status_code}")
+            print(resp4_list.text)
 
         finally:
             print("\n[CLEANUP] Stopping server...")

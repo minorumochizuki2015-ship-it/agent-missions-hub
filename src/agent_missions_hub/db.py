@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import JSON, Column
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
@@ -107,10 +108,18 @@ class Message(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
-def get_engine(database_url: str) -> object:
-    """同期エンジンを構築する。"""
+_ENGINE_CACHE: dict[str, Engine] = {}
+_SESSIONMAKER_CACHE: dict[str, sessionmaker] = {}
 
-    return create_engine(database_url, echo=False)
+
+def get_engine(database_url: str) -> Engine:
+    """同期エンジンを構築／キャッシュする。"""
+
+    engine = _ENGINE_CACHE.get(database_url)
+    if engine is None:
+        engine = create_engine(database_url, echo=False)
+        _ENGINE_CACHE[database_url] = engine
+    return engine
 
 
 def init_db(database_url: str) -> None:
@@ -120,9 +129,55 @@ def init_db(database_url: str) -> None:
     SQLModel.metadata.create_all(engine)
 
 
+def _get_sessionmaker(database_url: str) -> sessionmaker:
+    maker = _SESSIONMAKER_CACHE.get(database_url)
+    if maker is None:
+        engine = get_engine(database_url)
+        maker = sessionmaker(bind=engine, class_=Session, expire_on_commit=False)
+        _SESSIONMAKER_CACHE[database_url] = maker
+    return maker
+
+
 def get_session(database_url: str) -> Session:
     """セッションを生成する。呼び出し側でクローズする。"""
 
-    engine = get_engine(database_url)
-    SessionLocal = sessionmaker(bind=engine, class_=Session, expire_on_commit=False)
-    return SessionLocal()
+    maker = _get_sessionmaker(database_url)
+    return maker()
+
+
+class MissionCreate(SQLModel):
+    project_slug: str
+    title: str
+    summary: str = ""
+    status: str = "draft"
+
+
+class TaskGroupCreate(SQLModel):
+    mission_id: int
+    name: str
+    sequence: int = 0
+
+
+class TaskCreate(SQLModel):
+    mission_id: int
+    kind: str
+    summary: str = ""
+    status: str = "pending"
+    assignee_agent_id: int | None = None
+
+
+class ArtifactCreate(SQLModel):
+    mission_id: int
+    name: str
+    type: str = ""
+    uri: str = ""
+    task_id: int | None = None
+    metadata: dict[str, str] | None = None
+
+
+class KnowledgeCreate(SQLModel):
+    mission_id: int
+    title: str
+    summary: str = ""
+    source_artifact_id: int | None = None
+    tags: list[str] | None = None
