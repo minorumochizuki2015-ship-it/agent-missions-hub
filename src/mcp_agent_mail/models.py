@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from datetime import datetime, timezone
 from typing import Any, Optional
+import uuid
+from uuid import UUID
 
 from sqlalchemy import Column, UniqueConstraint
 from sqlalchemy.types import JSON
@@ -119,3 +122,61 @@ class ProjectSiblingSuggestion(SQLModel, table=True):
     evaluated_ts: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     confirmed_ts: Optional[datetime] = Field(default=None)
     dismissed_ts: Optional[datetime] = Field(default=None)
+
+
+class Mission(SQLModel, table=True):
+    __tablename__ = "missions"
+
+    id: UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    project_id: int = Field(foreign_key="projects.id", index=True)
+    title: str = Field(max_length=255)
+    status: str = Field(default="pending", max_length=32)  # pending|running|completed|failed
+    context: Optional[dict] = Field(default=None, sa_column=Column(JSON, nullable=True))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class TaskGroup(SQLModel, table=True):
+    __tablename__ = "task_groups"
+
+    id: UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    mission_id: UUID = Field(foreign_key="missions.id", index=True)
+    title: str = Field(max_length=255)
+    kind: str = Field(default="sequential", max_length=32)  # sequential|parallel|loop
+    order: int = Field(default=0)
+    status: str = Field(default="pending", max_length=32)
+
+
+class Task(SQLModel, table=True):
+    __tablename__ = "tasks"
+
+    id: UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    group_id: UUID = Field(foreign_key="task_groups.id", index=True)
+    agent_id: int = Field(foreign_key="agents.id", index=True)
+    title: str = Field(max_length=255)
+    status: str = Field(default="pending", max_length=32)
+    input: Optional[dict] = Field(default=None, sa_column=Column(JSON, nullable=True))
+    output: Optional[dict] = Field(default=None, sa_column=Column(JSON, nullable=True))
+    error: Optional[str] = Field(default=None)
+
+
+class Artifact(SQLModel, table=True):
+    __tablename__ = "artifacts"
+
+    id: UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    mission_id: UUID = Field(foreign_key="missions.id", index=True)
+    task_id: Optional[UUID] = Field(default=None, foreign_key="tasks.id", index=True)
+    type: str = Field(max_length=64)  # file|diff|plan|test_result|screenshot
+    path: str = Field(max_length=1024)
+    version: str = Field(max_length=64)
+    sha256: str = Field(max_length=64)
+    content_meta: Optional[dict] = Field(default=None, sa_column=Column(JSON, nullable=True))
+
+
+class Knowledge(SQLModel, table=True):
+    __tablename__ = "knowledge"
+
+    id: UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    artifact_id: UUID = Field(foreign_key="artifacts.id", index=True)
+    tags: Optional[list[str]] = Field(default=None, sa_column=Column(JSON, nullable=True))
+    reusable: bool = Field(default=False)
