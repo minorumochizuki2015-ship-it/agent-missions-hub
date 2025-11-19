@@ -6,7 +6,8 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import JSON, Column
-from sqlmodel import Field, SQLModel, create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 
 class Project(SQLModel, table=True):
@@ -94,6 +95,18 @@ class Knowledge(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class Message(SQLModel, table=True):
+    """送受信メッセージの記録を保持するテーブル。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    project_id: int = Field(foreign_key="project.id", index=True)
+    sender_name: str
+    to: list[str] = Field(default_factory=list, sa_column=Column(JSON))
+    subject: str = Field(default="")
+    body_md: str = Field(default="")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 def get_engine(database_url: str) -> object:
     """同期エンジンを構築する。"""
 
@@ -105,3 +118,11 @@ def init_db(database_url: str) -> None:
 
     engine = get_engine(database_url)
     SQLModel.metadata.create_all(engine)
+
+
+def get_session(database_url: str) -> Session:
+    """セッションを生成する。呼び出し側でクローズする。"""
+
+    engine = get_engine(database_url)
+    SessionLocal = sessionmaker(bind=engine, class_=Session, expire_on_commit=False)
+    return SessionLocal()

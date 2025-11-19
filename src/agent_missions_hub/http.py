@@ -30,7 +30,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
     # FastMCP ネイティブマウント
     if FastMCPServer is not None:
         # ツールを組み込んだサーバを構築
-        server = build_mcp_server()
+        server = build_mcp_server(app_settings)
 
         mcp_app = server.http_app(
             path="/",

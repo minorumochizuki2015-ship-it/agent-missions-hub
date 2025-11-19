@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     app_name: str = Field(default="agent-missions-hub")
     debug: bool = Field(default=False)
     storage_root: str = Field(default="./data")
-    database_url: str = Field(default="sqlite+aiosqlite:///./data/app.db")
+    database_url: str = Field(default="sqlite:///./data/app.db")
     mcp_mount_path: str = Field(default="/mcp")
     stateless_http: bool = Field(default=True)
 
