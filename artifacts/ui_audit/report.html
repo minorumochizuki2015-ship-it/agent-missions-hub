@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<title>UI Audit Sample</title>
+<style>body{font-family:sans-serif;padding:24px} .btn{padding:10px 16px;border:1px solid #333;display:inline-block}</style>
+</head>
+<body>
+<h1>UI Audit Sample Page</h1>
+<p>アクセシビリティ・パフォーマンス検証用の簡易ページです。</p>
+<button class="btn" aria-label="サンプルボタン">クリック</button>
+<script src="../../node_modules/web-vitals/dist/web-vitals.iife.js"></script>
+<script>
+window.__vitals__ = window.__vitals__ || {};
+if (typeof window.webVitals !== 'undefined') {
+  webVitals.onLCP((m)=>window.__vitals__.lcp_ms=m.value);
+  webVitals.onTTFB((m)=>window.__vitals__.tti_ms=m.value);
+  webVitals.onCLS((m)=>window.__vitals__.cls=m.value);
+} else {
+  console.warn('[ui_audit] web-vitals not available; using fallback collectors');
+  // Fallback: collect LCP/CLS via PerformanceObserver and TTI approx via DOMContentLoaded
+  try {
+    const vitals = window.__vitals__;
+    const poLCP = new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        vitals.lcp_ms = Math.max(vitals.lcp_ms || 0, entry.startTime || 0);
+      }
+    });
+    poLCP.observe({ type: 'largest-contentful-paint', buffered: true });
+    const poCLS = new PerformanceObserver((list) => {
+      let cls = vitals.cls || 0;
+      for (const entry of list.getEntries()) {
+        if (!entry.hadRecentInput) {
+          cls += entry.value || 0;
+        }
+      }
+      vitals.cls = cls;
+    });
+    poCLS.observe({ type: 'layout-shift', buffered: true });
+    document.addEventListener('DOMContentLoaded', () => {
+      vitals.tti_ms = performance.now();
+      console.log('[ui_audit] DOMContentLoaded; tti_ms(fallback)=', vitals.tti_ms);
+    });
+  } catch (e) { console.error('[ui_audit] fallback collectors error', e); }
+}
+</script>
+</body>
+</html>

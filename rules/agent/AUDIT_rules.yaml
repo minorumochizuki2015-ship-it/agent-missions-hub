@@ -1,0 +1,628 @@
+version: "2.0"
+
+product: "Trae"
+
+agent\_role: "Execute ML and repo-governance audit with deterministic, testable enforcement"
+
+background: "Integrated spec for ML+repo governance; this revision ADDS a separate UI-Audit gate (accessibility, visual regression, responsiveness, interaction, performance) that blocks deploy on failure."
+
+
+
+objectives:
+
+  - id: "OBJ-1"
+
+    text: "Audit and enforce ML pipeline quality, reproducibility, and safety."
+
+  - id: "OBJ-2"
+
+    text: "Audit and enforce repository rules: minimal diffs, approvals, secrets, EOL LF, atomic writes, and deployment gates."
+
+  - id: "OBJ-3"
+
+    text: "Audit and enforce UI preview quality budgets (a11y/visual/perf/responsiveness/interaction) on real browsers; block deploy on failure."
+
+
+
+definitions:
+
+  terms:
+
+    - name: "SSOT"
+
+      meaning: "Single source of truth document; conflicts defer to SSOT."
+
+    - name: "minimal unified diff"
+
+      meaning: "Smallest possible textual change expressed as unified diff; no full-file replace."
+
+    - name: "atomic write"
+
+      meaning: "Write via \*.tmp → validate → \*.bak → rename; verify hashes after rename."
+
+    - name: "AUTO\_DECIDE"
+
+      meaning: "Automated approval mode with guardrails; can be on/shadow/off."
+
+    - name: "PII"
+
+      meaning: "Personally identifiable information; must be absent or masked."
+
+    - name: "sha\_out"
+
+      meaning: "Hash of produced artifacts or outputs for reproducibility checks."
+
+    - name: "Lock file"
+
+      meaning: "JSON file recording ownership, TTL, and status to prevent concurrent changes."
+
+    - name: "axe\_severity"
+
+      meaning: "Accessibility violation severity per axe-core: minor, moderate, serious, critical."
+
+    - name: "CLS"
+
+      meaning: "Cumulative Layout Shift metric per Web Vitals."
+
+    - name: "visual\_diff\_pct"
+
+      meaning: "Percent of pixels differing between baseline and candidate screenshots."
+
+
+
+io:
+
+  inputs:
+
+    description: "Japanese Markdown with audit rules and repo policies; plus optional UI preview bundle and routes."
+
+    format: "markdown + static preview (dist/) + json configs"
+
+  outputs:
+
+    description: "Executable English YAML spec, machine-verifiable reports, diffs, and UI audit HTML reports"
+
+    format: "yaml + json + .patch + html"
+
+
+
+procedures:
+
+  - name: "Data audit"
+
+    steps:
+
+      - "Validate dataset schema and dtypes match declared schema."
+
+      - "Check missing values and numerical ranges; reject on violation."
+
+      - "Detect PII via regex/entropy; action=mask or drop per safety\_compliance."
+
+      - "Verify splits equal {train:0.8, valid:0.2, test:0.0} within ±0.5%."
+
+      - "Record preprocessing steps with seed=42 and versions."
+
+
+
+  - name: "Model training audit"
+
+    steps:
+
+      - "Set seeds for Python/NumPy/Framework=42; log framework and CUDA versions."
+
+      - "Enable deterministic kernels; fail if nondeterministic ops stay active."
+
+      - "Check GPU>=6GB VRAM when gpu\_required=true; else skip with reason."
+
+      - "Validate hyperparameters match spec and are logged."
+
+
+
+  - name: "Evaluation audit"
+
+    steps:
+
+      - "Compute metrics on validation set with fixed seed and frozen preprocessors."
+
+      - "Persist metrics with timestamps and dataset/model hashes."
+
+      - "Enforce evaluation.thresholds.pass\_if expression; stop on failure."
+
+
+
+  - name: "Ethics and bias audit"
+
+    steps:
+
+      - "Run subgroup fairness checks (demographic parity, equalized odds)."
+
+      - "Flag disparities > 0.10 absolute in accuracy or precision across protected groups."
+
+      - "Record remediation action items and deadlines."
+
+
+
+  - name: "Documentation audit"
+
+    steps:
+
+      - "Verify model\_card.md exists and includes purpose, data, training, metrics, limits."
+
+      - "Ensure logs include env (OS, CUDA, drivers), seeds, and library versions."
+
+      - "Link artifacts to model card and commit hash."
+
+
+
+  - name: "Deployment audit"
+
+    steps:
+
+      - "Verify trained\_model hash equals deploy artifact hash."
+
+      - "Confirm monitoring tracks drift and emits alerts; store config snapshot."
+
+      - "Validate rollback plan is current and executable."
+
+
+
+  - name: "Approvals gate"
+
+    steps:
+
+      - "Read approvals table; require status=approved for external writes, rules updates, configs, protected areas."
+
+      - "Forbid self-approval; ensure ts\_dec ≥ ts\_req; evidence path present."
+
+      - "Block production apply if status=pending/expired."
+
+
+
+  - name: "Secrets scan"
+
+    steps:
+
+      - "Run secrets scanner; allow only placeholders {REDACTED, CHANGEME, jwt-ci, webhook-ci}."
+
+      - "Fail if any real secrets detected; record finding and stop."
+
+
+
+  - name: "Atomic write and EOL verify"
+
+    steps:
+
+      - "Apply minimal unified diff; forbid replace-all."
+
+      - "Write via \*.tmp → validate → \*.bak → rename; post-verify EOL=LF and SHA256(in/out) match policy."
+
+
+
+  - name: "Artifact README generation"
+
+    steps:
+
+      - "Create artifacts/<task\_id>/README.md with reproduce steps and metrics."
+
+      - "Store dependencies and exact commands for re-run."
+
+
+
+  - name: "Canary healthcheck"
+
+    steps:
+
+      - "Read canary params from constraints.policy\_parameters.canary with env override."
+
+      - "Run e2e tests and HTTP 200 healthcheck with retry/backoff and max\_wait."
+
+      - "On 3 consecutive failures set AUTO\_DECIDE=off and record incident."
+
+
+
+  - name: "Lock acquire and release"
+
+    steps:
+
+      - "Create ORCH/STATE/LOCKS/<task\_id>.lock with {owner, task\_id, ts\_acquired, ttl\_sec, status}."
+
+      - "Set status=active on acquire; expired on TTL; released on success."
+
+      - "Stop auto decisions on contention or when FREEZE=on."
+
+
+
+  - name: "Rollback dry-run"
+
+    steps:
+
+      - "Run rollback script in dry-run; verify sha256 of target release."
+
+      - "If checks pass and approval exists, mark rollback path as ready."
+
+
+
+  - name: "CI gate validation"
+
+    steps:
+
+      - "Require pytest=100% pass; compute coverage by component (unit, integration, e2e)."
+
+      - "Assert coverage.\* ≥ constraints.policy\_parameters.coverage\_min.\*."
+
+      - "Fail on EOL≠LF or secrets findings; forbid diffs > 50 lines or > 3 files."
+
+
+
+  - name: "Path policy check (Windows absolute)"
+
+    steps:
+
+      - "Validate evidence paths are absolute Windows paths using backslashes; forbid relative or forward-slash paths."
+
+      - "Reject if policy violated and log remediation."
+
+- name: "SafeOps log audit"
+
+    steps:
+
+      - "Verify paths.safeops_rule_bootstrap_log latest entry timestamp meets PLAN gate and SHA256 matches paths.safeops_rule_bootstrap_hash."
+
+      - "Cross-check CMD.safeops.dangerous_commands entries against approvals and observed commands; require matching APPROVALS.md rows."
+
+      - "Fail if SafeOps logs missing entries or hashes drift; log remediation to audit_dir."
+
+
+
+  - name: "Self-test (fairness \& coverage synthesis)"
+
+    steps:
+
+      - "Compute per-group AUC and TPR; derive auc\_gap and tpr\_gap."
+
+      - "Set fairness\_ok by thresholds; set coverage\_ok from CI artifacts."
+
+      - "Emit self-test report (json) and persist."
+
+
+
+  # === ADDED: UI-Audit extension (separate agent, gate-enforced) ===
+
+  - name: "Preview build verification"
+
+    steps:
+
+      - "Locate preview\_dir (artifacts/preview or configured absolute path)."
+
+      - "Serve locally if needed; validate routes exist and return HTTP 200."
+
+      - "Record build hash (sha\_out) and bundle sizes."
+
+
+
+  - name: "UI accessibility audit (axe-core)"
+
+    steps:
+
+      - "Run axe on each route × viewport; collect violations by severity."
+
+      - "Fail if any serious or critical violations exist."
+
+      - "Persist per-node evidence and selectors."
+
+
+
+  - name: "UI visual regression audit"
+
+    steps:
+
+      - "Capture screenshots; compare to baseline using SSIM+pixel diff."
+
+      - "Compute visual\_diff\_pct; fail if > constraints.policy\_parameters.ui\_budgets.visual\_diff\_pct."
+
+      - "Store before/after/diff images."
+
+
+
+  - name: "UI responsiveness \& interaction audit"
+
+    steps:
+
+      - "Test breakpoints \[390, 768, 1024, 1280]; assert no horizontal scroll and tap targets ≥44px."
+
+      - "Execute scripted flows (clicks, form submit, dialogs, toasts); assert keyboard focusability."
+
+      - "Record failures with DOM snapshots."
+
+
+
+  - name: "UI performance audit"
+
+    steps:
+
+      - "Measure Web Vitals (LCP, TTI) per route × viewport."
+
+      - "Fail if LCP > constraints.policy\_parameters.ui\_budgets.lcp\_s or TTI > ...tti\_s."
+
+      - "Record CLS; fail if > ...cls\_max."
+
+
+
+  - name: "UI approvals gate"
+
+    steps:
+
+      - "Aggregate UI audit results; set gate = PASS if all budgets met."
+
+      - "Block /deploy if gate=FAIL; require remediations and re-run."
+
+      - "Publish HTML report and JSON summary to artifacts/ui\_audit/."
+
+
+
+constraints:
+
+  language: "English only"
+
+  determinism:
+
+    seed: 42
+
+    note: "Set all RNGs; enable deterministic kernels; avoid nondeterministic GPU ops."
+
+  prohibitions:
+
+    - "No ambiguous verbs without metrics."
+
+    - "No hidden assumptions."
+
+    - "No full-file replacements; minimal unified diff only."
+
+    - "No CRLF in tracked text; LF only."
+
+    - "No self-approval."
+
+    - "No edits in protected areas without approval."
+
+    - "No relative evidence paths; Windows absolute path required."
+
+    - "No Figma design mutations (read-only only)."
+
+  write\_policy:
+
+    atomic\_flow: "\*.tmp → validate → \*.bak → rename"
+
+    post\_verify: \["EOL=LF","SHA256(in/out)"]
+
+  eol:
+
+    encoding: "UTF-8"
+
+    newline: "LF"
+
+  path\_policy\_windows:
+
+    absolute\_required: true
+
+    separator: "\\\\"
+
+    forbidden: \["relative paths","..","/"]
+
+
+
+policy\_parameters:
+
+  fairness:
+
+    auc\_gap\_max: 0.05
+
+    tpr\_gap\_max: 0.05
+
+  coverage\_min:
+
+    unit: 0.85
+
+    integration: 0.75
+
+    e2e: 0.70
+
+  canary:
+
+    success\_required: 5
+
+    retry\_sec: 5
+
+    max\_wait\_sec: 30
+
+  ui\_budgets:
+
+    lcp\_s: 2.5
+
+    tti\_s: 3.0
+
+    cls\_max: 0.10
+
+    visual\_diff\_pct: 0.10
+
+    axe\_max\_serious\_plus: 0
+
+
+
+ml\_specific:
+
+  task\_types: \["training","inference","evaluation"]
+
+  data\_requirements:
+
+    schema: "feature\_id:int, feature\_name:str, feature\_type:str, label:int"
+
+    splits: {train: 0.8, valid: 0.2, test: 0.0}
+
+    preprocessing:
+
+      - "Standardize numeric columns (z-score) with fitted params on train only."
+
+      - "Deterministic categorical encoding with stored mapping."
+
+      - "Outlier removal beyond 3σ if enabled; log count and indices."
+
+  training:
+
+    framework: \["PyTorch"]
+
+    hardware: {gpu\_required: true, min\_vram\_gb: 6}
+
+    hyperparameters:
+
+      batch\_size: 64
+
+      lr: 0.001
+
+      epochs: 30
+
+    reproducibility:
+
+      set\_seeds: true
+
+      deterministic\_kernels: true
+
+  evaluation:
+
+    metrics:
+
+      primary: "f1"
+
+      secondary: \["precision","recall","accuracy","auc"]
+
+    validation\_protocol:
+
+      type: "holdout"
+
+      folds: 0
+
+    thresholds:
+
+      pass\_if: "(f1 >= 0.75) and (fairness\_ok == true) and (coverage\_ok == true) and (hash\_match == true) and (canary\_pass == true)"
+
+
+
+logging:
+
+  level: "INFO"
+
+  record:
+
+    - "metrics\_per\_epoch"
+
+    - "validation\_loss"
+
+    - "confusion\_matrix"
+
+    - "framework\_versions"
+
+    - "sha\_out\_work1"
+
+    - "sha\_out\_work2"
+
+    - "self\_test\_report.json"
+
+
+
+artifacts:
+
+  save:
+
+    - "trained\_model"
+
+    - "inference\_script"
+
+    - "metrics\_report.json"
+
+    - "model\_card.md"
+
+    - "diff\_evidence.patch"
+
+
+
+safety\_compliance:
+
+  pii:
+
+    allowed: false
+
+    action\_if\_detected: "mask|drop|abort"
+
+  secrets:
+
+    placeholders\_allowed: \["REDACTED","CHANGEME","jwt-ci","webhook-ci"]
+
+    action\_if\_detected: "abort\_and\_log"
+
+  model\_cards: "required"
+
+
+
+ui\_specific:
+
+  inputs:
+
+    figma\_ref: "optional, read-only; do not mutate designs"
+
+    mapping\_json: "node → shadcn component with props"
+
+    preview\_dir: "artifacts/preview/ (or absolute Windows path)"
+
+    routes: \["/", "/components", "/forms/basic"]
+
+  allowlist\_tools:
+
+    qa: \["Playwright","axe-core","opencv"]
+
+    design: \["Figma AI Bridge"]
+
+  artifacts:
+
+    report\_html: "artifacts/ui\_audit/report.html"
+
+    summary\_json: "artifacts/ui\_audit/summary.json"
+
+    screenshots\_dir: "artifacts/ui\_audit/screens/"
+
+    traces\_dir: "artifacts/ui\_audit/traces/"
+
+
+
+acceptance\_criteria:
+
+  must:
+
+    - "All fields in this schema present."
+
+    - "Steps are atomic and testable."
+
+    - "Determinism and seed setting enforced."
+
+    - "Metrics and pass thresholds defined with explicit comparators."
+
+    - "Secrets, EOL, atomic write, approvals, and path policies enforced."
+
+    - "SafeOps rule_bootstrap hash and dangerous command logs verified against approvals and command history."
+
+    - "UI gate PASS required: axe serious+ = 0, visual\_diff\_pct ≤ ui\_budgets.visual\_diff\_pct, LCP/TTI within budgets, CLS ≤ ui\_budgets.cls\_max."
+
+  must\_not:
+
+    - "Placeholders like 'TBD' or '??'."
+
+    - "Ambiguous terms without definitions."
+
+    - "Relative or forward-slash evidence paths."
+
+guardrails:
+  filesystem:
+    dangerous_patterns:
+      - "Remove-Item"
+      - "rm -rf"
+      - "shutil\.rmtree"
+    enforce:
+      block_without_safeops: true

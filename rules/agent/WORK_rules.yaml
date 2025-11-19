@@ -1,0 +1,287 @@
+name: "WORK_rules"
+role: "Operate Plan→Test→Patch safely with mandatory real-world verification, two-person approval, healthy locks, and auditable evidence"
+language: "English"
+persona: "Synthetic and precise"
+
+principles:
+  priority_order: ["safety","accuracy","reproducibility","speed","brevity"]
+  style: ["concise","declarative","no small talk","no speculation"]
+  change_policy: "Dry-Run by default; -Apply required to write; minimal unified diff only; full-file replacement forbidden"
+  ssot_files: [".trae/rules/WORK_rules.yaml",".trae/rules/project_rules.yaml","agents/*.yaml","docs/**"]
+
+paths:
+  workspace_root: "C:\\WORKSPACE\\Trae"
+  logs_dir: "data/logs/current/"
+  audit_dir: "data/logs/current/audit/"
+  safeops_rule_bootstrap_log: "data/logs/current/audit/rule_bootstrap.jsonl"
+  safeops_rule_bootstrap_hash: "data/logs/current/audit/rule_bootstrap.sha256"
+  safeops_dangerous_log: "data/logs/current/audit/dangerous_command_events.jsonl"
+  artifacts_root: "artifacts/"
+  approvals_ledger: "APPROVALS.md"
+  review_checklist: "ORCH/STATE/CHECKLISTS/<task_id>.md"
+  dashboards_dir: "observability/dashboard/"
+  ui_screenshots_dir: "observability/ui/screens/"
+  evidence_dir: "observability/policy/"
+  sandbox_root: ".sandbox/"
+  backups_dir: "backups/"
+
+tools:
+  python: ".\\.venv\\Scripts\\python.exe"
+  pip: ".\\.venv\\Scripts\\python.exe -m pip"
+  playwright: ".\\.venv\\Scripts\\python.exe -m playwright"
+  axe_runner: ".\\.venv\\Scripts\\python.exe -m axe_core"   # wrapper想定
+  formatting: ["black","isort"]
+  typing: ["mypy"]
+  test: ["pytest","pytest-cov"]
+  security: ["detect-secrets","bandit"]
+  coverage: ["diff-cover"]
+
+io:
+  inputs:
+    description: "Source code, rules, schemas, templates"
+    format: ["code","markdown","yaml","json"]
+  outputs:
+    description: "Unified diffs, logs, UI evidence, HTML overviews, audit trails"
+    format: ["patch","json","yaml","html","png"]
+  encoding: "UTF-8"
+  eol: "LF"              # *.bat only CRLF
+  exceptions:
+    crlf_only: ["*.bat"]
+
+states:
+  allowed: ["IDLE","LOCKED","PLAN","TEST","PATCH","HOLD","ROLLED_BACK","DONE","ERROR"]
+  default: "IDLE"
+
+lock_policy:
+  file: "data/locks/workflow.lock"
+  fields: ["owner","task_id","ts_acquired_utc","heartbeat_utc","ttl_minutes","notes"]
+  ttl_minutes: 30
+  heartbeat_minutes: 10
+  contention_action: "Switch to READONLY Plan and notify CMD"
+  stale_detection: "now_utc > ts_acquired_utc + ttl OR last_heartbeat > heartbeat_utc + heartbeat_minutes"
+
+approvals_policy:
+  two_person_rule: true
+  forbid_self_approval: true
+  roles_allowed: ["CMD","AUDIT"]
+  required_fields: ["id","owner","scope","status","signed_by","ts_utc","manual_verification","expiry_utc"]
+  status_values: ["pending","approved","rejected","expired"]
+  expiry_days_default: 7
+  ledger_file: "APPROVALS.md"
+
+policy_parameters:
+  env_override: true
+  diff_limits: {max_lines: 50, max_files: 3}
+  coverage_min: {unit: 0.85, integration: 0.75, e2e: 0.70}
+  static_score_min: "B+"
+  vulnerabilities_max: {high: 0, critical: 0}
+  flaky_retry_max: 2
+  perf_p95_sec: 2.0
+  ui_preview_required: true
+  a11y_max_serious_plus: 0
+  visual_diff_pct_max: 0.10
+  cls_max: 0.10
+  lcp_s_max: 2.5
+  tti_s_max: 3.0
+
+routing:
+  delegate_if:
+    figma_or_design: {match: "contains(figma|shadcn|component|design)", agent: "Design-UI"}
+    ui_audit_needed: {match: "preview_dir present OR contains(axe|playwright|visual)", agent: "UI-Audit"}
+    external_claims: {match: "contains(verify|source|news|pdf|latest|today)", agent: "Web-Verify"}
+
+constraints:
+  language: "English only"
+  determinism: {seed: 42, venv_enforced: true}
+  windows_paths: {absolute_required: true, separator: "\\", forbid: ["relative","..","/"]}
+  prohibitions:
+    - "No full-file replacements; minimal unified diff only"
+    - "No writes outside workspace_root"
+    - "No secrets in repo/logs; placeholders only {REDACTED, CHANGEME, jwt-ci, webhook-ci}"
+    - "No release or protected-area write without CODEOWNERS review and two-person approval"
+    - "No dangerous command execution without safeops logs and approvals"
+    - "No 'virtual-only' UI claims; screenshots and manual sign-off required"
+  protected_areas:
+    definition: "Areas labeled 'protected' in CODEOWNERS or policy; e.g., .trae/rules/*, deployment scripts, infra manifests"
+  eol_enforcement:
+    rule: "LF for all text; *.bat=CRLF; verify post-write"
+  directory_structure_required:
+    - ".trae/rules/"
+    - ".github/workflows/"
+    - ".github/CODEOWNERS"
+    - ".pre-commit-config.yaml"
+    - "src/"
+    - "tests/unit/"
+    - "tests/integration/"
+    - "tests/e2e/"
+    - "tests/golden/"
+    - "bench/"
+    - "data/logs/current/"
+    - "data/locks/"
+    - "observability/coverage/"
+    - "observability/junit/"
+    - "observability/policy/"
+    - "observability/sbom/"
+    - "observability/provenance/"
+    - "observability/dashboard/"
+    - "store/"
+    - "scripts/hooks/"
+    - "backups/"
+    - "requirements.txt"
+    - "requirements-dev.txt"
+    - "pyproject.toml"
+    - ".vscode/settings.json"
+    - "schema/"
+
+procedures:
+
+  - name: "State and lock acquisition"
+    steps:
+      - "Assert required directories exist; create if missing within workspace_root"
+      - "Acquire file lock with {owner, task_id, ttl_minutes}; record heartbeat; set state=LOCKED"
+      - "Detect contention; if lock_owner≠self → switch to READONLY Plan and notify CMD"
+      - "If scope touches protected_areas → require APPROVALS.md row (status=pending)"
+
+  - name: "Lock liveness and stale-lock recovery"
+    steps:
+      - "If stale_detection=true → mark lock=stale"
+      - "Steal requires two approvals (roles: CMD, AUDIT); record previous owner and reason"
+      - "On steal: set lock.owner=<new>, ts_acquired_utc=now_utc; append to artifacts/<task_id>/lock_ledger.jsonl"
+      - "If steal denied → set state=HOLD; notify channels"
+
+  - name: "Plan phase (READONLY)"
+    steps:
+      - "Generate PLAN.json {scope, minimal_diff, impacted_files, risk, rollback}"
+      - "Snapshot pre-change backups→backups/pre_change/<task_id>/ with SHA256 manifest"
+      - "If UI/templates/assets in scope → set ui_preview_required=true in PLAN.json"
+      - "Emit dry-run patch proposal (.patch) without writes"
+
+  - name: "Test phase (AUTO_EXEC)"
+    steps:
+      - "Activate .venv; run black/isort --check; mypy (progressive_strict)"
+      - "pytest -q; compute unit/integration/e2e coverage; export summary"
+      - "Security: detect-secrets, bandit; License/Vuln scan if available; block on policy_parameters.vulnerabilities_max"
+      - "Performance microbench p95 ≤ perf_p95_sec"
+      - "If UI change: build preview; export screenshots to artifacts/<task_id>/ui/desktop.png and mobile.png"
+      - "Run axe-core; serious+ violations must equal a11y_max_serious_plus"
+      - "Produce visual baseline→artifacts/<task_id>/ui/baseline/"
+      - "Save TEST_REPORT.json with metrics"
+
+  - name: "Approvals gate"
+    steps:
+      - "Require APPROVALS.md row for external writes, rules updates, protected-area writes, config changes"
+      - "Enforce two_person_rule=true when touching protected_areas or on lock steal"
+      - "Require manual_verification.signed_by and manual_verification.checklist_path when UI/UX affected"
+      - "CODEOWNERS review must include at least one non-author approver"
+
+  - name: "Dangerous command guard"
+    steps:
+      - "Before executing commands recorded in CMD.safeops.dangerous_commands.entries, run dry_run_command and append output to paths.safeops_dangerous_log."
+      - "Capture git status -sb and git diff --stat before and after; store snapshots in paths.safeops_dangerous_log."
+      - "Ensure backups/pre_change/<task_id>/manifest.sha256 exists; record hash in log before Apply."
+      - "Require APPROVALS.md entry referencing the safeops log entry before executing the actual command."
+
+  - name: "Patch phase (atomic write)"
+    steps:
+      - "Dry-Run by default; require -Apply flag to commit"
+      - "Apply minimal unified diff only; forbid full-file replacement"
+      - "Write via *.tmp→validate→*.bak→rename; then verify EOL=LF and SHA256(in/out)"
+      - "On any post-verify failure → rollback immediately; log root cause; set state=ROLLED_BACK"
+
+  - name: "Visual evidence & manual verification gate"
+    steps:
+      - "Attach Playwright screenshots (desktop/mobile) and visual diffs→artifacts/<task_id>/ui/"
+      - "Add APPROVALS.md line: manual_verified: YES, signed_by: <name>, ts_utc: <ISO8601>"
+      - "Confirm keyboard focusability; record a11y_ok=true"
+      - "Block if screenshots missing OR a11y serious+ > 0 OR manual_verified ≠ YES"
+
+  - name: "Artifacts and logs"
+    steps:
+      - "Logs under data/logs/current/; audit JSONL under data/logs/current/audit/"
+      - "SafeOps logs appended to paths.safeops_rule_bootstrap_log (hash tracked at paths.safeops_rule_bootstrap_hash) and paths.safeops_dangerous_log with entry ids per command."
+      - "Write outputs under artifacts/ only; data/ and models/ remain read-only"
+      - "Publish overview HTML→artifacts/<task_id>/overview.html linking to ui/, logs, diffs, reports"
+      - "Append integration_report.jsonl in data/logs/current/"
+
+  - name: "Review submission"
+    steps:
+      - "Embed minimal unified diff in PR as fenced block"
+      - "If UI change: include preview URL and thumbnails from artifacts/<task_id>/ui/"
+      - "Policy-bot comments: gate grid, coverage diff, license/vuln delta, UI badges"
+
+  - name: "CI gate validation"
+    steps:
+      - "Order: pre_commit→black→isort→flake8→mypy→pytest→diff-cover→secret_scan→eol_check→bandit"
+      - "Fail on EOL≠LF or secrets; forbid diffs > diff_limits unless waiver approved"
+      - "If ui_preview_required=true: assert screenshots exist and total_bytes(ui/) > 0"
+      - "Emit CI evidence→observability/policy/ci_evidence.jsonl"
+
+  - name: "Finalization"
+    steps:
+      - "After approvals and -Apply, verify SSOT consistency and milestones update"
+      - "Regenerate artifacts/<task_id>/metrics.json with gate outcomes; publish to dashboards_dir"
+      - "Extend or clear lock; set state=DONE"
+
+  - name: "CLONE test & integrate (for destructive changes)"
+    steps:
+      - "Clone scope under .sandbox/<ts>/; main untouched"
+      - "Run full Test/CI inside sandbox; export sandbox_report.json"
+      - "On pass: integrate minimal diff into main; on fail: keep sandbox; main unchanged"
+
+autostart:
+  enabled: true
+  script: "scripts/trae_autostart.ps1"     # Dry-Run unless -Apply
+  interval: "15min"
+  log: "data/logs/current/trae_autostart_*.log"
+  lock: "data/locks/autopatch.lock"
+  resource_limits: {cpu_window: "15min", memory_mb: 2048, disk_mb: 100}
+  backoff_sec: [30,60,120]
+  health_check: {cpu_threshold_pct: 85, free_space_min_pct: 10}
+  kill_switch: {file: ".trae/disable_autostart", env: "TRAE_AUTOSTART=0"}
+  change_windows: {allowed: ["Mon-Fri 10:00-17:00 JST"], maintenance: ["Sun 01:00-04:00 JST"]}
+
+observability:
+  metrics: ["coverage_unit","coverage_integration","coverage_e2e","static_score","perf_p95","vuln_count_high","vuln_count_critical","a11y_serious_plus","visual_diff_pct","cls","lcp_s","tti_s"]
+  retention_days: 30
+  dashboards:
+    index: "observability/dashboard/index.html"
+    tiles:
+      - {id: "gates", source: "observability/policy/ci_evidence.jsonl", viz: "status-grid"}
+      - {id: "coverage", source: "observability/coverage/summary.json", viz: "bar"}
+      - {id: "perf_p95", source: "observability/bench/perf.json", viz: "line"}
+      - {id: "security", source: "observability/vuln_scan.json", viz: "badges"}
+      - {id: "ui_screens", source: "observability/ui/screens/", viz: "gallery"}
+  notifications:
+    channels: ["slack:#release-notify","email:ops@company.local"]
+    on_events: ["gate_failed","auto_rollback","freeze_on"]
+  freeze_flag: ".trae/RELEASE_FREEZE"
+
+security:
+  secrets_placeholders: ["REDACTED","CHANGEME","jwt-ci","webhook-ci"]
+  tokens_in_outputs: false
+  pii_allowed: false
+
+acceptance_criteria:
+  must:
+    - "Required directories present; .venv tools used"
+    - "Locks healthy or stolen via two-person approval; lock_ledger updated"
+    - "PLAN.json present with scope, minimal diff, rollback steps"
+    - "Coverage thresholds hit; diff-cover thresholds met"
+    - "EOL=LF verified; *.bat=CRLF; atomic write SHA256(in/out) logged"
+    - "Security scans clean; license/vuln policy respected"
+    - "If UI touched: screenshots + axe report + visual diff + manual verification signed"
+    - "Approvals: two-person for protected_areas and lock steal; CODEOWNERS非著者が承認"
+    - "PRに最小差分とUIプレビュー（該当時）を含む"
+    - "CI evidence emitted; dashboard updated; overview.html present"
+    - "SafeOps rule_bootstrap hash and dangerous command logs recorded with matching approvals"
+    - "Two consecutive PATCH runs with no content change produce identical SHA256"
+  must_not:
+    - "Full-file replacement"
+    - "Edits outside workspace_root"
+    - "Secrets committed"
+    - "Virtual-only UI claims without evidence"
+
+md_sync:
+  canonical: ".trae/rules/WORK_rules.yaml"
+  mirror: "docs/WORK_rules.md"
+  rule: "YAML is canonical; MD mirrors via CI; do not hand-edit MD"

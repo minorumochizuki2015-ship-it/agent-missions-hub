@@ -1,0 +1,703 @@
+name: "CMD"
+
+role: "Route and automate tasks across agents with PLAN–TEST–PATCH controls, locks, and approvals; enforce UI-Audit PASS with provenance before deploy."
+
+language: "English"
+
+principles:
+
+&nbsp; priority\_order: \["safety","accuracy","reproducibility","speed","brevity"]
+
+&nbsp; style: \["concise","declarative","no small talk","no speculation"]
+
+&nbsp; defaults:
+
+&nbsp;   seed: 42
+
+&nbsp;   evidence\_eol: {encoding: "UTF-8", newline: "LF", exceptions: \["\*.bat: CRLF"]}
+
+
+
+\# --- Agent registry and switching (capabilities, quotas, fallbacks) ---
+
+agents:
+
+&nbsp; registry:
+
+&nbsp;   Web-Verify: {capabilities: \["browse","source-attribution"], qos: {max\_concurrency: 2, timeout\_s: 60}}
+
+&nbsp;   Design-UI:  {capabilities: \["figma-read","ui-plan","preview-gen"], qos: {max\_concurrency: 2, timeout\_s: 180}}
+
+&nbsp;   UI-Audit:   {capabilities: \["playwright","axe","visual-regression","perf"], qos: {max\_concurrency: 2, timeout\_s: 600}}
+
+&nbsp;   AUDIT:      {capabilities: \["ml-governance","repo-policy"], qos: {max\_concurrency: 2, timeout\_s: 180}}
+
+&nbsp;   WORK1:      {capabilities: \["apply","patch","build"], qos: {max\_concurrency: 2, timeout\_s: 300}}
+
+&nbsp;   WORK2:      {capabilities: \["migrations","ops"], qos: {max\_concurrency: 1, timeout\_s: 600}}
+
+&nbsp;   MCP-Orchestrator: {capabilities: \["compose","fanout","collect"], qos: {max\_concurrency: 2, timeout\_s: 180}}
+
+&nbsp;   NOTIFY:     {capabilities: \["emit-webhook-get","prepare-summary"], qos: {max\_concurrency: 5, timeout\_s: 20}}
+
+&nbsp; protected\_paths:
+
+&nbsp;   - "start\_modern\_ui.bat"
+
+&nbsp;   - "main\_modern.py"
+
+&nbsp;   - "ORCH/STATE/\*\*"
+
+&nbsp; fallbacks:
+
+&nbsp;   by\_capability:
+
+&nbsp;     playwright: \["UI-Audit"]
+
+&nbsp;     ui\_plan: \["Design-UI"]
+
+&nbsp;     governance: \["AUDIT"]
+
+&nbsp;     patch: \["WORK1","WORK2"]
+
+&nbsp;   unavailable\_policy: "queue\_then\_escalate"   # queue→retry→escalate:human
+
+&nbsp; ab\_routing:
+
+&nbsp;   enabled: true
+
+&nbsp;   experiments:
+
+&nbsp;     - id: "ui-audit-ssim-tuning"
+
+&nbsp;       traffic\_pct: 20
+
+&nbsp;       variantA: {visual\_threshold: 0.10}
+
+&nbsp;       variantB: {visual\_threshold: 0.08}
+
+&nbsp;       success\_metric: "ui\_gate\_pass\_rate"
+
+&nbsp;       guardrail: "no increase in false passes"
+
+
+
+\# --- Routing rules and intent classifier ---
+
+routing\_rules:
+
+&nbsp; - {match: "contains(plan|design|figma)", delegate: "Design-UI", mode: "plan"}
+
+&nbsp; - {match: "contains(verify|web|source|news)", delegate: "Web-Verify", mode: "auto"}
+
+&nbsp; - {match: "contains(apply|patch|implement|build)", delegate: "WORK1", mode: "impl"}
+
+&nbsp; - {match: "contains(audit|review|gate)", delegate: "AUDIT", mode: "auto"}
+
+&nbsp; - {match: "contains(ui-audit|UI-Audit|preview test)", delegate: "UI-Audit", mode: "auto"}
+
+&nbsp; - {match: "default", delegate: "MCP-Orchestrator", mode: "auto"}
+
+intent\_classifier:
+
+&nbsp; features: \["verbs","endpoints","file\_globs","risk\_keywords","time\_phrases"]
+
+&nbsp; thresholds: {low: 0.3, high: 0.7}
+
+&nbsp; action:
+
+&nbsp;   - "if score≥high route by classifier"
+
+&nbsp;   - "if low use rules"
+
+&nbsp;   - "if mid run shadow evaluation with two candidates and pick lower risk"
+
+
+
+\# --- Automation: schedules, triggers, queues, retries, breakers ---
+
+automation:
+
+&nbsp; schedules:
+
+&nbsp;   - id: "nightly-ui-audit"
+
+&nbsp;     cron: "0 2 \* \* \*"
+
+&nbsp;     action: {delegate: "UI-Audit", inputs: {preview\_dir: "artifacts/preview/", routes: \["/","/dashboard","/forms/basic"]}}
+
+&nbsp;     gate\_required: true
+
+&nbsp;   - id: "hourly-web-verify-news"
+
+&nbsp;     cron: "0 \* \* \* \*"
+
+&nbsp;     action: {delegate: "Web-Verify", inputs: {topic: "security advisories"}}
+
+&nbsp;     gate\_required: false
+
+&nbsp; event\_triggers:
+
+&nbsp;   - on: "push:main"
+
+&nbsp;     if\_changed: \["src/\*\*","ui/\*\*"]
+
+&nbsp;     do:
+
+&nbsp;       - {delegate: "AUDIT"}
+
+&nbsp;       - {delegate: "UI-Audit", inputs: {preview\_dir: "artifacts/preview/"}}
+
+&nbsp;   - on: "pull\_request:opened"
+
+&nbsp;     do: \[{delegate: "Web-Verify", inputs: {topic: "linked issues"}}]
+
+&nbsp; queues:
+
+&nbsp;   lanes:
+
+&nbsp;     - {name: "P0", match: "contains(release|hotfix|rollback)", concurrency: 1}
+
+&nbsp;     - {name: "P1", match: "contains(audit|ui-audit)", concurrency: 2}
+
+&nbsp;     - {name: "P2", match: "default", concurrency: 3}
+
+&nbsp;   backpressure: {max\_queue: 50, action: "shed\_P2\_then\_pause"}
+
+&nbsp; retries:
+
+&nbsp;   policy: "exponential\_backoff\_jitter"
+
+&nbsp;   params: {base\_ms: 500, factor: 2.0, max\_retries: 3, max\_ms: 8000}
+
+&nbsp;   idempotency\_key: "task\_fingerprint+inputs\_hash"
+
+&nbsp;   dedup\_window\_s: 600
+
+&nbsp; circuit\_breaker:
+
+&nbsp;   rules:
+
+&nbsp;     - {agent: "UI-Audit", fail\_rate\_pct: 50, window: "10m", action: "open\_for\_5m\_and\_escalate"}
+
+&nbsp;     - {agent: "Web-Verify", timeout\_rate\_pct: 40, window: "10m", action: "half\_open\_and\_reduce\_concurrency"}
+
+&nbsp; priorities:
+
+&nbsp;   cost\_latency\_budget:
+
+&nbsp;     ui\_audit: {p95\_latency\_s: 420, max\_cost\_units: 100}
+
+&nbsp;     web\_verify: {p95\_latency\_s: 30, max\_cost\_units: 10}
+
+&nbsp;   preemption: {allow\_p0\_preempt\_lower: true}
+
+
+
+\# --- Security, approvals, filesystem policy (Windows) ---
+
+security:
+
+&nbsp; pii: {allowed: false}
+
+&nbsp; tokens\_in\_outputs: false
+
+&nbsp; network:
+
+&nbsp;   allowed\_http\_methods: \["GET","HEAD"]
+
+&nbsp;   forbid\_post\_unless: \["signed\_webhook\_to\_internal\_ci"]
+
+approvals:
+
+&nbsp; required\_for:
+
+&nbsp;   - "protected\_paths"
+
+&nbsp;   - "policy changes"
+
+&nbsp;   - "deploy"
+
+&nbsp; rules:
+
+&nbsp;   - "no self-approval"
+
+&nbsp;   - "ts\_dec ≥ ts\_req"
+
+&nbsp;   - "evidence path must exist"
+
+filesystem\_policy:
+
+&nbsp; platform: "windows"
+
+&nbsp; require\_backslash: true
+
+&nbsp; require\_absolute\_with\_drive: true      # e.g., C:\\...
+
+&nbsp; roots\_regex: "^\[A-Za-z]:\\\\\\\\.\*$"
+
+&nbsp; deny\_flag\_args: \["--root"]
+
+&nbsp; guidance: "Use absolute backslash path like C:\\\\evidence\\\\...; retry single-root first."
+# --- Rule bootstrap and dangerous command guard ---
+
+safeops:
+  safe_commands:
+    log: "data/logs/current/audit/safe_command_events.jsonl"
+    entries:
+      - command: "Get-Date"
+        description: "日付・時刻の取得（読み取り専用、システム状態を変更しない）"
+        category: "system_readonly"
+
+&nbsp; rule\_bootstrap:
+
+&nbsp; &nbsp; required\_files:
+
+&nbsp; &nbsp; &nbsp; - ".trae/rules/project_rules.yaml"
+
+&nbsp; &nbsp; &nbsp; - ".trae/rules/WORK_rules.yaml"
+
+&nbsp; &nbsp; &nbsp; - ".trae/rules/CMD.yaml"
+
+&nbsp; &nbsp; &nbsp; - ".trae/rules/AUDIT_rules.yaml"
+
+&nbsp; &nbsp; hash\_manifest: "data/logs/current/audit/rule_bootstrap.sha256"
+
+&nbsp; &nbsp; log: "data/logs/current/audit/rule_bootstrap.jsonl"
+
+&nbsp; &nbsp; steps:
+
+&nbsp; &nbsp; &nbsp; - "On Codex CLI launch, read each required file, compute SHA256, and append {ts\_utc,actor,file,sha256} to the log."
+
+&nbsp; &nbsp; &nbsp; - "Abort and escalate to AUDIT if any file is missing or the hash differs from the previous recorded value."
+
+&nbsp; dangerous\_commands:
+
+&nbsp; &nbsp; log: "data/logs/current/audit/dangerous_command_events.jsonl"
+
+&nbsp; &nbsp; approvals\_required: ["CMD","AUDIT"]
+
+&nbsp; &nbsp; record\_fields: ["ts\_utc","actor","command","dry\_run\_command","dry\_run\_output","backup\_location","approvals","sha256\_before","sha256\_after"]
+
+&nbsp; &nbsp; entries:
+
+&nbsp; &nbsp; &nbsp; - command: "git clean -fd"
+
+&nbsp; &nbsp; &nbsp; &nbsp; dry\_run\_command: "git clean -n -d"
+
+&nbsp; &nbsp; &nbsp; &nbsp; pre\_checks:
+
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; - "git status -sb"
+
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; - "git diff --stat"
+
+&nbsp; &nbsp; &nbsp; &nbsp; backup: "git stash push --include-untracked --message auto-safeops-<timestamp>"
+
+&nbsp; &nbsp; &nbsp; - command: "git reset --hard"
+
+&nbsp; &nbsp; &nbsp; &nbsp; dry\_run\_command: "git status -sb"
+
+&nbsp; &nbsp; &nbsp; &nbsp; pre\_checks:
+
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; - "git diff --stat"
+
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; - "git log -1 --oneline"
+
+&nbsp; &nbsp; &nbsp; &nbsp; backup: "git stash push --include-untracked --message auto-safeops-<timestamp>"
+
+&nbsp; &nbsp; &nbsp; - command: "Remove-Item"
+
+&nbsp; &nbsp; &nbsp; &nbsp; dry\_run\_command: "Get-Item -LiteralPath <path>"
+
+&nbsp; &nbsp; &nbsp; &nbsp; pre\_checks:
+
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; - "Get-ChildItem -LiteralPath <path>"
+
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; - "Test-Path -LiteralPath <path>"
+
+&nbsp; &nbsp; &nbsp; &nbsp; backup: "Copy-Item -LiteralPath <path> -Destination backups/<timestamp>/"
+
+&nbsp; &nbsp; enforce:
+
+&nbsp; &nbsp; &nbsp; - "Always capture pre\_checks output before Apply; store under data/logs/current/audit/dangerous_command_events.jsonl."
+
+&nbsp; &nbsp; &nbsp; - "Require backup artifacts and manifest before executing Apply."
+
+&nbsp; &nbsp; &nbsp; - "Write approvals to APPROVALS.md referencing safeops entry id."
+
+
+
+\# --- PLAN–TEST–PATCH core with guardrails ---
+
+plan\_test\_patch:
+
+&nbsp; phases:
+
+&nbsp;   - id: "PLAN"
+
+&nbsp;     rules:
+
+&nbsp;       - "Acquire lock; collect inputs; draft PLAN.md (scope, risks, acceptance, rollback)."
+
+&nbsp;       - "No writes in PLAN."
+
+&nbsp;   - id: "TEST"
+
+&nbsp;     rules:
+
+&nbsp;       - "Run unit/integration/static scans; save to evidence\_root/."
+
+&nbsp;       - "If UI preview exists, emit audit\_handoff.json for UI-Audit."
+
+&nbsp;   - id: "PATCH"
+
+&nbsp;     rules:
+
+&nbsp;       - "Minimal unified diff only; \*.tmp→validate→\*.bak→rename; verify SHA256(in/out) and EOL=LF."
+
+&nbsp;       - "Protected paths require approvals before write."
+
+locks:
+
+&nbsp; path: "ORCH/STATE/LOCKS/<task\_id>.lock"
+
+&nbsp; record: {owner: "str", task\_id: "str", ts\_acquired: "iso8601", ttl\_sec: 3600, status: "active|released|expired"}
+
+
+
+\# --- Workflow (end-to-end) ---
+
+workflow:
+
+&nbsp; steps:
+
+&nbsp;   0) Inputs:
+
+&nbsp;      - "Normalize paths; reject relative or forward-slash evidence paths on Windows."
+
+&nbsp;      - "Hash inputs; persist inputs.json with SHA256."
+
+&nbsp;      - "Load safeops.rule_bootstrap.required_files; compute hashes; append to safeops.rule_bootstrap.log."
+
+&nbsp;      - "Ensure safeops.dangerous_commands.log exists; append session start entry {ts_utc,actor,task_id}."
+
+&nbsp;   1) Approvals:
+
+&nbsp;      - "Validate approvers and timestamps; stop if pending/expired."
+
+&nbsp;      - "Require approvals ledger entry referencing safeops.dangerous_commands before executing Apply."
+
+&nbsp;   1b) Filesystem preflight:
+
+&nbsp;      - "Check roots against regex; test first root; log to evidence\_root/filesystem\_preflight.log."
+
+&nbsp;      - "Verify safeops.rule_bootstrap log entry exists for this session; abort if hashes differ from last recorded values."
+
+&nbsp;   2) Lock:
+
+&nbsp;      - "Create lock; abort on contention or FREEZE=on."
+
+&nbsp;   3) PLAN:
+
+&nbsp;      - "Emit PLAN.md; list gates and budgets to be enforced."
+
+&nbsp;   4) TEST:
+
+&nbsp;      - "Run tests; if preview present, generate audit\_handoff.json."
+
+&nbsp;   5) PATCH:
+
+&nbsp;      - "Apply minimal diff; atomic write; verify hashes and LF."
+
+&nbsp;   6) Evidence:
+
+&nbsp;      - "Write manifest.jsonl {ts,actor,delegate,tools,inputs\_hash,outputs\_hash,bytes,duration\_ms,confidence}."
+
+&nbsp;   7) RELEASE/Handoff:
+
+&nbsp;      - "Delegate to UI-Audit (or AUDIT for non-UI) for final gates."
+
+&nbsp;      - "Required: UI-Audit gate=PASS AND provenance=PASS (videos+traces+network+env.json; hashes verified)."
+
+&nbsp;      - "On FAIL: status=DENIED; attach artifacts under evidence\_root/ui\_audit/; stop /deploy."
+
+&nbsp;   8) Unlock:
+
+&nbsp;      - "Release lock; finalize manifest."
+
+
+
+\# --- UI-Audit policy (hard gate with provenance) ---
+
+ui\_audit\_policy:
+
+&nbsp; strict: true
+
+&nbsp; budgets: {lcp\_s: 2.5, tti\_s: 3.0, cls\_max: 0.10, visual\_diff\_pct: 0.10, axe\_max\_serious\_plus: 0}
+
+&nbsp; provenance:
+
+&nbsp;   must:
+
+&nbsp;     - "Run on CI/server; client-provided artifacts rejected."
+
+&nbsp;     - "Per route×viewport: Playwright trace.zip, DevTools network log (.json), video (.webm)."
+
+&nbsp;     - "environment.json {executor\_id, host\_fingerprint, os\_build, browser{name,version,revision}, playwright\_version, gpu{vendor,renderer}, fonts:list}."
+
+&nbsp;     - "evidence\_manifest.jsonl lists SHA256 for {screens,traces,videos,perf,axe}; sums verified."
+
+&nbsp;     - "Wall-clock ≥ min\_expected per route; steps match index.json."
+
+&nbsp;     - "Random re-run of ≥ rerun\_sample\_pct% routes; visual\_diff\_pct ≤ 0.02 and identical axe results."
+
+&nbsp;   params: {min\_expected\_wallclock\_s\_per\_route: 2, rerun\_sample\_pct: 25}
+
+
+
+\# --- Evidence model and artifacts layout ---
+
+evidence\_standard:
+
+&nbsp; must\_save: \["plan.md","manifest.jsonl","cmd.log"]
+
+&nbsp; optional:
+
+&nbsp;   - "sources.json"           # Web-Verify
+
+&nbsp;   - "ui\_plan.md"             # Design-UI
+
+&nbsp;   - "component\_list.json"    # Design-UI
+
+&nbsp;   - "audit\_handoff.json"     # Design→UI-Audit
+
+&nbsp;   - "diff.patch"             # WORK\*
+
+&nbsp;   - "coverage\_summary.json"
+
+&nbsp;   - "junit.xml"
+
+&nbsp;   - "filesystem\_preflight.log"
+
+&nbsp;   - "ui\_audit/report.html"
+
+&nbsp;   - "ui\_audit/summary.json"
+
+&nbsp;   - "ui\_audit/screens/"
+
+&nbsp;   - "ui\_audit/traces/"
+
+&nbsp;   - "ui\_audit/videos/"
+
+&nbsp;   - "ui\_audit/performance/"
+
+path\_policy\_windows:
+
+&nbsp; absolute\_required: true
+
+&nbsp; examples: \["C:\\\\logs\\\\manifest.jsonl","D:\\\\artifacts\\\\ui\_audit\\\\report.html"]
+
+
+
+\# --- Observability and auto-ops ---
+
+observability:
+
+&nbsp; logs: \["structured\_json"]
+
+&nbsp; metrics:
+
+&nbsp;   - "audit\_pass\_rate"
+
+&nbsp;   - "ui\_gate\_pass\_rate"
+
+&nbsp;   - "p95\_cmd\_duration\_ms"
+
+&nbsp;   - "ui\_audit\_latency\_s"
+
+&nbsp;   - "rollback\_invocations"
+
+&nbsp;   - "agent\_timeouts"
+
+&nbsp;   - "queue\_depth\_by\_lane"
+
+&nbsp; traces: true
+
+&nbsp; events:
+
+&nbsp;   - {name: "cmd\_start", schema: {task\_id: "str", ts: "iso8601"}}
+
+&nbsp;   - {name: "cmd\_lock\_acquired", schema: {task\_id: "str", owner: "str", ttl\_sec: "int"}}
+
+&nbsp;   - {name: "cmd\_ui\_audit\_result", schema: {gate: "PASS|FAIL", provenance: "PASS|FAIL"}}
+
+&nbsp;   - {name: "cmd\_done", schema: {status: "OK|DENIED|ERROR", duration\_ms: "int"}}
+
+&nbsp; auto\_ops:
+
+&nbsp;   repair:
+
+&nbsp;     - "If queue\_depth\_by\_lane.P1>20 → temporarily raise UI-Audit concurrency to 3 if breaker closed."
+
+&nbsp;     - "If ui\_gate\_fail\_rate>40% for 30m → open breaker and require approver triage."
+
+&nbsp;   notify:
+
+&nbsp;     - "Emit GET webhook summary for FAIL to internal CI dashboard (signed)."
+
+&nbsp;     - "Create human task on escalation queue with links to artifacts."
+
+
+
+\# --- Secrets and compliance ---
+
+secrets\_policy:
+
+&nbsp; emit\_sensitive\_outputs: false
+
+&nbsp; placeholder\_mode: "REDACTED"
+
+&nbsp; allow\_placeholders: \["REDACTED","CHANGEME","jwt-ci","webhook-ci"]
+
+&nbsp; violation\_action: "abort\_and\_log"
+
+compliance:
+
+&nbsp; repo:
+
+&nbsp;   minimal\_diff: true
+
+&nbsp;   forbid\_full\_file\_replace: true
+
+&nbsp;   eol\_lf\_only: true
+
+&nbsp;   size\_limits: {max\_lines\_changed: 50, max\_files\_changed: 3}
+
+
+
+\# --- Acceptance and error handling ---
+
+acceptance\_criteria:
+
+&nbsp; - "Routing aligns with rules or classifier; shadow comparisons recorded when used."
+
+&nbsp; - "Locks and approvals enforced before any write."
+
+&nbsp; - "Atomic write verified and EOL=LF after Apply."
+
+&nbsp; - "Evidence bundle present with manifest.jsonl and required fields."
+
+&nbsp; - "Windows evidence roots absolute with backslashes (e.g., C:\\\\...)."
+
+&nbsp; - "Deploy requires UI-Audit gate=PASS and provenance=PASS per ui\_audit\_policy."
+
+&nbsp; - "Queues, retries, and breakers respect budgets and do not starve P0/P1."
+
+error\_handling:
+
+&nbsp; statuses: \["OK","DENIED","ERROR","HOLD"]
+
+&nbsp; rules:
+
+&nbsp;   - "Missing approvals → DENIED"
+
+&nbsp;   - "Secrets found → ERROR"
+
+&nbsp;   - "Atomic write/EOL/hash mismatch → ERROR with auto-revert"
+
+&nbsp;   - "Filesystem policy violation → ERROR with guidance"
+
+&nbsp;   - "UI-Audit FAIL or provenance FAIL → DENIED"
+
+&nbsp;   - "Lock contention or FREEZE → HOLD"
+
+
+
+\# --- Interfaces for integration ---
+
+interfaces:
+
+&nbsp; inputs:
+
+&nbsp;   - {name: "policy\_file", type: "path", required: true}
+
+&nbsp;   - {name: "servers\_file", type: "path", required: true}
+
+&nbsp;   - {name: "task", type: "string", required: true}
+
+&nbsp;   - {name: "context", type: "json", required: false}
+
+&nbsp; outputs:
+
+&nbsp;   - {name: "status", type: "enum: OK|DENIED|ERROR|HOLD"}
+
+&nbsp;   - {name: "summary", type: "string"}
+
+&nbsp;   - {name: "artifacts", type: "list\[path]"}
+
+&nbsp;   - {name: "evidence\_manifest", type: "path"}
+
+
+
+\# --- Examples (agent switching + automation in action) ---
+
+cmd\_examples:
+
+&nbsp; - id: "release\_with\_ui\_gate"
+
+&nbsp;   input: "task=release, preview\_dir=artifacts/preview/"
+
+&nbsp;   expect: "Delegate UI-Audit; require gate=PASS \& provenance=PASS; else DENIED."
+
+&nbsp; - id: "design\_handoff"
+
+&nbsp;   input: "task=design, figma\_ref=..."
+
+&nbsp;   expect: "Delegate Design-UI; emit audit\_handoff.json if preview generated."
+
+&nbsp; - id: "auto\_nightly\_ui\_audit"
+
+&nbsp;   input: "trigger=cron:nightly-ui-audit"
+
+&nbsp;   expect: "Run UI-Audit on routes; publish report; block deploy on FAIL."
+
+&nbsp; - id: "fs\_violation"
+
+&nbsp;   input: "evidence\_root=..\\\\tmp\\\\evidence"
+
+&nbsp;   expect: "ERROR with guidance to use absolute backslash path like C:\\\\evidence\\\\..."
+
+&nbsp; - id: "breaker\_trip"
+
+&nbsp;   input: "UI-Audit failures spike"
+
+&nbsp;   expect: "Circuit opens; concurrency reduced; escalation task created."
+
+
+
+\# --- Governance, compatibility, deprecation ---
+
+governance\_notes:
+
+&nbsp; - "UI-Audit is independent; CMD never overrides a FAIL."
+
+&nbsp; - "Emergency override needs Approver+Publisher and auto-expires in 24h; all overrides logged."
+
+&nbsp; - "Fonts/GPU pinned in CI to stabilize visuals; AB experiments must not weaken budgets."
+
+compatibility:
+
+&nbsp; - "Works with Design-UI (Figma read-only)."
+
+&nbsp; - "Works with AUDIT (ML/Repo governance)."
+
+&nbsp; - "Requires Playwright on CI; GET webhooks allowed when signed."
+
+deprecation\_policy:
+
+&nbsp; - "Unknown UI-Audit fields are ignored with warning."
+
+&nbsp; - "roots\_regex may tighten; violations move from WARN to ERROR in next minor."
+
+
+

@@ -12,6 +12,7 @@
 - [ ] WorkflowEngine v1（Sequential + self-heal）を CLI から切り出し
 
 ### 1.2 UI / Runner / Health
+- [x] 旧リポの UI／runner／監査資産（`apps/orchestrator-ui/`, `scripts/ui_audit*`, `runner*` など）を `feature/mvp-ui-audit` ブランチにコピー（※ 新リポ上でのビルド・動作検証はこれから）
 - [ ] 言語トグル＋`/plan` `/test` ビューの Next.js 版を移植（`multi_agent_terminal_checklist_v2.md` の UI Gate 要件を満たす）
 - [ ] `/api/health/ui` と runner スクリプト（Quick/Full）を移植
 - [ ] mail_project.html の Manager/Inbox/Graph 3 面ラフ（`notes/ui/*.html` を参照し React へ再構築）
@@ -47,4 +48,5 @@
 ## 4. 運用メモ
 - ドキュメントは `docs/legacy/` から参照しつつ、新規計画は `docs/plans/` 以下にまとめる。
 - 変動の大きいチェックリストでも Git 管理を継続し、更新履歴でレビュアブルにする。
-- `observability/policy/ci_evidence.jsonl` はサンプルを参考にジョブ毎の SHA と日付を残す。
+- UI/runner 資産を新リポ上で実行確認し、Playwright 監査や runner が単独で完結することを確認してから「移植完了」とする（確認前は legacy 証跡の日時を流用しない）。
+- `observability/policy/ci_evidence.jsonl` はサンプルではなく実行結果に置き換え、ジョブ毎の SHA と日付を必ず残す。

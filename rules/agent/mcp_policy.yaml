@@ -1,0 +1,201 @@
+version: 2
+name: "mcp_policy"
+role: "Govern safe, deterministic MCP usage; verify outputs; emit evidence; align with project_rules and orchestrator"
+language: "English"
+persona: "Synthetic and precise"
+
+policy:
+  goals:
+    - "Speed up web verification and design while preserving determinism and auditability."  # :contentReference[oaicite:1]{index=1}
+  verification:
+    min_sources: 2                # ≥2 sources for factual claims
+    agree_ratio_min: 0.6
+    domain_diversity_min: 2       # distinct domains  # :contentReference[oaicite:2]{index=2}
+  citations:
+    quote_limit_words: 25
+    place_after_paragraph: true
+    pdfs_use_screenshots: true
+  recency:
+    use_web_for_unstable_facts: true
+    default_market: "ja-JP"
+  mcp_usage_criteria:
+    least_privilege: true
+    replayable: true
+    evidencable: true
+    obey_robots_txt: true          # :contentReference[oaicite:3]{index=3}
+  forbidden_operations:
+    - "Unbounded crawl (depth>2 or parallel>5) or robots.txt violation"
+    - "Arbitrary HTTP POST to unknown endpoints"
+    - "Writes outside artifacts/ or observability/"
+    - "Secrets generation/storage/transfer (non-placeholder)"
+    - "Self-approval for protected changes"
+    - "Non-atomic overwrites of repository files"          # :contentReference[oaicite:4]{index=4}
+  budgets:
+    per_run_tool_calls: 24
+    per_run_time_sec: 600
+    rate_limit_qps: 1                                     # :contentReference[oaicite:5]{index=5}
+  evidence:
+    out_dir: "observability/mcp/"
+    record: ["tool","version","args","start_ts","end_ts","sha_in","sha_out","artifacts"]
+    manifest_fields: ["ts","actor","tool","version","args","inputs_hash","outputs_hash","bytes","duration_ms","confidence"]
+    hash_algo: "sha256"                                   # :contentReference[oaicite:6]{index=6}
+  security:
+    redact_tokens_in_logs: true
+    never_echo_env: true
+    model_card_required: true                             # :contentReference[oaicite:7]{index=7}
+  routing:
+    go_if: ["needs long-running concurrent I/O or daemonized watcher"]
+    python_if: ["needs ML/analysis/AST/data-munging or prototype oracle"]  # :contentReference[oaicite:8]{index=8}
+
+mcp_tooling:
+  core_allow:
+    - name: "Brave Search"
+    - name: "Hyperbrowser"
+    - name: "Web Research Server"
+    - name: "Fetch"
+    - name: "Figma AI Bridge"
+    - name: "shadcn ui"
+    - name: "GitHub"
+    - name: "Git"
+    - name: "Filesystem"
+    - name: "Pandoc"
+    - name: "Windows CLI"                                  # :contentReference[oaicite:9]{index=9}
+  optional_allow:
+    - name: "Playwright"
+    - name: "axe-core"
+    - name: "Visual-Diff"
+    - name: "Docker"
+    - name: "Qdrant Server"                               # :contentReference[oaicite:10]{index=10}
+  promotion:
+    requires_label: "MCP:APPROVED"
+    approvals_file: "ORCH/STATE/APPROVALS.md"
+    ci_enforce: true                                      # :contentReference[oaicite:11]{index=11}
+  denylist: []
+  configs:
+    Filesystem:
+      mode: "read"
+      roots: ["${workspaceFolder}","observability/","artifacts/"]
+    Hyperbrowser: {depth_max: 2, parallel_max: 5}
+    Brave Search: {market: "ja-JP", safe: "moderate"}
+    Figma AI Bridge: {project_whitelist: ["*"]}           # restrict in prod
+    Windows CLI: {allow: ["where","ver","tasklist"]}      # read-only ops     # :contentReference[oaicite:12]{index=12}
+  ci_checks:
+    - "Fail if any tool not in core_allow/optional_allow is invoked."
+    - "Fail if tool config deviates from policy (mode=write, depth>2, etc.)."
+    - "Fail if optional_allow tool used without promotion.requires_label."     # :contentReference[oaicite:13]{index=13}
+
+agents:
+  - name: "MCP-Orchestrator"
+    role: "Select one MCP tool with least privilege; supervise; verify; emit deterministic evidence."
+    tools_allow: ["Brave Search","Hyperbrowser","Web Research Server","Fetch","GitHub","Git","Filesystem","Pandoc","Windows CLI"]
+    steps:
+      - "Parse task → check mcp_usage_criteria."
+      - "Select one tool; set deterministic params; run."
+      - "Persist evidence to observability/mcp/; attach unified diff if any text transform."
+      - "If claim/low confidence: require ≥ policy.verification.min_sources and agree_ratio ≥ policy.verification.agree_ratio_min." # :contentReference[oaicite:14]{index=14}
+  - name: "Web-Verify"
+    role: "Corroborate claims with multi-source web evidence."
+    thresholds:
+      require_sources: ${policy.verification.min_sources}
+      agree_ratio_min: ${policy.verification.agree_ratio_min}
+      domain_diversity_min: ${policy.verification.domain_diversity_min}
+    steps:
+      - "Search diverse domains; fetch pages; store raw + hashes."
+      - "Extract normalized facts; compute agreement and verdict."
+      - "Emit markdown summary with citations and evidence manifest."          # :contentReference[oaicite:15]{index=15}
+  - name: "Design-UI"
+    role: "Ingest Figma read-only data and map to shadcn/ui components."
+    steps:
+      - "Ensure read-only scopes; list frames/nodes."
+      - "Detect patterns; map to shadcn/ui; output ui_plan.md and component_list.json."
+      - "Save evidence manifest and hashes under observability/mcp/."         # :contentReference[oaicite:16]{index=16}
+  - name: "UI-Audit"
+    role: "Run Playwright + axe-core + visual regression with budgets; emit pass/fail and artifacts."
+    budgets: {lcp_s: 2.5, tti_s: 3.0, cls_max: 0.10, visual_diff_pct: 0.10, axe_serious_plus_max: 0}
+    artifacts:
+      report_html: "observability/ui/report/index.html"
+      screenshots_dir: "observability/ui/screens/"
+      traces_dir: "observability/ui/traces/"
+
+workflows:
+  - name: "MCP in WORK/AUDIT"
+    on_agents: ["MCP-Orchestrator","Web-Verify","Design-UI","UI-Audit"]
+    gates:
+      - "Follow PLAN→TEST→PATCH and approvals."
+      - "Atomic write only; EOL=LF verified."
+      - "UI budgets enforced; canary params covered."                             # :contentReference[oaicite:17]{index=17}
+
+platform_overrides:
+  windows:
+    # NOTE: For MCP Filesystem server invocation we enforce forward-slash style to avoid escaping issues.
+    # Repo paths and project_rules may use backslash; this override applies to the MCP server CLI only.  # :contentReference[oaicite:18]{index=18}
+    filesystem:
+      path_style: "forward-slash"
+      require_drive_letter: true
+      positional_roots_only: true
+      startup_sequence: ["single_root","multi_root"]
+      roots_examples:
+        - "C:/Users/User/Trae/ORCH-Next"
+        - "C:/Users/User/Trae/ORCH-Next/observability"
+        - "C:/Users/User/Trae/ORCH-Next/artifacts"
+      npx_example: "npx -y @modelcontextprotocol/server-filesystem C:/Users/User/Trae/ORCH-Next"
+    ci_checks_additional:
+      - "Fail if Filesystem roots contain backslashes or missing drive letters."
+      - "Fail if --root flags are used; require positional roots."
+      - "Require single-root startup pass before permitting multi-root."          # :contentReference[oaicite:19]{index=19}
+
+execution_policies:
+  filesystem_policy:
+    platform: "windows"
+    require_absolute_with_drive: true
+    forbid_flags: ["--root"]
+  atomic_write_policy:
+    tmp_ext: ".tmp"
+    bak_ext: ".bak"
+    flow: "*.tmp→validate→*.bak→rename"
+    post_verify: ["EOL=LF for text","SHA256(in/out)"]
+
+observability:
+  evidence_standard:
+    manifest_fields: ["ts","tool","args","sha_in","sha_out","bytes","duration_ms","actor","confidence"]
+    must_save: ["manifest.jsonl","orchestrator.log"]
+    optional: ["sources.json","index.md","errors.json","screenshots/","pdf_pages/"]
+  logs: ["structured_json"]
+  metrics: ["p95_latency_s","tool_fail_rate","agree_ratio_avg","domain_diversity_avg","cache_hit_rate","queue_depth"]
+  traces: true
+  events:
+    - {name: "mcp_start", schema: {task_id: "str", ts: "iso8601"}}
+    - {name: "mcp_tool_exec", schema: {tool: "str", duration_ms: "int", bytes: "int"}}
+    - {name: "mcp_done", schema: {status: "OK|INCONCLUSIVE|DENIED|ERROR", confidence: "num"}}  # :contentReference[oaicite:20]{index=20}
+
+ci_integration:
+  fail_on:
+    - "Tool not in allowlists"
+    - "Tool config exceeds budgets (depth>2, parallel>5, write mode, etc.)"
+    - "optional_allow tool used without promotion label"
+  report:
+    evidence_bundle: "observability/mcp/ci_evidence.jsonl"
+
+response_style:
+  - "Answer first briefly."
+  - "Then list tools_used and sources."
+  - "Echo deterministic params (market/depth/parallel/rate)."
+
+error_handling:
+  retry: {schedule_ms: [1000,2000,4000], max: 3}
+  on_error:
+    - "Capture partial artifacts; write errors.json"
+    - "Return status=ERROR with minimal diagnostics and evidence paths"
+    - "Redact token-like strings"
+  fallback:
+    - "If primary fails and breaker open → try secondary once"
+    - "If verify cannot meet min sources/diversity → INCONCLUSIVE"
+
+acceptance_criteria:
+  - "ALLOW = allowlist ∩ servers.enabled; denylist not triggered."
+  - "Budgets respected; parameters deterministic."
+  - "Evidence saved under out_dir with manifest.jsonl."
+  - "Verify: min_sources & domain_diversity & agree_ratio thresholds satisfied."
+  - "Quotes ≤ 25 words/source; PDFs via screenshots."
+  - "Windows MCP Filesystem override respected (forward-slash only for server CLI)."
+  - "UI-Audit budgets enforced when preview present."

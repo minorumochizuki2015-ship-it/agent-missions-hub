@@ -1,0 +1,38 @@
+{
+  "page": "http://127.0.0.1:8765/mail/unified-inbox?lang=en",
+  "timestamp": "2025/11/20 04:41:12",
+  "script_version": "ui-audit-v2",
+  "document": {
+    "title": "Unified Inbox Lite",
+    "lang": "en"
+  },
+  "axe": {
+    "violations": 0,
+    "serious": 0,
+    "by_rule": []
+  },
+  "web_vitals": {
+    "CLS": 0,
+    "LCP": 364,
+    "FID": 0,
+    "TTI": 0.028
+  },
+  "visual_diff": {
+    "baseline_present": false,
+    "baseline_path": null,
+    "ssim": null,
+    "pixel_diff_ratio": null
+  },
+  "screens_dir": "artifacts/ui_audit/screens",
+  "screenshot": "artifacts/ui_audit/screens/unified_inbox.png",
+  "gate": {
+    "pass": true,
+    "budgets": {
+      "LCP_ms<=2500": true,
+      "CLS<=0.1": true,
+      "FID_ms<=100": true,
+      "TTI_s<=5": true
+    },
+    "vitals_missing": false
+  }
+}
