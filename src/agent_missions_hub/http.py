@@ -141,7 +141,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
             name=payload.name,
             type=payload.type,
             uri=payload.uri,
-            metadata=payload.metadata or {},
+            meta=payload.meta or {},
         )
         session.add(artifact)
         session.commit()

@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
+from pathlib import Path
+
 from sqlalchemy import JSON, Column
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
@@ -80,7 +82,7 @@ class Artifact(SQLModel, table=True):
     name: str
     type: str = Field(default="")
     uri: str = Field(default="")
-    metadata: dict[str, str] = Field(default_factory=dict, sa_column=Column(JSON))
+    meta: dict[str, str] = Field(default_factory=dict, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -124,6 +126,11 @@ def get_engine(database_url: str) -> Engine:
 
 def init_db(database_url: str) -> None:
     """スキーマを一括で作成する初期化ヘルパー。"""
+
+    if database_url.startswith("sqlite"):
+        path_str = database_url.split("///")[-1]
+        db_path = Path(path_str)
+        db_path.parent.mkdir(parents=True, exist_ok=True)
 
     engine = get_engine(database_url)
     SQLModel.metadata.create_all(engine)
@@ -172,7 +179,7 @@ class ArtifactCreate(SQLModel):
     type: str = ""
     uri: str = ""
     task_id: int | None = None
-    metadata: dict[str, str] | None = None
+    meta: dict[str, str] | None = None
 
 
 class KnowledgeCreate(SQLModel):

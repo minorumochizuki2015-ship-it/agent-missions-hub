@@ -39,7 +39,6 @@ def main() -> None:
         "127.0.0.1",
         "--port",
         str(port),
-        "--factory",
         "--app-dir",
         "src",
         "--log-level",
@@ -52,7 +51,15 @@ def main() -> None:
 
         try:
             print("[SETUP] Waiting for server startup...")
-            time.sleep(5)
+            for i in range(10):
+                time.sleep(1)
+                try:
+                    health_probe = requests.get(f"http://127.0.0.1:{port}/health", timeout=1)
+                    print(f"[SETUP] Probe {i+1}: {health_probe.status_code}")
+                    if health_probe.status_code == 200:
+                        break
+                except Exception:
+                    continue
 
             base_url = f"http://127.0.0.1:{port}/mcp"
             rest_base = f"http://127.0.0.1:{port}/api"
@@ -122,9 +129,13 @@ def main() -> None:
             # patch project_key for following calls if available
             project_key = None
             if isinstance(body1, dict):
-                result1 = body1.get("result", {}) if isinstance(body1.get("result"), dict) else body1.get("result")
+                result1 = body1.get("result", {})
                 if isinstance(result1, dict):
-                    project_key = result1.get("slug") or result1.get("project_slug")
+                    structured = result1.get("structuredContent") or {}
+                    if isinstance(structured, dict):
+                        project_key = structured.get("slug") or structured.get("project_slug")
+                    if project_key is None:
+                        project_key = result1.get("slug") or result1.get("project_slug")
 
             payload2["params"]["arguments"]["project_key"] = project_key
             payload3["params"]["arguments"]["project_key"] = project_key
