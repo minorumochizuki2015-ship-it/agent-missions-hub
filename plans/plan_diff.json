@@ -132,7 +132,7 @@
         "observability/policy/ci_evidence.jsonl",
         "TRAE SOLO Builder Report.txt"
       ],
-      "notes": "runner 経由で `npm run lint && npm run test && npm run test:e2e` を実行し、FastAPI 側の `/api/health/ui` を含む最小エンドポイントを追加したうえで SafeOps KPI パネルと連携する"
+      "notes": "runner 経由で `npm run lint && npm run test && npm run test:e2e` を実行し、FastAPI 側の `/api/health/ui` を含む最小エンドポイントを追加したうえで SafeOps KPI パネルと連携する。UI Gate (EN/JA, 2025/11/20 11:01–11:02) は pass・HTML 生成済み。Jest ダッシュボード再実行 (2025/11/20 14:47:37, 15:10:30 dashboard.test.tsx) で PASS、Playwright 15:12 PASS、lint 15:10 PASS、pytest 15:13 PASS を ci_evidence に追記済み。"
     }
   ]
 }
