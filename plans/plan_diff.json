@@ -136,8 +136,8 @@
     },
     {
       "id": "data-model-mission-task",
-      "status": "in_progress",
-      "description": "missions/task_groups/tasks/artifacts/knowledge スキーマ追加とマイグレーションを作成し、ER 差分と API 定義を docs に同期する（モデル定義反映済み、マイグレーション生成は次ステップ）",
+      "status": "completed",
+      "description": "missions/task_groups/tasks/artifacts/knowledge スキーマ追加とマイグレーションを作成し、ER 差分と API 定義を docs に同期する（モデル定義＋ SQLite へのフィールド追加を実施）",
       "entries": [
         "docs/plans/mvp_detailed_technical_design.md",
         "plans/plan_diff.json",
