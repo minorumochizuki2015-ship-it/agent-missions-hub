@@ -148,7 +148,7 @@
         "observability/policy/ci_evidence.jsonl",
         "data/logs/current/audit/"
       ],
-      "notes": "ドキュメント先行で API/DB/テスト観点を固め、次フェーズで SQLModel/マイグレーション実装と WorkflowEngine/self-heal を着手する。"
+      "notes": "ドキュメント先行で API/DB/テスト観点を固め、次フェーズで SQLModel/マイグレーション実装と WorkflowEngine/self-heal を着手する。 Alembic 84eef2bb1c4f で schema を公式化し preview.sql（offline）と upgrade を実行（SQLite render_as_batch）。"
     }
   ]
 }

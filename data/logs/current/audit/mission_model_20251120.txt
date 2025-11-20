@@ -2,3 +2,9 @@
 - 追加: missions.owner, missions.run_mode, tasks.mission_id/order, artifacts.scope/tags, knowledge.summary, workflow_runs テーブル
 - 根拠: docs/plans/mvp_detailed_technical_design.md, plan_diff step data-model-mission-task
 - メモ: SQLModel 定義のみ変更。マイグレーション生成は次ステップで実施予定（schema 定義の先行反映）。
+2025-11-20T18:30:00Z mission-model-alembic-formalize
+- Alembic 導入: alembic.ini / migrations/* を作成し、env.py で settings.database.url（sqlite+aiosqlite → sqlite に変換）と SQLModel.metadata を連携
+- リビジョン: 84eef2bb1c4f_mission_workflow_schema.py（missions / task_groups / tasks / artifacts.scope,tags / knowledge.summary / workflow_runs を idempotent に作成・列追加）
+- コマンド: alembic revision -m "mission workflow schema" / alembic upgrade head --sql > preview.sql / alembic upgrade head
+- 備考: 既存DBに対しても重複エラーを避けるようInspectorで存在チェックを実施
+- 備考訂正: 既存DBに対しても重複エラーを避けるようInspectorで存在チェックを実施（↑行の末尾文字は記録上のノイズ）
