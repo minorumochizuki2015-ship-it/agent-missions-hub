@@ -1,0 +1,4 @@
+2025-11-20T15:51:00Z mission-model-update
+- 追加: missions.owner, missions.run_mode, tasks.mission_id/order, artifacts.scope/tags, knowledge.summary, workflow_runs テーブル
+- 根拠: docs/plans/mvp_detailed_technical_design.md, plan_diff step data-model-mission-task
+- メモ: SQLModel 定義のみ変更。マイグレーション生成は次ステップで実施予定（schema 定義の先行反映）。

@@ -131,6 +131,8 @@ class Mission(SQLModel, table=True):
     project_id: int = Field(foreign_key="projects.id", index=True)
     title: str = Field(max_length=255)
     status: str = Field(default="pending", max_length=32)  # pending|running|completed|failed
+    owner: Optional[str] = Field(default=None, max_length=128)
+    run_mode: str = Field(default="sequential", max_length=32)  # sequential|parallel|loop
     context: Optional[dict] = Field(default=None, sa_column=Column(JSON, nullable=True))
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -151,10 +153,12 @@ class Task(SQLModel, table=True):
     __tablename__ = "tasks"
 
     id: UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    mission_id: Optional[UUID] = Field(default=None, foreign_key="missions.id", index=True)
     group_id: UUID = Field(foreign_key="task_groups.id", index=True)
     agent_id: int = Field(foreign_key="agents.id", index=True)
     title: str = Field(max_length=255)
     status: str = Field(default="pending", max_length=32)
+    order: int = Field(default=0)
     input: Optional[dict] = Field(default=None, sa_column=Column(JSON, nullable=True))
     output: Optional[dict] = Field(default=None, sa_column=Column(JSON, nullable=True))
     error: Optional[str] = Field(default=None)
@@ -167,10 +171,12 @@ class Artifact(SQLModel, table=True):
     mission_id: UUID = Field(foreign_key="missions.id", index=True)
     task_id: Optional[UUID] = Field(default=None, foreign_key="tasks.id", index=True)
     type: str = Field(max_length=64)  # file|diff|plan|test_result|screenshot
+    scope: str = Field(default="project", max_length=32)  # session|user|project
     path: str = Field(max_length=1024)
     version: str = Field(max_length=64)
     sha256: str = Field(max_length=64)
     content_meta: Optional[dict] = Field(default=None, sa_column=Column(JSON, nullable=True))
+    tags: Optional[list[str]] = Field(default=None, sa_column=Column(JSON, nullable=True))
 
 
 class Knowledge(SQLModel, table=True):
@@ -180,3 +186,16 @@ class Knowledge(SQLModel, table=True):
     artifact_id: UUID = Field(foreign_key="artifacts.id", index=True)
     tags: Optional[list[str]] = Field(default=None, sa_column=Column(JSON, nullable=True))
     reusable: bool = Field(default=False)
+    summary: Optional[str] = Field(default=None, max_length=1024)
+
+
+class WorkflowRun(SQLModel, table=True):
+    __tablename__ = "workflow_runs"
+
+    run_id: UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    mission_id: UUID = Field(foreign_key="missions.id", index=True)
+    mode: str = Field(default="sequential", max_length=32)
+    status: str = Field(default="running", max_length=32)
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    ended_at: Optional[datetime] = Field(default=None)
+    trace_uri: Optional[str] = Field(default=None, max_length=1024)
