@@ -6,13 +6,13 @@ import logging
 import traceback
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from .models import Mission, Task, TaskGroup, Artifact
+from .models import Mission, Task, TaskGroup
 
 logger = logging.getLogger(__name__)
 

@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
-import uuid
 from uuid import UUID
 
 from sqlalchemy import Column, UniqueConstraint

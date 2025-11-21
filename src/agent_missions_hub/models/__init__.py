@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """ドメインモデルを公開するモジュール。"""
+
+from __future__ import annotations
 
 from .domain import Artifact, Knowledge, Mission, MissionStatus, Task, TaskGroup, TaskKind, TaskStatus
 
