@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Mission / Task / Artifact / Knowledge のドメインモデル骨子。"""
+
+from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -82,7 +82,7 @@ class Task:
 
 @dataclass(slots=True)
 class TaskGroup:
-    """タスクのまとまり（シーケンシャル/並列/ループの単位）。"""
+    """タスクのまとまり(シーケンシャル/並列/ループの単位)。"""
 
     id: str
     mission_id: str
