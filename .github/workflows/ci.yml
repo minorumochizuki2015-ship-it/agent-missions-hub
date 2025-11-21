@@ -27,7 +27,6 @@ jobs:
     name: Ruff Lint
     runs-on: ubuntu-latest
     if: ${{ github.event_name != 'pull_request' && github.event_name != 'workflow_dispatch' }}
-    # 日本語: ゲート強制のため continue-on-error を撤廃済み
     timeout-minutes: 5
     steps:
       - name: Checkout
@@ -117,12 +116,10 @@ jobs:
       - name: Install Playwright browsers (Python)
         run: uv run python -m playwright install chromium
       - name: Verify assets
-        # 日本語: UI Gate資産検証。失敗時はCI停止（continue-on-error 撤廃）
         run: uv run python scripts/ops/verify_ui_gate_assets.py
-      - name: オプション: UI Gate 実行 (VERIFY_RUN=1)
+      - name: Optional run UI Gate (VERIFY_RUN=1)
         env:
           VERIFY_RUN: ${{ inputs.verify_run }}
-        # 日本語: ゲート強制。VERIFY_RUN=1 の場合のみ実行し、失敗時はCI停止
         run: uv run python scripts/ops/verify_ui_gate_assets.py
       - name: Append Phase 7 CI evidence (verify-ui-gate)
         if: ${{ always() && (github.event_name == 'push' || github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.verify_run == '1')) }}
@@ -258,4 +255,3 @@ jobs:
           path: |
             observability/coverage/ci_phase7_evidence.jsonl
             reports/ci_evidence.jsonl
-
