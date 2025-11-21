@@ -7,9 +7,9 @@ from pathlib import Path
 import anyio
 import pytest
 
-"""pytest 共通設定（Windows PermissionError 対策）"""
+"""pytest 共通設定(Windows PermissionError 対策)"""
 
-# グローバルに TMP/TEMP をローカル配下に固定（セッション開始前に有効化）
+# グローバルに TMP/TEMP をローカル配下に固定(セッション開始前に有効化)
 _PYTEST_BASE = Path.cwd() / ".pytest_tmp"
 with contextlib.suppress(Exception):
     _PYTEST_BASE.mkdir(parents=True, exist_ok=True)
@@ -111,7 +111,7 @@ def isolated_env(tmp_path, monkeypatch):
                 # rmtree は使用中ファイルで停止しがちなので onerror で継続しつつ、
                 # 失敗時は個別削除にフォールバック
                 def _onerror(func, path, exc_info):
-                    # Windows の使用中ファイルに対しては継続（後段で個別削除）
+                    # Windows の使用中ファイルに対しては継続(後段で個別削除)
                     return
 
                 try:
@@ -163,11 +163,9 @@ def _force_local_tmp_and_basetemp(tmp_path_factory):
     base.mkdir(parents=True, exist_ok=True)
     os.environ["TMP"] = str(base)
     os.environ["TEMP"] = str(base)
-    try:
+    with contextlib.suppress(Exception):
         # pytest>=7 で有効。失敗してもテスト継続可能。
         tmp_path_factory.set_basetemp(base)
-    except Exception:
-        pass
 
 
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:

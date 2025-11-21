@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""ensure_project → create_agent_identity → send_message のスモークテスト（雛形）。"""
+"""ensure_project → create_agent_identity → send_message のスモークテスト(雛形)。"""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import os
 import subprocess
 import sys
 import time
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -27,7 +28,7 @@ def main() -> None:
     env.setdefault("AMH_DEBUG", "false")
     env.setdefault("TOOLS_LOG_ENABLED", "false")
     env.setdefault("LOG_RICH_ENABLED", "false")
-    env.setdefault("PYTHONPATH", os.path.abspath("src"))
+    env.setdefault("PYTHONPATH", str(Path("src").resolve()))
 
     port = 8003
     server_cmd = [
@@ -46,7 +47,7 @@ def main() -> None:
     ]
 
     print(f"[SETUP] Starting server on port {port} (logs suppressed)...")
-    with open("api_smoke_server.log", "w", encoding="utf-8") as log_file:
+    with Path("api_smoke_server.log").open("w", encoding="utf-8") as log_file:
         server_proc = subprocess.Popen(server_cmd, env=env, stdout=log_file, stderr=subprocess.STDOUT)
 
         try:
@@ -92,7 +93,7 @@ def main() -> None:
                         "name_hint": "CodexAssistant",
                         "program": "codex-cli",
                         "model": "gpt-5.1-codex-mini",
-                        "task_description": "ロールプロンプト（長文）...",
+                        "task_description": "ロールプロンプト(長文)...",
                         "task_summary": "テスト用エージェント",
                         "skills": ["doc-search", "code-edit"],
                         "primary_model": "gpt-5.1-codex-mini",
