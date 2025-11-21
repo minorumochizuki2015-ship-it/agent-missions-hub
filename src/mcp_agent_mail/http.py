@@ -7,7 +7,6 @@ import asyncio
 import base64
 import contextlib
 import importlib
-import bleach
 import json
 import logging
 import re
@@ -20,11 +19,10 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
-from starlette.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.exc import NoResultFound
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.types import Receive, Scope, Send
+from starlette.staticfiles import StaticFiles
 
 from .app import (
     _expire_stale_file_reservations,
@@ -156,7 +154,7 @@ class BearerAuthMiddleware(BaseHTTPMiddleware):
             return JSONResponse({"detail": "Unauthorized"}, status_code=status.HTTP_401_UNAUTHORIZED)
         return await call_next(request)
 
-    # 軽量ヘルスチェック用の早期応答ミドルウェア（Stateless MCP 経路のタイムアウト回避）
+    # 軽量ヘルスチェック用の早期応答ミドルウェア (Stateless MCP 経路のタイムアウト回避)
     class HealthCheckBypassMiddleware(BaseHTTPMiddleware):
         def __init__(self, app: FastAPI, base_paths: list[str]) -> None:
             super().__init__(app)
@@ -893,8 +891,8 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             token=settings.http.bearer_token,
             allow_localhost=bool(getattr(settings.http, "allow_localhost_unauthenticated", False)),
         )
-    # Stateless MCP のベースパスに対するヘルスチェック早期応答（テスト安定化）
-    try:
+    # Stateless MCP のベースパスに対するヘルスチェック早期応答 (テスト安定化)
+    with contextlib.suppress(Exception):
         fastapi_app.add_middleware(
             BearerAuthMiddleware.HealthCheckBypassMiddleware,
             base_paths=[
@@ -902,8 +900,6 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 (settings.http.path or "/mcp").rstrip("/") + "/",
             ],
         )
-    except Exception:
-        pass
     # Unified JWT/RBAC and robust rate limiter middleware (runs after auth)
     if (
         settings.http.rate_limit_enabled
@@ -980,7 +976,7 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
     # FastMCP handles all JSON-RPC routing, tool calls, and resource reads natively
     fastapi_app.mount(mount_base, mcp_http_app)
 
-    # JWKS ダミー公開エンドポイント（可用性確認用）
+    # JWKS ダミー公開エンドポイント (可用性確認用)
     @fastapi_app.get("/.well-known/jwks.json")
     async def _jwks_dummy() -> JSONResponse:
         return JSONResponse({"keys": []}, status_code=200)
@@ -1284,14 +1280,14 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                   </style>
                 </head>
                 <body>
-                  <main id=\"main-content\" role=\"main\" aria-label=\"Main Content\"> 
-                    <section role=\"region\" aria-label=\"Audit Content\"> 
-                      <div class=\"wrap\"> 
-                        <h1 id=\"hdr\">Unified Inbox</h1> 
-                        <p>Audit lite mode</p> 
-                        <button id=\"act\" aria-labelledby=\"hdr\">Interact</button> 
-                      </div> 
-                    </section> 
+                  <main id=\"main-content\" role=\"main\" aria-label=\"Main Content\">
+                    <section role=\"region\" aria-label=\"Audit Content\">
+                      <div class=\"wrap\">
+                        <h1 id=\"hdr\">Unified Inbox</h1>
+                        <p>Audit lite mode</p>
+                        <button id=\"act\" aria-labelledby=\"hdr\">Interact</button>
+                      </div>
+                    </section>
                   </main>
                   <script>
                     document.getElementById('act').addEventListener('click',()=>{})
@@ -1501,9 +1497,7 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             request: Request, limit: int = 100, filter_importance: str | None = None, lang: str | None = None
         ) -> HTMLResponse:
             """Unified inbox showing messages from all active agents across all projects."""
-            try:
-                pass
-            except Exception:
+            with contextlib.suppress(Exception):
                 pass
             await ensure_schema()
             async with get_session() as session:
@@ -2278,6 +2272,7 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     project_slug = project
                     project_human_key = project
                     from datetime import datetime, timezone
+
                     from .storage import ensure_archive, process_attachments
 
                     archive = await ensure_archive(settings_local, project_slug)
@@ -2437,7 +2432,7 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                             )
 
                     # Write to Git archive BEFORE committing to database (for transaction consistency)
-                    from .storage import ensure_archive, write_message_bundle, process_attachments
+                    from .storage import ensure_archive, process_attachments, write_message_bundle
 
                     settings = get_settings()
                     archive = await ensure_archive(settings, project_slug)
