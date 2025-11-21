@@ -47,7 +47,7 @@ jobs:
       - name: Sync dependencies
         run: uv sync --dev
       - name: Run Ruff
-        run: uv run ruff check --output-format=github
+        run: uv run ruff check --output-format=github src scripts tests
 
   verify-ui-gate:
     name: Verify UI Gate Assets
