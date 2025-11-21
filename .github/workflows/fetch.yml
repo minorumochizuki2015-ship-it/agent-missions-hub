@@ -1,0 +1,66 @@
+name: Fetch and Release Artifact
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Source URL to fetch"
+        required: true
+        type: string
+      rel:
+        description: "Release tag (e.g., v2025.11.07)"
+        required: true
+        type: string
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install curl and python3
+        run: sudo apt-get update && sudo apt-get install -y curl python3 python3-pip
+
+      - name: Download artifact
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/fetch
+          curl -fsSL "${{ github.event.inputs.url }}" -o artifacts/fetch/artifact.bin
+          python3 - <<'PY'
+import hashlib, json, pathlib
+p = pathlib.Path('artifacts/fetch/artifact.bin')
+h = hashlib.sha256(p.read_bytes()).hexdigest()
+m = {
+  "source_url": "${{ github.event.inputs.url }}",
+  "sha256": h,
+  "bytes": p.stat().st_size
+}
+pathlib.Path('artifacts/fetch/manifest.json').write_text(json.dumps(m, ensure_ascii=False, indent=2))
+print(h)
+PY
+
+      - name: Upload manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: fetch-manifest
+          path: artifacts/fetch/manifest.json
+
+      - name: Upload fetched file
+        uses: actions/upload-artifact@v4
+        with:
+          name: fetched-artifact
+          path: artifacts/fetch/artifact.bin
+
+      - name: Release with tag
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.rel }}
+          name: Fetch Release ${{ github.event.inputs.rel }}
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/fetch/artifact.bin
+            artifacts/fetch/manifest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

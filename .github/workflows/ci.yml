@@ -1,0 +1,261 @@
+name: CI
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+    working-directory: ./projects/agent-missions-hub
+
+on:
+  push:
+    branches: ["main", "develop", "release/**", "feature/**"]
+  pull_request:
+    branches: ["main", "develop"]
+  workflow_dispatch:
+    inputs:
+      verify_run:
+        description: "Run UI Gate tests during verify"
+        type: choice
+        options: ["0","1"]
+        default: "0"
+
+jobs:
+  ruff:
+    name: Ruff Lint
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' && github.event_name != 'workflow_dispatch' }}
+    # 日本語: ゲート強制のため continue-on-error を撤廃済み
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install uv
+        run: curl -Ls https://astral.sh/uv/install.sh | sh
+      - name: Add uv to PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            .venv
+          key: ci-ruff-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: |
+            ci-ruff-${{ runner.os }}-
+            ci-
+      - name: Sync dependencies
+        run: uv sync --dev
+      - name: Run Ruff
+        run: uv run ruff check --output-format=github
+
+  verify-ui-gate:
+    name: Verify UI Gate Assets
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_run == '1' }}
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Cache Node modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            node_modules
+            .npm-cache
+          key: node-${{ runner.os }}-${{ hashFiles('package-lock.json', 'package.json') }}
+          restore-keys: |
+            node-${{ runner.os }}-
+            node-
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+      - name: Install Node dependencies
+        run: npm ci
+      - name: Install Playwright (Node)
+        run: npx playwright install chromium
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install uv
+        run: curl -Ls https://astral.sh/uv/install.sh | sh
+      - name: Add uv to PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            .venv
+          key: ci-verify-ui-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: |
+            ci-verify-ui-${{ runner.os }}-
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/ms-playwright
+            ~/Library/Caches/ms-playwright
+            ~/AppData/Local/ms-playwright
+          key: pw-${{ runner.os }}-chromium-${{ env.PLAYWRIGHT_VERSION || 'latest' }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            pw-${{ runner.os }}-chromium-${{ env.PLAYWRIGHT_VERSION || 'latest' }}-
+            pw-${{ runner.os }}-chromium-
+            pw-${{ runner.os }}-
+      - name: Sync dependencies
+        run: uv sync --dev
+      - name: Install Playwright browsers (Python)
+        run: uv run python -m playwright install chromium
+      - name: Verify assets
+        # 日本語: UI Gate資産検証。失敗時はCI停止（continue-on-error 撤廃）
+        run: uv run python scripts/ops/verify_ui_gate_assets.py
+      - name: オプション: UI Gate 実行 (VERIFY_RUN=1)
+        env:
+          VERIFY_RUN: ${{ inputs.verify_run }}
+        # 日本語: ゲート強制。VERIFY_RUN=1 の場合のみ実行し、失敗時はCI停止
+        run: uv run python scripts/ops/verify_ui_gate_assets.py
+      - name: Append Phase 7 CI evidence (verify-ui-gate)
+        if: ${{ always() && (github.event_name == 'push' || github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.verify_run == '1')) }}
+        env:
+          VERIFY_RUN: ${{ inputs.verify_run }}
+        run: uv run python scripts/append_phase7_ci_evidence.py --verify-run $VERIFY_RUN --no-pytest --label verify-ui-gate
+      - name: Upload CI evidence JSONL (verify-ui-gate)
+        if: ${{ always() && (github.event_name == 'push' || github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.verify_run == '1')) }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-evidence-verify-ui-gate
+          path: |
+            observability/coverage/ci_phase7_evidence.jsonl
+            reports/ci_evidence.jsonl
+      - name: Upload UI audit artifacts
+        if: ${{ hashFiles('artifacts/ui_audit/summary.json') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-audit
+          path: artifacts/ui_audit
+
+  ty:
+    name: Ty Type Check
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.verify_run != '1') }}
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install uv
+        run: curl -Ls https://astral.sh/uv/install.sh | sh
+      - name: Add uv to PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            .venv
+          key: ci-ty-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: |
+            ci-ty-${{ runner.os }}-
+      - name: Sync dependencies
+        run: uv sync --dev
+      - name: Run Ty
+        run: uvx ty check
+
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.verify_run == '1') }}
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        python-version: ['3.12', '3.13']
+      fail-fast: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        run: curl -Ls https://astral.sh/uv/install.sh | sh
+      - name: Add uv to PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            .venv
+          key: ci-test-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: |
+            ci-test-${{ runner.os }}-${{ matrix.python-version }}-
+            ci-test-${{ runner.os }}-
+            ci-
+      - name: Sync dependencies
+        run: uv sync --dev
+      - name: Ensure junit directory
+        run: mkdir -p observability/junit
+      - name: Run minimal parallel test on PR or verify_run=1 dispatch
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_run == '1') || github.event_name == 'pull_request' }}
+        run: |
+          uv run pytest tests/test_utils_unit_min.py \
+            -n auto \
+            --dist=loadfile \
+            --disable-warnings \
+            --junitxml=observability/junit/junit.xml \
+            --tb=short \
+            -q
+      - name: Run full test suite otherwise
+        if: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.verify_run != '1') }}
+        run: |
+          uv run pytest tests/ \
+            -n auto \
+            --dist=loadfile \
+            --cov=mcp_agent_mail \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --junitxml=observability/junit/junit.xml \
+            --tb=short \
+            -q
+      - name: Upload junit report
+        if: ${{ hashFiles('observability/junit/junit.xml') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-${{ matrix.python-version }}
+          path: observability/junit/junit.xml
+      - name: Upload coverage reports
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_run != '1' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.python-version }}
+          path: |
+            coverage.xml
+            htmlcov/
+      - name: Append Phase 7 CI evidence (test matrix)
+        if: ${{ success() && inputs.verify_run == '1' }}
+        env:
+          VERIFY_RUN: ${{ inputs.verify_run }}
+        run: uv run python scripts/append_phase7_ci_evidence.py --verify-run $VERIFY_RUN --no-pytest --pytest-summary-from observability/junit/junit.xml --label "test-matrix:${{ matrix.python-version }}"
+      - name: Upload CI evidence JSONL (test matrix)
+        if: ${{ success() && inputs.verify_run == '1' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-evidence-test-matrix-${{ matrix.python-version }}
+          path: |
+            observability/coverage/ci_phase7_evidence.jsonl
+            reports/ci_evidence.jsonl
+
