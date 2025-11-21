@@ -4,11 +4,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-defaults:
-  run:
-    shell: bash
-    working-directory: ./projects/agent-missions-hub
-
 on:
   push:
     branches: ["main", "develop", "release/**", "feature/**"]
