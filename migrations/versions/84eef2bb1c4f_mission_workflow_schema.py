@@ -1,17 +1,17 @@
 """mission workflow schema
 
 Revision ID: 84eef2bb1c4f
-Revises: 
+Revises:
 Create Date: 2025-11-20 18:16:59.211092
 
 """
+
 from typing import Sequence, Union
 
 import sqlalchemy as sa
-from alembic import op, context
-from sqlalchemy.engine import Connection
+from alembic import context, op
 from sqlalchemy import inspect
-
+from sqlalchemy.engine import Connection
 
 # revision identifiers, used by Alembic.
 revision: str = "84eef2bb1c4f"
@@ -72,7 +72,7 @@ def upgrade() -> None:
         op.create_index("ix_task_groups_mission_id", "task_groups", ["mission_id"])
         op.create_index("ix_task_groups_order", "task_groups", ["order"])
 
-    # tasks（新規 or 追加カラム）
+    # tasks(新規 or 追加カラム)
     if not _has_table(inspector, "tasks"):
         op.create_table(
             "tasks",

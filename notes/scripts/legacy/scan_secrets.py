@@ -43,7 +43,7 @@ def _ls_tracked(root: Path) -> list[Path]:
     except Exception:
         pass
     results: list[Path] = []
-    for dirpath, dirnames, filenames in os.walk(root):
+    for dirpath, _dirnames, filenames in os.walk(root):
         parts = Path(dirpath).parts
         if any(seg in EXCLUDE_DIRS for seg in parts):
             continue
@@ -91,8 +91,8 @@ def _scan_file(path: Path) -> Iterable[dict[str, Any]]:
 
 
 def _is_hash_context(line: str) -> bool:
-    l = line.lower()
-    return any(key in l for key in ("sha256", "sha1", "checksum", "hash", "digest"))
+    lowered = line.lower()
+    return any(key in lowered for key in ("sha256", "sha1", "checksum", "hash", "digest"))
 
 def main() -> None:
     root = Path(__file__).resolve().parents[2]

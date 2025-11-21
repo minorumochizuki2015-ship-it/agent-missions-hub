@@ -18,7 +18,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          python-version: '3.12'
 
       - name: Install uv
         run: curl -Ls https://astral.sh/uv/install.sh | sh
@@ -40,7 +40,7 @@ jobs:
         run: uv sync --dev
 
       - name: Ruff Lint
-        run: uv run ruff check --output-format=github
+        run: uv run ruff check --output-format=github src/mcp_agent_mail
 
       - name: Ty Type Check
         run: uvx ty check

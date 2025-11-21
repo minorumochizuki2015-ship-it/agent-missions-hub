@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """アプリ全体の設定を管理するモジュール。"""
+
+from __future__ import annotations
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
