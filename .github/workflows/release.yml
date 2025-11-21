@@ -40,7 +40,7 @@ jobs:
         run: uv sync --dev
 
       - name: Ruff Lint
-        run: uv run ruff check --output-format=github
+        run: uv run ruff check --output-format=github src/mcp_agent_mail
 
       - name: Ty Type Check
         run: uvx ty check
