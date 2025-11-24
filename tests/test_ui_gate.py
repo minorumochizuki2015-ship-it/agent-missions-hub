@@ -19,7 +19,10 @@ from pathlib import Path
 
 import pytest
 import requests
-from playwright.async_api import async_playwright
+import pytest
+
+playwright = pytest.importorskip("playwright.async_api", reason="Playwright not installed in this environment")
+async_playwright = playwright.async_playwright
 
 from mcp_agent_mail.config import get_settings
 

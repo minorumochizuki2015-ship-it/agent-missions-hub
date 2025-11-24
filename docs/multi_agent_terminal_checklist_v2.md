@@ -3,15 +3,12 @@
 更新日時: 2025-11-20T11:02:09Z (UTC換算)
 
 ## UI Gate 状況
-- 現在: PASS（EN: 2025/11/20 11:02:09 JST, JA: 2025/11/20 11:01:37 JST, script=ui-audit-v2）
-- 証跡:
-  - 英語ビュー: `artifacts/ui_audit/summary.json`（SHA256: 40233969C1BE9A6585B74D3EF3E0B5EAE395B64CB937F220401180DE8B7889C0, LCP=428ms / TTI=0.030s）と `artifacts/ui_audit/screens/unified_inbox.png`（SHA256: 4CFF8863068629E431823861FF3BD5078AAB990D89A4BEE7B9BBC31036515DDD）による `ui_gate_pass_en`（ci_evidence 時刻 2025/11/20 11:02:09）＋ HTML `artifacts/ui_audit/html/route_unified_inbox.html`（SHA256: 0B10909A08A3E99F3765C7C83770B97BAE5FA31821279BD5092A81A75CF5DB69）
-  - 日本語ビュー: `artifacts/ui_audit/summary_ja.json`（SHA256: 241C2B14C896C18DCC86AE40FFE47072D8B3209DE5C22E8E4544441506629715, LCP=448ms / TTI=0.052s）と `artifacts/ui_audit/screens/unified_inbox_ja.png`（SHA256: 4CFF8863068629E431823861FF3BD5078AAB990D89A4BEE7B9BBC31036515DDD）による `ui_gate_pass_ja`（ci_evidence 時刻 2025/11/20 11:01:37）＋同 HTML ダンプ
-  - `observability/policy/ci_evidence.jsonl` に 11:01/11:02 の `ui_audit_executed` / `ui_gate_pass_ja|en` を追記（旧 10:38/10:52/08:03 実行は superseded 履歴）
-- 所見:
-  - axe violations = 0（serious/critical 0）
-- Web Vitals: 最新値（EN LCP=428ms / TTI=0.030s, JA LCP=448ms / TTI=0.052s）。閾値: LCP<=2.5s, CLS<=0.10, FID<=100ms, TTI<=5s
-  - preview_dir: artifacts/preview/index.html（UI-Audit HTML の同期コピー）
+- 現在: 未確認（artifacts/preview/ や ui_audit 成果物が最新ではないため再生成が必要）
+- 次の手順で再取得すること:
+  1. `npm run lint && npm run test && npm run test:e2e --prefix apps/orchestrator-ui`
+  2. `python scripts/ui_audit_run.py`（JA/EN 両方）
+  3. `artifacts/ui_audit/summary*.json`・`screens/*.png`・`report.html` の SHA を `observability/policy/ci_evidence.jsonl` に追記
+  4. Gate=PASS を確認後、本チェックリストと docs/multi_agent_terminal_milestones_v2.md を同期更新
 
 ## PASS 維持フロー
 1. `artifacts/preview/` を更新して差分を記録（Plan→Test→Patch の範囲内）。

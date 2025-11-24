@@ -1,12 +1,12 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from mcp_agent_mail.http import app
+from mcp_agent_mail.app import app
 
 
 @pytest.fixture
 def client():
-    return TestClient(app)
+    return TestClient(app())
 
 
 def test_get_mission_not_found(client):
