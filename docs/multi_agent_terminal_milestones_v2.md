@@ -25,6 +25,10 @@
   - Mission 一覧／TaskGroup タイムライン／Artifact タイルを Manager View に実装し、Playwright で検証。
 - **Phase 2D (Knowledge/Inbox/Graph 計画)**  
   - Artifact promote→Knowledge、Inbox を Mission スレッド化、Graph View は Phase 3 で TODO として明記。
+- **Council PoC v1 (CLI/正確性のみ)**  
+  - 生成プロファイル=creative/concise/code、fact_checker で正確性スコア（0–10）、議長が最高スコア回答を採用＋講評。  
+  - 匿名化（プロファイル名/自己紹介/挨拶除去、ですます統一、順序シャッフル）、timeout=60s、再試行なし。  
+  - ci_evidence に `council_run`（question_hash、run_id、scores:{accuracy} 等）を追記し、artifacts/council/<run_id>/ を保存。
 - **運用タスク**  
   - docs/operations/handover_recovery_checklist.md の PASS 維持、nightly UI-Audit 監視、週次 preview 差分レポート。
 

@@ -223,3 +223,12 @@ Next.js + React で実装し、`apps/orchestrator-ui` (multi-agent) の資産を
 - Artifacts/Knowledge: 生成→sha/version 保存、promote→Knowledge、search でタグ/クエリ一致。
 - Manager UI (Playwright/RTL): Mission 一覧、TaskGroup タイムライン、Artifact タイル表示・リンク、self-heal 後ステータス更新。
 - 回帰: 既存 Inbox/Dashboard が壊れないこと（lint/Jest/Playwright/pytest baseline）。
+
+---
+
+## 7. Council PoC (ChatGPT CLI / 正確性のみ)
+- プロファイル: 生成=creative/concise/code、ジャッジ=fact_checker（正確性 0–10）、議長=chair。直列実行、timeout=60s、再試行なし。
+- 匿名化: プロファイル名/自己紹介/挨拶除去、ですます統一、回答順シャッフル。
+- スコアリング: 減点方式（10=完全正確、8–9=軽微、5–7=明確な誤り、1–4=重大誤り、0=無回答/ほぼ誤り）。3以下は不採用候補として議長に伝達。`Score: X/10` 形式を強制。
+- エラーハンドリング: 個別失敗はスキップ記録、生成全滅で中断(status=failed)、fact_checker 全滅時は評価なしで議長が素回答から選択。
+- ログ/証跡: `artifacts/council/<run_id>/` に question.txt（原文はここのみ）等を保存。`ci_evidence.jsonl` には `council_run` イベントを追加し、`question_hash`（生テキスト不可）、`run_id`, `timestamp`, `chosen_answer_id`, `scores:{accuracy}`, `scores_ext`, `profiles_used` を記録。

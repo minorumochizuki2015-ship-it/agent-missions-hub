@@ -37,6 +37,13 @@
 - `rules/APPROVALS.md` の 2 人承認ルールに、SafeOps Phase2（CMD + AUDIT）と UI Gate プロモーションに必要な証跡一覧を追記。
 - `docs/plans/migration_up_down.md` では `missions/tasks/artifacts/knowledge` の Up/Down SQL スクリプト名と実行順序を記述し、`PLAN.json` `scope[0]` の SafeOps bootstrap とリンクさせる。
 
+### 1.4 Council PoC (ChatGPT CLI / 正確性のみ)
+- プロファイル: 生成=creative/concise/code、ジャッジ=fact_checker（正確性 0–10）、議長=chair。直列・timeout=60s・再試行なし。
+- 匿名化: プロファイル名/自己紹介/挨拶除去、ですます統一、回答順シャッフル。
+- 評価: 減点方式（10=完全正確…0=無回答）、3以下は不採用候補として議長に通知。`Score: X/10` 形式を強制。
+- エラーハンドリング: 個別失敗はスキップ記録、生成全滅で status=failed、fact_checker 全滅時は評価なしで議長が素回答から選択。
+- ログ/証跡: `artifacts/council/<run_id>/` に成果物保存、`ci_evidence.jsonl` へ `council_run` を追記（question は `question_hash` のみ記録）。
+
 ## 2. 設計書・追加ドキュメント
 
 ## 2. 設計書・追加ドキュメント

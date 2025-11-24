@@ -48,3 +48,11 @@
 - 日本語/英語双方のビューで監査済み。`artifacts/ui_audit/summary.json`（EN）および `summary_ja.json`（JA）の `gate.pass=true`
 - Evidence: `observability/policy/ci_evidence.jsonl` の `ui_gate_pass_ja` / `ui_gate_pass_en` イベントに summary / screen の SHA を記録済み。
 - 追加検証: ソートメニュー（新しい順/古い順/送信者順）と「Back to Project」等のリンクに `?lang=ja` / `?lang=en` が伝搬することを確認
+
+## Council PoC v1（ChatGPT CLI / 正確性のみ）
+- プロファイル: 生成=creative/concise/code、ジャッジ=fact_checker、議長=chair（すべて直列、timeout=60s、再試行なし）。
+- 評価軸: 正確性のみ（0–10整数、Score: X/10 形式、3以下は不採用候補として議長に伝達）。
+- 匿名化: プロファイル名・自己紹介・挨拶を除去、ですます統一、回答順シャッフル。
+- ci_evidence: `event=council_run`, `run_id`, `timestamp`, `question_hash`（生質問はログ禁止）, `chosen_answer_id`, `scores:{accuracy}`, `scores_ext`, `profiles_used`。
+- エラー処理: 個別失敗はスキップ記録、生成全滅で status=failed、fact_checker 全滅時は評価なしで議長が素回答から選択。
+- アーティファクト: `artifacts/council/<run_id>/` に question.txt（原文はここだけ保存）、answers_raw/anonymized、accuracy_evaluations、final_decision、council_run.log を残す。

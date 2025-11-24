@@ -189,6 +189,23 @@
       "notes": "allowlist: workflow_engine/http_liveness/integration_showcase/ci_smoke_min/cli_help/config/models/storage/utils unit_min、denylist: ack/macro/attachment/http-edge/db-lock 系。ENABLE_FULL_SUITE=1 で解除。"
     },
     {
+      "id": "council-poc-v1",
+      "status": "planned",
+      "description": "ChatGPT CLI プロファイル（creative/concise/code + fact_checker + chair）で正確性のみの Council PoC を構築し、匿名化・減点方式・ci_evidence 記録を実装する。",
+      "entries": [
+        "docs/multi_agent_terminal_checklist_v2.md",
+        "docs/multi_agent_terminal_milestones_v2.md",
+        "docs/plans/mvp_detailed_technical_design.md",
+        "docs/plans/mission_control_plan.md",
+        "plans/plan_diff.json"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl",
+        "artifacts/council/"
+      ],
+      "notes": "評価軸=正確性のみ、0–10 スコア、question は ci_evidence では question_hash で記録。timeout=60s、再試行なし、個別失敗はスキップ・全滅で failed。"
+    },
+    {
       "id": "ack-timeout-remediation",
       "status": "planned",
       "description": "ack/macro/attachment/HTTP-heavy/DB-lock 系 pytest に伴う lock/timeout を恒久対策。Windows short suite の skip 依存からの脱却を管理",
