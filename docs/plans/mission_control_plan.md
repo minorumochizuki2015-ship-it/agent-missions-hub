@@ -76,3 +76,4 @@
 - UI/runner 資産を新リポ上で実行確認し、Playwright 監査や runner が単独で完結することを確認してから「移植完了」とする（確認前は legacy 証跡の日時を流用しない）。
 - `observability/policy/ci_evidence.jsonl` はサンプルではなく実行結果に置き換え、ジョブ毎の SHA と日付を必ず残す。
 - **[NEW]** `rules/APPROVALS.md` は `multi-agent` の運用ルール（Gate/Audit）に準拠し、厳格な承認フローを適用する。
+- **Worktree/ブランチ運用（並走作業）**: 基本ブランチ=`feature/mvp-ui-audit`（worktree: `agent-missions-hub-remote`）、派生作業用ブランチ=`feature/mvp-ui-audit-work`（worktree: `../agent-missions-hub-work`）。作業は派生側で行い、適宜 rebase → PR/マージで基本ブランチへ統合する。
