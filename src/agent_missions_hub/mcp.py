@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """FastMCP サーバと DB バックエンドの最小実装。"""
+
+from __future__ import annotations
 
 from typing import Any, Dict, List
 
@@ -92,7 +92,7 @@ def build_mcp_server(settings: Settings) -> FastMCP:
         body_md: str,
         ack_required: bool = False,
     ) -> Dict[str, Any]:
-        """メッセージ送信（簡易 DB バックエンド）。"""
+        """メッセージ送信(簡易 DB バックエンド)。"""
 
         slug = project_key
         with get_session(settings.database_url) as session:

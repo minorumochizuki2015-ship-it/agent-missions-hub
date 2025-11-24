@@ -1,3 +1,4 @@
+import contextlib
 import hashlib
 import json
 import os
@@ -11,7 +12,7 @@ from playwright.sync_api import sync_playwright
 HOST = os.environ.get("UI_AUDIT_HOST", "127.0.0.1")
 PORT = os.environ.get("UI_AUDIT_PORT", "8765")
 LANG = os.environ.get("UI_AUDIT_LANG", "en")
-# Primary route（言語指定）; エラー時はホームへフォールバック
+# Primary route(言語指定); エラー時はホームへフォールバック
 PRIMARY_URL = f"http://{HOST}:{PORT}/mail/unified-inbox?lang={LANG}"
 HOME_URL = f"http://{HOST}:{PORT}/mail?lang={LANG}"
 LITE_URL = f"http://{HOST}:{PORT}/mail/unified-inbox-lite"
@@ -126,7 +127,7 @@ def compute_visual_diff(current: Path, baseline: Optional[Path]) -> dict[str, ob
         mean_base = sum(base_pixels) / n
         var_cur = sum((px - mean_cur) ** 2 for px in cur_pixels) / n
         var_base = sum((px - mean_base) ** 2 for px in base_pixels) / n
-        covariance = sum((a - mean_cur) * (b - mean_base) for a, b in zip(cur_pixels, base_pixels)) / n
+        covariance = sum((a - mean_cur) * (b - mean_base) for a, b in zip(cur_pixels, base_pixels, strict=False)) / n
         c1 = (0.01 * 255) ** 2
         c2 = (0.03 * 255) ** 2
         numerator = (2 * mean_cur * mean_base + c1) * (2 * covariance + c2)
@@ -163,19 +164,15 @@ def run_audit():
             # 保存: HTMLダンプ
             html_dir = Path("artifacts/ui_audit/html")
             html_dir.mkdir(parents=True, exist_ok=True)
-            try:
+            with contextlib.suppress(Exception):
                 (html_dir / "route_unified_inbox.html").write_text(page.content(), encoding="utf-8")
-            except Exception:
-                pass
         except Exception:
             try:
                 page.goto(LITE_URL, wait_until="domcontentloaded")
                 page.wait_for_load_state("domcontentloaded")
                 summary = {"page": str(LITE_URL)}
-                try:
+                with contextlib.suppress(Exception):
                     (html_dir / "route_unified_inbox_lite.html").write_text(page.content(), encoding="utf-8")
-                except Exception:
-                    pass
             except Exception:
                 raise
         # Proceed without waiting for specific landmarks to avoid false timeouts in CI

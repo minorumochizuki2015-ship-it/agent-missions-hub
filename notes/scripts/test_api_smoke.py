@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 """STEP1_API_SMOKE validation with log suppression."""
 
+import json
 import os
+import subprocess
 import sys
 import time
-import json
+from pathlib import Path
+
 import requests
-import subprocess
 
 
 def main():
@@ -23,7 +25,7 @@ def main():
     env["LOG_LEVEL"] = "WARNING"  # Suppress INFO logs
     env["TOOLS_LOG_ENABLED"] = "false"  # Disable rich tools logging
     env["LOG_RICH_ENABLED"] = "false"  # Disable rich console output
-    env["PYTHONPATH"] = os.path.abspath("src")
+    env["PYTHONPATH"] = str(Path("src").resolve())
 
     # Start uvicorn server
     port = 8003
@@ -45,7 +47,8 @@ def main():
 
     print(f"\n[SETUP] Starting server on port {port} (logs suppressed)...")
 
-    with open("api_smoke_server.log", "w", encoding="utf-8") as log_file:
+    log_path = Path("api_smoke_server.log")
+    with log_path.open("w", encoding="utf-8") as log_file:
         server_proc = subprocess.Popen(server_cmd, env=env, stdout=log_file, stderr=subprocess.STDOUT)
 
         try:
@@ -133,7 +136,7 @@ def main():
                         "name_hint": agent_name,
                         "program": "codex-cli",
                         "model": "gpt-5.1-codex-mini",
-                        "task_description": "一級市民を支援するテスト用のロールプロンプト（長文）...",
+                        "task_description": "一級市民を支援するテスト用のロールプロンプト(長文)...",
                         "task_summary": "テスト用一級市民エージェント",
                         "skills": ["doc-search", "code-edit"],
                         "primary_model": "gpt-5.1-codex-mini",

@@ -1,9 +1,9 @@
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
-import shutil
 
 try:
     import tomllib  # Python 3.11+
@@ -124,7 +124,7 @@ def main():
                 "npm_available": results.get("npm_available"),
                 "npm_script": bool(results.get("npm_script")),
             }
-            with open(ev_path, "a", encoding="utf-8", newline="\n") as f:
+            with ev_path.open("a", encoding="utf-8", newline="\n") as f:
                 f.write(json.dumps(payload, ensure_ascii=False) + "\n")
     except Exception as e:
         log(f"WARN: failed to append ci evidence: {e}")
@@ -145,7 +145,7 @@ def main():
                 "status": "pass" if rc == 0 else "error",
                 "note": "VERIFY_RUN=1 executed" if os.environ.get("VERIFY_RUN") == "1" else "VERIFY_RUN!=1 skip",
             }
-            with open(ev_path, "a", encoding="utf-8", newline="\n") as f:
+            with ev_path.open("a", encoding="utf-8", newline="\n") as f:
                 f.write(json.dumps(payload, ensure_ascii=False) + "\n")
     except Exception as e:
         log(f"WARN: failed to append ui_gate_run evidence: {e}")

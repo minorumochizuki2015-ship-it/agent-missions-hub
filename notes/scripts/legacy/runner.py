@@ -32,7 +32,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--timeout",
         type=int,
-        help="秒指定タイムアウト（profile より優先）",
+        help="秒指定タイムアウト(profile より優先)",
     )
     parser.add_argument(
         "--cwd",

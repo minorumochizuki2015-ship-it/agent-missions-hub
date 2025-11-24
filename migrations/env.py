@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import sys
 from logging.config import fileConfig
 from pathlib import Path
@@ -9,21 +8,20 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 from sqlalchemy.engine import Engine
 
-# Alembic 設定オブジェクト（alembic.ini）
-config = context.config
-
-# ロギング設定
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
-
 # リポジトリルートを import path に追加
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.append(str(SRC))
 
-from mcp_agent_mail.config import get_settings
-from mcp_agent_mail.models import SQLModel
+from mcp_agent_mail.config import get_settings  # noqa: E402
+from mcp_agent_mail.models import SQLModel  # noqa: E402
+
+# Alembic 設定オブジェクト(alembic.ini)
+config = context.config
+
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
 
 target_metadata = SQLModel.metadata
 

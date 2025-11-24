@@ -1,15 +1,16 @@
 import asyncio
+import contextlib
 import os
+import shutil
 import sys
 from pathlib import Path
-import shutil
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from mcp_agent_mail.db import ensure_schema, get_engine
-from mcp_agent_mail.config import get_settings
 from sqlalchemy import text
+
+from mcp_agent_mail.db import ensure_schema, get_engine
 
 
 async def verify():
@@ -57,10 +58,8 @@ async def verify():
     finally:
         # Cleanup
         if temp_storage.exists():
-            try:
+            with contextlib.suppress(BaseException):
                 shutil.rmtree(temp_storage)
-            except:
-                pass
 
 
 if __name__ == "__main__":

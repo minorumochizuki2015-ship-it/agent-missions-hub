@@ -18,7 +18,7 @@ def _ls_tracked(root: Path) -> list[Path]:
     except Exception:
         pass
     results: list[Path] = []
-    for dirpath, dirnames, filenames in os.walk(root):
+    for dirpath, _dirnames, filenames in os.walk(root):
         parts = Path(dirpath).parts
         if any(seg in EXCLUDE_DIRS for seg in parts):
             continue

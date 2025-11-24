@@ -1,12 +1,11 @@
 import pytest
 import pytest_asyncio
-from uuid import uuid4
-from sqlmodel import SQLModel
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from sqlmodel import SQLModel
 
-from mcp_agent_mail.models import Mission, TaskGroup, Task, Agent, Project
-from mcp_agent_mail.workflow_engine import SequentialWorkflow, SelfHealWorkflow
+from mcp_agent_mail.models import Agent, Mission, Project, Task, TaskGroup
+from mcp_agent_mail.workflow_engine import SelfHealWorkflow, SequentialWorkflow
 
 
 # Test setup
