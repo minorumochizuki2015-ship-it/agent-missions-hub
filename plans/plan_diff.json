@@ -135,6 +135,25 @@
       "notes": "runner 経由で `npm run lint && npm run test && npm run test:e2e` を実行し、FastAPI 側の `/api/health/ui` を含む最小エンドポイントを追加したうえで SafeOps KPI パネルと連携する。UI Gate (EN/JA, 2025/11/20 11:01–11:02) は pass・HTML 生成済み。Jest ダッシュボード再実行 (2025/11/20 14:47:37, 15:10:30 dashboard.test.tsx) で PASS、Playwright 15:12 PASS、lint 15:10 PASS、pytest 15:13 PASS を ci_evidence に追記済み。"
     },
     {
+      "id": "workflow-engine-phase2a",
+      "status": "planned",
+      "description": "WorkflowEngine v1 (Sequential + self-heal) を MVP 詳細設計に沿って実装し、missions/task_groups/tasks/artifacts/knowledge スキーマとマイグレーション・テストを統合する。",
+      "entries": [
+        "src/mcp_agent_mail/workflow_engine.py",
+        "src/mcp_agent_mail/models.py",
+        "migrations/",
+        "docs/plans/mvp_detailed_technical_design.md",
+        "docs/plans/mission_control_plan.md",
+        "tests/test_workflow_engine.py",
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl",
+        "reports/test/"
+      ],
+      "notes": "Phase 2A の実装タスクを管理。Plan→Test→Patch の証跡を ci_evidence に記録し、短縮/フル pytest の実行ログを reports/test/ に保存する。"
+    },
+    {
       "id": "data-model-mission-task",
       "status": "completed",
       "description": "missions/task_groups/tasks/artifacts/knowledge スキーマ追加とマイグレーションを作成し、ER 差分と API 定義を docs に同期する（モデル定義＋ SQLite へのフィールド追加を実施）",
@@ -149,6 +168,37 @@
         "data/logs/current/audit/"
       ],
       "notes": "ドキュメント先行で API/DB/テスト観点を固め、次フェーズで SQLModel/マイグレーション実装と WorkflowEngine/self-heal を着手する。 Alembic 84eef2bb1c4f で schema を公式化し preview.sql（offline）と upgrade を実行（SQLite render_as_batch）。"
+    },
+    {
+      "id": "windows-short-suite",
+      "status": "completed",
+      "description": "Windows では pytest を allowlist/denylist で短縮実行し TMP/CACHEDIR をローカル固定（ENABLE_FULL_SUITE=1 で解除）",
+      "entries": [
+        "tests/conftest.py",
+        "tests/test_http_liveness_min.py",
+        "pyproject.toml",
+        ".gitignore",
+        "notes/agent_md.md",
+        "reports/test/pytest_windows_short_suite_run1.txt",
+        "reports/test/pytest_windows_short_suite_run2.txt"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "allowlist: workflow_engine/http_liveness/integration_showcase/ci_smoke_min/cli_help/config/models/storage/utils unit_min、denylist: ack/macro/attachment/http-edge/db-lock 系。ENABLE_FULL_SUITE=1 で解除。"
+    },
+    {
+      "id": "ack-timeout-remediation",
+      "status": "planned",
+      "description": "ack/macro/attachment/HTTP-heavy/DB-lock 系 pytest に伴う lock/timeout を恒久対策。Windows short suite の skip 依存からの脱却を管理",
+      "entries": [
+        "tests/conftest.py",
+        "notes/agent_md.md"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "Linux/WSL ENABLE_FULL_SUITE=1 でフルスイート必須。対策案: lock wait 短縮、メッセージ件数削減、In-memory DB 化、marker slow 導入。"
     }
   ]
 }

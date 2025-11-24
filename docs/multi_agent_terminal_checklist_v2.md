@@ -27,7 +27,7 @@
 - coverage: 2025/11/17 16:47:42 に `coverage_updated`（lines_valid=6522 / lines_covered=252 / line_coverage=0.03864）を記録（UI Gate より前の時刻）。
 
 ## Mission/Workflow 拡張チェック
-- データモデル: missions/task_groups/tasks/artifacts/knowledge のスキーマとマイグレーションを定義し、ER 差分を plan_diff に反映する
+- データモデル: missions/task_groups/tasks/artifacts/knowledge のスキーマとマイグレーションを定義し、ER 差分を `plans/diff-plan.json` に反映する
 - WorkflowEngine: Sequential 実行＋self-heal フックと `workflow_runs` トレースを実装する
 - Artifacts/Knowledge: sha/version/tags を保持し、promote API で Knowledge に昇格できる
 - Manager UI: Mission 一覧／TaskGroup タイムライン／Artifact タイルを表示し、Playwright/Jest で検証する

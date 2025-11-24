@@ -264,3 +264,4 @@ playwright/.cache/
 artifacts/ui_audit/*
 !artifacts/ui_audit/.last-run.json
 artifacts/ui_audit_report/*
+.pytest_cache_local/

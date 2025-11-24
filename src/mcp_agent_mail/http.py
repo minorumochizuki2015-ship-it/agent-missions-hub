@@ -49,6 +49,7 @@ from .storage import (
     write_agent_profile,
     write_file_reservation_record,
 )
+from .routers import missions
 
 
 async def _project_slug_from_id(pid: int | None) -> str | None:
@@ -980,6 +981,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
     @fastapi_app.get("/.well-known/jwks.json")
     async def _jwks_dummy() -> JSONResponse:
         return JSONResponse({"keys": []}, status_code=200)
+
+    # Include Missions API Router (Phase 2)
+    fastapi_app.include_router(missions.router)
 
     # ----- Simple SSR Mail UI -----
     def _register_mail_ui() -> None:

@@ -13,6 +13,7 @@ import json
 import os
 import subprocess
 import time
+import sys
 from contextlib import suppress
 from pathlib import Path
 
@@ -81,7 +82,7 @@ def start_server():
 
     # サーバープロセスを起動(uvicornのfactory経由でFastAPIアプリを起動)
     cmd = [
-        ".\\.venv\\Scripts\\python.exe",
+        sys.executable,
         "-m",
         "coverage",
         "run",

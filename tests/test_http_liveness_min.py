@@ -6,7 +6,7 @@ from mcp_agent_mail.http import app
 
 @pytest.mark.parametrize("path", ["/health/liveness"])  # minimal read-only route
 def test_liveness_ok(path):
-    client = TestClient(app)
+    client = TestClient(app())
     res = client.get(path)
     assert res.status_code == 200
     assert res.json().get("status") in {"ok", "alive", "ready"}

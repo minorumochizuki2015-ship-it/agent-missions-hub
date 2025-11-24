@@ -1,4 +1,4 @@
-"""Workflow Engine for executing Missions and Tasks."""
+"""ミッションとタスクを実行するワークフローエンジン。"""
 
 from __future__ import annotations
 
@@ -12,41 +12,47 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from .models import Mission, Task, TaskGroup
+from .models import Mission, Task, TaskGroup, WorkflowRun
 
 logger = logging.getLogger(__name__)
 
 
 class WorkflowContext:
-    """Context passed between tasks during workflow execution."""
+    """ワークフロー実行中にタスク間で共有するコンテキストを保持する。"""
 
-    def __init__(self, mission_id: UUID, session: AsyncSession):
+    def __init__(self, mission_id: UUID, session: AsyncSession, run_id: UUID):
         self.mission_id = mission_id
         self.session = session
+        self.run_id = run_id
         self.shared_data: dict[str, Any] = {}
         self.execution_history: list[dict[str, Any]] = []
 
-    def update(self, key: str, value: Any):
+    def update(self, key: str, value: Any) -> None:
+        """共有データをセットする。"""
         self.shared_data[key] = value
 
     def get(self, key: str, default: Any = None) -> Any:
+        """共有データを取得する。"""
         return self.shared_data.get(key, default)
+
+    def append_history(self, entry: dict[str, Any]) -> None:
+        """実行履歴にイベントを追加する。"""
+        self.execution_history.append(entry)
 
 
 class WorkflowEngine(ABC):
-    """Abstract base class for workflow engines."""
+    """ワークフローエンジンの抽象基底クラス。"""
 
     def __init__(self, session: AsyncSession):
         self.session = session
 
     @abstractmethod
     async def run(self, mission: Mission) -> str:
-        """Run the mission. Returns the final status."""
-        pass
+        """ミッションを実行し、最終ステータスを返す。"""
 
 
 class SequentialWorkflow(WorkflowEngine):
-    """Executes task groups and tasks in sequential order."""
+    """タスクグループとタスクを順次実行するワークフロー。"""
 
     async def run(self, mission: Mission) -> str:
         logger.info(f"Starting mission {mission.id}: {mission.title}")
@@ -55,7 +61,16 @@ class SequentialWorkflow(WorkflowEngine):
         self.session.add(mission)
         await self.session.commit()
 
-        context = WorkflowContext(mission.id, self.session)
+        run = WorkflowRun(
+            mission_id=mission.id,
+            mode=mission.run_mode or "sequential",
+            status="running",
+            started_at=datetime.now(timezone.utc),
+        )
+        self.session.add(run)
+        await self.session.commit()
+
+        context = WorkflowContext(mission.id, self.session, run.run_id)
         if mission.context:
             context.shared_data.update(mission.context)
 
@@ -75,21 +90,26 @@ class SequentialWorkflow(WorkflowEngine):
 
             if mission.status != "failed":
                 mission.status = "completed"
+                run.status = "completed"
 
         except Exception as e:
             logger.error(f"Mission failed: {e}")
             traceback.print_exc()
             mission.status = "failed"
+            run.status = "failed"
             # In a real system, we might want to store the error in the mission model
 
         mission.updated_at = datetime.now(timezone.utc)
         self.session.add(mission)
+        run.ended_at = datetime.now(timezone.utc)
+        self.session.add(run)
         await self.session.commit()
 
         logger.info(f"Mission {mission.id} finished with status: {mission.status}")
         return mission.status
 
     async def execute_group(self, group: TaskGroup, context: WorkflowContext):
+        """タスクグループを順次実行する。"""
         logger.info(f"Executing TaskGroup {group.id}: {group.title} ({group.kind})")
         group.status = "running"
         self.session.add(group)
@@ -103,7 +123,7 @@ class SequentialWorkflow(WorkflowEngine):
             # If TaskGroup kind is 'sequential', we run tasks one by one.
             # If 'parallel', we could run them concurrently (not implemented in v1).
 
-            stmt = select(Task).where(Task.group_id == group.id)
+            stmt = select(Task).where(Task.group_id == group.id).order_by(Task.order)
             result = await self.session.execute(stmt)
             tasks = result.scalars().all()
 
@@ -124,6 +144,7 @@ class SequentialWorkflow(WorkflowEngine):
             await self.session.commit()
 
     async def execute_task(self, task: Task, context: WorkflowContext):
+        """単一タスクを実行し、出力・ステータスを反映する（MVPでは擬似実行）。"""
         logger.info(f"Executing Task {task.id}: {task.title}")
         task.status = "running"
         self.session.add(task)
@@ -157,6 +178,9 @@ class SequentialWorkflow(WorkflowEngine):
 
             task.output = {"result": "simulated_success", "timestamp": str(datetime.now())}
             task.status = "completed"
+            context.append_history(
+                {"task_id": str(task.id), "status": task.status, "output": task.output, "run_id": str(context.run_id)}
+            )
 
         except Exception as e:
             task.error = str(e)
@@ -168,7 +192,7 @@ class SequentialWorkflow(WorkflowEngine):
 
 
 class SelfHealWorkflow(SequentialWorkflow):
-    """Workflow that attempts to recover from task failures."""
+    """タスク失敗時にリカバリを試みるワークフロー。"""
 
     async def execute_group(self, group: TaskGroup, context: WorkflowContext):
         try:

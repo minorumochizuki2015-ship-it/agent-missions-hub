@@ -32,3 +32,16 @@
 - すべての変更は Plan-Test-Patch ワークフロー上で行い、実行ファイルは `C:\Users\User\Trae\Codex-CLImutipule-CMD\.venv\Scripts\python.exe` など許可済みツールに限定します。
 - `APPROVALS.md` の二者承認、`data\locks\workflow.lock` の取得、秘密情報の持ち出し禁止を徹底してください。
 - UI 予算 (LCP <= 2.5s, TTI <= 3.0s, CLS <= 0.10, visual diff <= 10%, axe serious+ = 0) を超えた場合は即時ロールバックと再検証を行います。
+
+## 実装作業の規則
+- このリポジトリで作業・実装をする作業エージェントは、必ず `"C:\Users\User\Trae\ORCH-Next\projects\agent-missions-hub\作業方法.md"` に記載されたルールに従うこと。
+- 1. まず `作業方法.md` を読み、その内容をすべて前提とする。
+- 2. 以降のタスクは、`作業方法.md` のルールに従って Plan→Predict→Test→Patch→Commit→MD 更新のサイクルで実行する。
+
+## ## 監査・テスト作業の規則
+- このリポジトリの変更を監査・テスト・UI/デザインレビューする監査エージェントは、必ずリポジトリ直下の `監査・テスト方法.md` に記載されたルールに従うこと。
+- 1. 監査タスクを開始する前に、`AGENTS.md` と `監査・テスト方法.md` を読み、MVP スコープと優先順位、評価観点（Blocking / Major / Minor / Cosmetic）および出力フォーマット（Summary / Findings / Tests / Suggested Patches / TODO for Worker Agent）を前提とする。
+- 2. 監査結果を出力する際は、必ず `Status: Block / Proceed with fixes / Proceed` を含む Summary と、Blocker / Major / Minor / Cosmetic に分類した Findings、実行したテストと結果、必要最小限の diff を含む Suggested Patches、作業エージェント向けの TODO をセットでレポートすること。
+- 3. Blocking / Critical な問題が存在しない場合は、原則として Status を `Proceed` または `Proceed with fixes` とし、「MVP 観点では出荷可能」であることを明示する。Minor / Cosmetic のみの場合、それらは TODO として整理するが、merge 自体をブロックしない。
+
+

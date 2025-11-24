@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel, select
 
-from mcp_agent_mail.models import Agent, Mission, Project, Task, TaskGroup
+from mcp_agent_mail.models import Agent, Mission, Project, Task, TaskGroup, WorkflowRun
 from mcp_agent_mail.workflow_engine import SelfHealWorkflow, SequentialWorkflow
 
 
@@ -50,6 +50,13 @@ async def test_sequential_workflow_success(db_session):
     status = await engine.run(mission)
 
     assert status == "completed"
+
+    runs = (await db_session.execute(select(WorkflowRun))).scalars().all()
+    assert len(runs) == 1
+    run = runs[0]
+    assert run.status == "completed"
+    assert run.mode == "sequential"
+    assert run.ended_at is not None
 
     # Verify tasks
     await db_session.refresh(task1)
@@ -100,6 +107,10 @@ async def test_self_heal_workflow(db_session):
 
     # Should be completed because of healing
     assert status == "completed"
+    run = (await db_session.execute(select(WorkflowRun))).scalars().first()
+    assert run is not None
+    assert run.status == "completed"
+    assert run.ended_at is not None
 
     await db_session.refresh(task1)
     assert task1.status == "failed"

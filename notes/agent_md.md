@@ -1,41 +1,62 @@
 # Purpose
 
-UI Gate の EN/JA 証跡を最新化し、監査指摘の「言語ミスマッチ」「ci_evidence不整合」を解消する。scripts/ui_audit_run.py の言語指定を確実に反映させ、docs と証跡を同期しつつ、Jest 実行を安定化させる。
+Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショートスイート導入と証跡整理、今後のフルスイート実行方針を明文化する。
 
 # Current State
 
-lang=ja/en で UI Audit を再実行済み（2025/11/20 11:01:37 JA, 11:02:09 EN）。新しい summary/screenshot/HTML の SHA を ci_evidence に追記し、チェックリスト/マイルストンも更新済み。Jest は 14:47:37 / 15:10:30 に dashboard.test を再実行して PASS（ts-jest の設定警告のみ）。Lint/Playwright/pytest も 15:10–15:13 再実行して PASS。PLAN.json / plan_diff.json の orchestrator ステップに UI Gate / Jest 再実行の進捗を反映済み。
+- UI Gate（EN/JA）・lint・Jest・Playwright は PASS を維持。
+- pytest は Windows でショートスイート（allowlist）を PASS。ack/macro/attachment/HTTP-heavy/DB-lock 系は denylist で skip。フルスイートはまだ未実施（ENABLE_FULL_SUITE=1 未設定）。
+- ci_evidence.jsonl に Windows ショートスイートの PASS を記録（後続で run3 を追記予定）。
+- temp/cachedir をローカル固定（.pytest_tmp / .pytest_cache_local）。
+- feature/mvp-ui-audit ブランチで 14 ファイル変更（約 +378/-233）、ステージングなし。未追跡が多数（apps/, scripts/, tests/* ほか .env.example や .venv_linux など）で作業ツリーが大きく汚れている。
+- origin/feature/mvp-ui-audit がローカルより 8 commits 進んでいる（ローカルは 4d2db15、リモートは 520c3bc）。ローカルは dirty なので pull/merge/rebase 前に整流が必要。
+- リモート最新確認用にクリーン worktree `../agent-missions-hub-remote` を作成（HEAD=520c3bc）。4d2db15..520c3bc の差分は 30 ファイル、+278/-284（主に ruff修正／ワークフロー・テスト・http周りの微修正）。
+- クリーン worktree 側にローカルの追跡済変更（14ファイル、tests系・pyproject・ci_evidence など）を適用済み。未追跡ファイル群は元ワークツリー側にのみ存在（ポーティング対象外のまま保持）。
+- チェックリスト/マイルストン（docs/multi_agent_terminal_checklist_v2.md、docs/multi_agent_terminal_milestones_v2.md）は 2025-11-20T11:02:09Z 版で UI Gate=PASS（JA/EN）と evidence SHA を記録済み。
+- 本セッションでチェックリスト/マイルストン/MVP 設計/ミッション計画/plan_diff（`workflow-engine-phase2a` planned を含む）を再確認し、最新版が揃っていることを確認（変更なし）。
+- 設計・計画ドキュメント: docs/plans/mvp_detailed_technical_design.md（MVP 技術設計）、docs/plans/mission_control_plan.md（Phase 進捗管理）、plans/plan_diff.json（計画差分ログ）。
+- 作業ツリーは2つ: クリーン側 `C:\\Users\\User\\Trae\\ORCH-Next\\projects\\agent-missions-hub-remote` を正として作業・ステージングし、元側 `...\\agent-missions-hub` は未追跡が多いバックアップ。必要ならIDE/ターミナルを2窓で開き、gitは同じリポ・同じブランチを指している。
 
 # Decisions
 
-- UI Audit は Accept-Language と locale を Playwright context に設定し、LANG を summary に反映させる。
-- JA 版の summary/screenshot を別ファイル（summary_ja.json, unified_inbox_ja.png）として保持し、EN 版は既存 summary.json を使用する。
-- ci_evidence は 11:01/11:02 実行を最新とし、旧 10:24:57 以前は履歴扱いとする。
+- Windows では allowlist/denylist でテスト範囲を絞り、ENABLE_FULL_SUITE=1 を明示しない限りフルスイートは実行しない。
+- allowlist 既定: workflow_engine / http_liveness / integration_showcase / ci_smoke_min / cli_help / config*unit_min / models*unit_min / storage*unit_min / utils*unit_min。
+- denylist 既定: ack / macro / attachment / http_edge|transport|convert / db_migrations / storage_commit|inline|lock。
+- 環境変数で制御: WINDOWS_TEST_ALLOWLIST（上書き）、WINDOWS_TEST_ALLOWLIST_APPEND（追記）、WINDOWS_TEST_DENYLIST（上書き）、ENABLE_FULL_SUITE=1（全実行）。
+- 今後の実装作業はクリーン worktree `../agent-missions-hub-remote` を基準に進める。未追跡ファイルは元ワークツリーで保持し、必要なものだけ手動で選択移行する。
 
 # Applied Changes (summary + key diff points)
 
-- scripts/ui_audit_run.py: LANG/Accept-Language を new_context に設定、BASELINE_SCREENSHOT を定義（NameError 防止）、HTML ダンプを route_unified_inbox.html へ必ず保存するよう補強。
-- artifacts/ui_audit/: lang=ja/en で再実行し、summary.json（EN, SHA=40233969...89C0）、summary_ja.json（JA, SHA=241C2B14...9715）、screenshot（共通 SHA=4CFF8863...5DDD）、HTML（SHA=0B10909A08A3E99F3765C7C83770B97BAE5FA31821279BD5092A81A75CF5DB69）を配置。
-- observability/policy/ci_evidence.jsonl: 11:01:37(ja)/11:02:09(en) の ui_audit_executed / ui_gate_pass_* イベント、および Playwright 再実行 pass を追記。14:47:37 / 15:10:30 の orchestrator_ui_jest、15:10 lint、15:12 Playwright、15:13 pytest の PASS を追加。
-- docs/multi_agent_terminal_checklist_v2.md, docs/multi_agent_terminal_milestones_v2.md: 更新日時と WebVitals/SHA/ci_evidence 時刻を 11:01–11:02 の最新値へ更新し、JA/EN 証跡と HTML 追記を反映。
-- apps/orchestrator-ui: NavPhase の tablist 構造をユニーク ID 付きで修正、ミッション一覧の fetch をタイムアウト付きにし、LCP 計測を安定化する PerformanceObserver パッチを dev/e2e 用に追加。Playwright config を reuseExistingServer=false に変更して最新コードで実行。JEST_WORKER_ID ブランチは遅延ハイドレーションで setState を1回に抑制し、loading 表示後にテスト用データを注入するよう調整。
+- tests/conftest.py: allowlist/denylist 制御と TMP/TEMP 固定、ENABLE_FULL_SUITE による解除ロジック。cachedir は pyproject.toml で .pytest_cache_local に変更。
+- tests/test_http_liveness_min.py: app() を毎回生成する形に修正（TypeError 解消）。
+- tests/test_ack_views_details*.py / tests/test_attachments_extended.py: Windows では module-level skip を追加し、ロック遅延テストを除外。
+- pyproject.toml: `tool.pytest.ini_options.cache_dir = ".pytest_cache_local"` を追加。.gitignore に `.pytest_cache_local/` を追加。
+- ci_evidence.jsonl: Windows ショートスイート PASS ログを追記予定（ショートスイート実行後に反映）。
+- plans/plan_diff.json: step `windows-short-suite` を追加し、allow/deny 導入を completed として管理。ack/macro/attachment の恒久対策は別ステップで計画化予定。
+- workflow_engine: WorkflowRun で run 開始/終了を記録し、タスク履歴をコンテキストに保存。タスク/グループは order 順に実行し、日本語 docstring 化。tests/test_workflow_engine.py で run 状態を検証。
 
 # TODO (priority order)
 
-1. 未追跡ファイルの整理とステージング範囲の選別（apps/, scripts/ など大きな??を分割）。artifacts/ui_audit の D 扱い旧成果物を復元するか、参照削除 or `.gitignore` 化の方針決定。
-2. コミット粒度とメッセージ（Conventional + Signed-off-by）を決めて `feature/mvp-ui-audit` にまとめる。
+1. Phase 2A: workflow_engine v1 (Sequential + self-heal) 実装と missions/task_groups/tasks/artifacts/knowledge マイグレーション・テストを進め、ci_evidence へ Plan/Test/Patch を記録（plan_diff `workflow-engine-phase2a`）。
+2. Runner/CI 証跡: UI Gate/pytest/Jest/Playwright 実行結果を `observability/policy/ci_evidence.jsonl` と `reports/test/` に追記する運用を整備。
+3. 未追跡ファイル（apps/, scripts/, package-lock.json など）の取り込み方針を決定し、必要分のみクリーン worktree へ移行する。
 
 # Assumptions
 
-- サーバーは localhost:8765 で稼働しており、言語切替クエリ `?lang=` と Accept-Language で UI が変化する。
-- HTML レポートは artifacts/ui_audit_report/20251120-0930 を最新とし、単一 summary.json を EN、別ファイルを JA とする運用で問題ない。
+- Windows はショートスイートをデフォルトとし、フルスイートは Linux/WSL CI で実行する。
+- UI Gate 証跡（EN/JA, 2025-11-20 11:01–11:02）は最新で、ドキュメントの SHA も一致している。
 
 # Risks / Mitigation
 
-- summary.json が EN 固定のため JA を上書きするリスク: JA 実行後に summary_ja.json へ退避する運用を継続する。
+- Windows 依存の skip によりカバレッジ低下 → Linux/WSL で ENABLE_FULL_SUITE=1 を必須化し、ci_evidence へ格納。
+- ロック遅延が恒久未解決 → “ack-timeout-remediation” ステップで原因と対策を管理。
 
 # Next Action
 
-- 未追跡整理（コミット対象の決定）と、不要な旧 UI Gate 成果物の扱い決定 → コミット準備。
-- ステージ対象の目安: apps/orchestrator-ui/**, scripts/ui_audit_run.py, docs/multi_agent_terminal_*.md, plans/PLAN.json, plans/plan_diff.json, observability/policy/ci_evidence.jsonl, notes/agent_md.md, data/logs/current/audit/20251120_codex_report.md。
-- 除外/削除対象の目安: artifacts/ui_audit/* （.last-run.json 以外）、不要な legacy scripts/tests（D 扱いは `git add -u` で確定）。
+- Phase 2A (workflow_engine v1 + schema/migrations/tests) の実装準備を進め、設計書と plan_diff `workflow-engine-phase2a` を基準に着手。
+- Runner/CI 証跡フロー（UI Gate/pytest/Jest/Playwright）の運用整理と必要な実行ログの収集。
+- 未追跡ファイルの取捨選択とクリーン worktree への移行方針の確定。
+
+# Tests
+
+- python -m pytest tests/test_workflow_engine.py -q

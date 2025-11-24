@@ -1,6 +1,8 @@
+import argparse
 import hashlib
 import json
 import os
+import sys
 import time
 from contextlib import suppress
 from pathlib import Path
@@ -9,25 +11,36 @@ from typing import Optional
 from PIL import Image, ImageChops
 from playwright.sync_api import sync_playwright
 
+def parse_lang() -> str:
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--lang")
+    args, _ = parser.parse_known_args(sys.argv[1:])
+    lang = (args.lang or os.environ.get("UI_AUDIT_LANG") or "en").lower()
+    return lang
+
+
+LANG = parse_lang()
 HOST = os.environ.get("UI_AUDIT_HOST", "127.0.0.1")
 PORT = os.environ.get("UI_AUDIT_PORT", "8765")
-LANG = os.environ.get("UI_AUDIT_LANG", "en")
+ACCEPT_LANGUAGE_HEADER = f"{LANG},en;q=0.9"
 # Primary route(言語指定); エラー時はホームへフォールバック
 PRIMARY_URL = f"http://{HOST}:{PORT}/mail/unified-inbox?lang={LANG}"
 HOME_URL = f"http://{HOST}:{PORT}/mail?lang={LANG}"
 LITE_URL = f"http://{HOST}:{PORT}/mail/unified-inbox-lite"
 ART_DIR = Path("artifacts/ui_audit")
 SCREENS_DIR = ART_DIR / "screens"
-BASELINE_SCREENSHOT = SCREENS_DIR / "unified_inbox.baseline.png"
+HTML_DIR = ART_DIR / "html"
 SUMMARY_PATH = ART_DIR / "summary.json"
 AXE_RESULT_PATH = ART_DIR / "axe_result.json"
 CI_EVIDENCE = Path("observability/policy/ci_evidence.jsonl")
 SCRIPT_VERSION = "ui-audit-v2"
+BASELINE_SCREENSHOT = SCREENS_DIR / "unified_inbox.baseline.png"
 
 
 def ensure_dirs():
     SCREENS_DIR.mkdir(parents=True, exist_ok=True)
     ART_DIR.mkdir(parents=True, exist_ok=True)
+    HTML_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def sha256_file(p: Path) -> str:
@@ -148,7 +161,14 @@ def run_audit():
     ensure_dirs()
     with sync_playwright() as pw:
         browser = pw.chromium.launch()
-        context = browser.new_context(viewport={"width": 1366, "height": 768, "device_scale_factor": 1})
+        context = browser.new_context(
+            viewport={"width": 1366, "height": 768, "device_scale_factor": 1},
+            locale=LANG,
+        )
+        try:
+            context.set_extra_http_headers({"Accept-Language": ACCEPT_LANGUAGE_HEADER})
+        except Exception:
+            pass
         page = context.new_page()
         try:
             resp = page.goto(PRIMARY_URL, wait_until="domcontentloaded")
@@ -163,20 +183,19 @@ def run_audit():
                 page.wait_for_load_state("domcontentloaded")
                 _ = resp2  # hint for linters
             page.wait_for_selector("#page-title", timeout=2500)
-            # 保存: HTMLダンプ
-            html_dir = Path("artifacts/ui_audit/html")
-            html_dir.mkdir(parents=True, exist_ok=True)
-            with suppress(Exception):
-                (html_dir / "route_unified_inbox.html").write_text(page.content(), encoding="utf-8")
         except Exception:
             try:
                 page.goto(LITE_URL, wait_until="domcontentloaded")
                 page.wait_for_load_state("domcontentloaded")
                 summary = {"page": str(LITE_URL)}
-                with suppress(Exception):
-                    (html_dir / "route_unified_inbox_lite.html").write_text(page.content(), encoding="utf-8")
             except Exception:
                 raise
+        # HTMLダンプ（閲覧ルートに応じてファイル名を分岐）
+        html_is_lite = str(page.url or "").endswith("unified-inbox-lite")
+        with suppress(Exception):
+            (HTML_DIR / "route_unified_inbox.html").write_text(page.content(), encoding="utf-8")
+            if html_is_lite:
+                (HTML_DIR / "route_unified_inbox_lite.html").write_text(page.content(), encoding="utf-8")
         # Proceed without waiting for specific landmarks to avoid false timeouts in CI
         # Removed strict selector wait that was causing CI timeouts
         # (e.g., page.wait_for_selector("#main-content"))

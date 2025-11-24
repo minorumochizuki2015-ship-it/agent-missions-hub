@@ -18,7 +18,7 @@
 
 ## 次のマイルストーン
 - **Phase 2A (データモデル/マイグレーション)**  
-  - missions/task_groups/tasks/artifacts/knowledge を追加し、マイグレーション＋ ER 差分を plan_diff に記録。
+  - missions/task_groups/tasks/artifacts/knowledge を追加し、マイグレーション＋ ER 差分を `plans/diff-plan.json` に記録。
 - **Phase 2B (WorkflowEngine/self-heal)**  
   - SequentialWorkflow と self-heal フックを実装し、workflow_runs と ci_evidence にトレースを残す。
 - **Phase 2C (Manager UI)**  
