@@ -93,7 +93,7 @@ routing:
 constraints:
   language: "English only"
   determinism: {seed: 42, venv_enforced: true}
-  windows_paths: {absolute_required: true, separator: "\\", forbid: ["relative","..","/"]}
+  windows_paths: {absolute_required: true, separator: "\\", forbid: ["relative",".","/"]}
   prohibitions:
     - "No full-file replacements; minimal unified diff only"
     - "No writes outside workspace_root"
@@ -101,8 +101,10 @@ constraints:
     - "No release or protected-area write without CODEOWNERS review and two-person approval"
     - "No dangerous command execution without safeops logs and approvals"
     - "No 'virtual-only' UI claims; screenshots and manual sign-off required"
+    - "No 'git push --force' or rewriting shared branch history (no rebase -i on shared remote)"
+    - "No direct commits or pushes to main/master or release branches (use feature/fix branches)"
   protected_areas:
-    definition: "Areas labeled 'protected' in CODEOWNERS or policy; e.g., .trae/rules/*, deployment scripts, infra manifests"
+    definition: "Areas labeled 'protected' in CODEOWNERS or policy; e.g. .trae/rules/*, deployment scripts, infra manifests"
   eol_enforcement:
     rule: "LF for all text; *.bat=CRLF; verify post-write"
   directory_structure_required:
@@ -205,9 +207,10 @@ procedures:
 
   - name: "Review submission"
     steps:
-      - "Embed minimal unified diff in PR as fenced block"
-      - "If UI change: include preview URL and thumbnails from artifacts/<task_id>/ui/"
-      - "Policy-bot comments: gate grid, coverage diff, license/vuln delta, UI badges"
+      - "If CODEX_GIT_MODE permits push (auto-push/-pr) and REMOTE_WRITE_ALLOWED=1 and all pre-push checks pass → git push branch and open draft PR; else do not push (manual review)."
+      - "Embed minimal unified diff in PR description as fenced block (or in Agent MD if no PR)."
+      - "If UI change: include preview URL and thumbnails from artifacts/<task_id>/ui/."
+      - "Policy-bot comments: gate grid, coverage diff, license/vuln delta, UI badges."
 
   - name: "CI gate validation"
     steps:
