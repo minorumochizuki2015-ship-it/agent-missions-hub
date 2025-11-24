@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any, Iterable, Optional
+from datetime import datetime
+from typing import Annotated, Any, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import SQLModel
 
 from ..db import get_session
-from ..models import Artifact, Knowledge, Mission, Task, TaskGroup, WorkflowRun
+from ..models import Artifact, Knowledge, Mission, TaskGroup, WorkflowRun
 from ..workflow_engine import SelfHealWorkflow, SequentialWorkflow
 
 router = APIRouter(prefix="/missions", tags=["missions"])
@@ -61,7 +61,7 @@ class ArtifactRead(SQLModel):
 
 
 @router.get("/", response_model=list[MissionSummary])
-async def list_missions(session: AsyncSession = Depends(get_session)) -> list[MissionSummary]:
+async def list_missions(session: Annotated[AsyncSession, Depends(get_session)]) -> list[MissionSummary]:
     stmt = select(Mission)
     missions = (await session.execute(stmt)).scalars().all()
 
@@ -91,7 +91,7 @@ async def list_missions(session: AsyncSession = Depends(get_session)) -> list[Mi
 
 @router.get("/{mission_id}/artifacts", response_model=list[ArtifactRead])
 async def list_artifacts(
-    mission_id: UUID, session: AsyncSession = Depends(get_session)
+    mission_id: UUID, session: Annotated[AsyncSession, Depends(get_session)]
 ) -> list[ArtifactRead]:
     mission = await session.get(Mission, mission_id)
     if not mission:
@@ -124,7 +124,7 @@ async def list_artifacts(
 
 @router.post("/{mission_id}/artifacts", response_model=ArtifactRead, status_code=status.HTTP_201_CREATED)
 async def create_artifact(
-    mission_id: UUID, payload: ArtifactPayload, session: AsyncSession = Depends(get_session)
+    mission_id: UUID, payload: ArtifactPayload, session: Annotated[AsyncSession, Depends(get_session)]
 ) -> ArtifactRead:
     mission = await session.get(Mission, mission_id)
     if not mission:
@@ -186,7 +186,7 @@ class MissionRunResponse(BaseModel):
 
 @router.post("/{mission_id}/run", response_model=MissionRunResponse, status_code=status.HTTP_202_ACCEPTED)
 async def run_mission(
-    mission_id: UUID, allow_self_heal: bool = True, session: AsyncSession = Depends(get_session)
+    mission_id: UUID, allow_self_heal: bool = True, session: Annotated[AsyncSession, Depends(get_session)]
 ) -> MissionRunResponse:
     mission = await session.get(Mission, mission_id)
     if not mission:
