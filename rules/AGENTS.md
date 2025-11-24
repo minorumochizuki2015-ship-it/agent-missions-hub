@@ -1,34 +1,35 @@
-# Repository Guidelines
+# Repository Guidelines (agent-missions-hub)
 
 ## プロジェクト構造とモジュール
-- ルート `C:\Users\User\Trae\Codex-CLImutipule-CMD` が全作業の基準であり、配下パスはこのディレクトリからの完全パスを使用します。
-- `C:\Users\User\Trae\Codex-CLImutipule-CMD\src\mcp_agent_mail\` が FastMCP サーバー本体で、HTTP/CLI/UI レイヤーとメールボックス機能を提供します。
-- `C:\Users\User\Trae\Codex-CLImutipule-CMD\tests\` は transport・guard・UI など機能別に整理され、`...\tests\terminal_hub_api\` など領域単位で検証できます。
-- `C:\Users\User\Trae\Codex-CLImutipule-CMD\scripts\` には guard 導入や UI 監査の運用スクリプト、`...\plans\` と `...\reports\` には Plan-Test-Patch 証跡が集約されます。
-- `C:\Users\User\Trae\Codex-CLImutipule-CMD\.trae\rules\*.yaml` が運用規約、`...\data\logs\current\` と `...\artifacts\` が CI と監査ログの保存先です。
+- 作業ルート: `C:\Users\User\Trae\ORCH-Next\projects\agent-missions-hub`（クリーン worktree 推奨）。
+- サーバー本体: `src\mcp_agent_mail\`（FastMCP/HTTP/CLI/UI・メールボックス機能）。
+- テスト: `tests\` 配下で領域別（例: `tests\terminal_hub_api\`）。運用スクリプトは `scripts\`、計画・証跡は `plans\` / `reports\`、監査・メトリクスは `observability\`。
+- 規約・運用: `rules\` および `.trae\rules\*.yaml`。ログ/成果物は `data\logs\current\` と `artifacts\` に保存。
 
 ## ビルド・テスト・開発コマンド
-- 依存解決は `uv sync`、アプリ起動は `uv run python -m mcp_agent_mail.cli serve-http` または `make serve-http` を実行します。
-- データベース初期化は `make migrate`、guard 操作は `make guard-install PROJECT=<path>`／`make guard-uninstall` を使用します。
-- 最低限のヘルスチェックは `C:\Users\User\Trae\Codex-CLImutipule-CMD\.venv\Scripts\python.exe -m pytest -q`、完全検証は `uv run pytest` で `.coveragerc` 設定のカバレッジとレポートを取得します。
-- フロントエンド監査は `npm run test:ui` や `npm run ui:audit:ci` (Node 18+) を使い、生成物を `C:\Users\User\Trae\Codex-CLImutipule-CMD\observability\ui\` 配下へ保存します。
+- 依存解決: `uv sync`
+- アプリ起動: `uv run python -m mcp_agent_mail.cli serve-http` または `make serve-http`
+- DB 初期化: `make migrate`、guard: `make guard-install PROJECT=<path>` / `make guard-uninstall`
+- ヘルスチェック（最小）: `.venv\Scripts\python.exe -m pytest -q`
+- フル検証: `uv run pytest`（.coveragerc に従いカバレッジ取得）
+- フロント監査: `npm run test:ui` / `npm run ui:audit:ci`（Node 18+）。成果物は `observability\ui\` 配下へ。
 
 ## コーディングスタイルと命名
-- Python 3.12 と `from __future__ import annotations` を前提に、全クラス・関数へ日本語 docstring を付与し、新規 `Any` を禁止します。
-- `black` (120 桁)・`isort`・`ruff` は必ず `.venv` 経由で実行し、`Optional` 利用時は `None` ハンドリングを明示します。
-- 1 ファイル 300 行以内・単一責務、定数は UPPER_SNAKE、型付き dataclass や Enum を優先してください。
+- Python 3.12 + `from __future__ import annotations` 前提。全クラス/関数に日本語 docstring、新規 `Any` 禁止。
+- 整形: `black`（120 桁）・`isort`・`ruff` は `.venv` 経由で実行。`Optional` 使用時は `None` ハンドリングを明示。
+- 1 ファイル 300 行以内・単一責務。定数は UPPER_SNAKE、型付き dataclass / Enum を優先。
 
 ## テスト指針
-- Pytest 設定は `pyproject.toml` に集約され、`--strict-markers` と asyncio マーカーを厳守します。
-- カバレッジ目標は statements/branches/functions/lines >= 80%、差分は `diff-cover` Added >= 85%、Changed >= 80% です。
-- UI 変更時は Playwright スクリーンショット、axe 結果、visual diff を `artifacts\<task_id>\ui\` に格納し、手動検証を `APPROVALS.md` に追記します。
+- Pytest 設定は `pyproject.toml`。`--strict-markers` と asyncio マーカーを遵守。
+- カバレッジ目標: statements/branches/functions/lines >= 80%、差分は `diff-cover` Added >= 85%、Changed >= 80%。
+- UI 変更時: Playwright スクショ・axe 結果・visual diff を `artifacts\<task_id>\ui\` に保存し、手動検証を `APPROVALS.md` に追記。
 
 ## コミットとプルリク
-- Conventional Commits (例: `feat(mail): add lease audit`)＋署名＋`Signed-off-by` を必須とし、ブランチは `feature/*` `hotfix/*` `release/*` 命名を用います。
-- PR には `diff-plan.json`、PLAN/Test/Patch 証跡、`APPROVALS.md` の二者承認、CI（black/isort/ruff/mypy/pytest/diff-cover/bandit/sbom/secret_scan/eol_check）結果を添付します。
-- UI や危険操作は必ず Dry-Run→Apply 手順・SafeOps ログ・スクリーンショットを伴わせ、`observability\dashboard\` 更新と `artifacts\<task_id>\overview.html` 生成を確認してください。
+- Conventional Commits（例: `feat(mail): add lease audit`）＋署名＋`Signed-off-by` 必須。ブランチ命名: `feature/*` `hotfix/*` `release/*`。
+- PR には `diff-plan.json`、PLAN/Test/Patch 証跡、`APPROVALS.md` 二者承認、CI（black/isort/ruff/mypy/pytest/diff-cover/bandit/sbom/secret_scan/eol_check）結果を添付。
+- UI/危険操作は Dry-Run→Apply 手順＋SafeOps ログ＋スクリーンショットを伴い、`observability\dashboard\` 更新と `artifacts\<task_id>\overview.html` 生成を確認。
 
 ## セキュリティとエージェント手順
-- すべての変更は Plan-Test-Patch ワークフロー上で行い、実行ファイルは `C:\Users\User\Trae\Codex-CLImutipule-CMD\.venv\Scripts\python.exe` など許可済みツールに限定します。
-- `APPROVALS.md` の二者承認、`data\locks\workflow.lock` の取得、秘密情報の持ち出し禁止を徹底してください。
-- UI 予算 (LCP <= 2.5s, TTI <= 3.0s, CLS <= 0.10, visual diff <= 10%, axe serious+ = 0) を超えた場合は即時ロールバックと再検証を行います。
+- 変更は Plan-Test-Patch に従い、実行ツールは許可済み（例: `.venv\Scripts\python.exe`）に限定。
+- `APPROVALS.md` の二者承認、`data\locks\workflow.lock` 取得、秘密情報の持ち出し禁止を徹底。
+- UI 予算 (LCP <= 2.5s, TTI <= 3.0s, CLS <= 0.10, visual diff <= 10%, axe serious+ = 0) を超過した場合は即ロールバックと再検証を行う。
