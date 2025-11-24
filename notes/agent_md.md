@@ -68,6 +68,7 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 # Tests
 
 - `python -m pytest -q tests/test_missions_api.py tests/test_workflow_engine.py tests/test_http_liveness_min.py` → `reports/test/pytest_phase2a_run.txt` に記録（Pass, CLI 出力はこの環境で画面に現れず）。
+- `python -m pytest -q tests/test_storage_* tests/test_http_liveness_min.py` → `reports/test/pytest_phase2a_storage_run.txt` に記録（Pass）。
 - `python -m ruff check src tests scripts` → `reports/test/ruff_phase2a_run.txt` に記録（出力なし／pass）。現行環境で `ruff` は Python モジュール経由で実行。
 - `npm run lint && npm run test && npm run test:e2e --prefix apps/orchestrator-ui` → `reports/test/npm_orchestrator_ui.txt` に記録。`apps/orchestrator-ui` フォルダが存在しないため実行できず（legacy worktree に移行予定）。
 - `python scripts/ui_audit_run.py` → `reports/test/ui_audit_run.txt` に記録（placeholder UI Audit run）。
