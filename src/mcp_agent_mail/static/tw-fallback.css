@@ -1,0 +1,38 @@
+/* Tailwind fallback (scoped). Applied only when html.tw-fallback is present */
+html.tw-fallback, html.tw-fallback body {
+  background: #0b1220;
+  color: #e2e8f0;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+}
+html.tw-fallback .flex { display: flex; }
+html.tw-fallback .items-center { align-items: center; }
+html.tw-fallback .justify-between { justify-content: space-between; }
+html.tw-fallback .gap-1 { gap: .25rem; }
+html.tw-fallback .gap-2 { gap: .5rem; }
+html.tw-fallback .gap-3 { gap: .75rem; }
+html.tw-fallback .gap-4 { gap: 1rem; }
+html.tw-fallback .rounded-lg { border-radius: .5rem; }
+html.tw-fallback .rounded-xl { border-radius: .75rem; }
+html.tw-fallback .rounded-2xl { border-radius: 1rem; }
+html.tw-fallback .border { border: 1px solid #1f2937; }
+html.tw-fallback .border-slate-200 { border-color: #e2e8f0; }
+html.tw-fallback .dark .border-slate-700 { border-color: #334155; }
+html.tw-fallback .bg-white { background: #ffffff; }
+html.tw-fallback .dark .bg-slate-800 { background: #1f2937; }
+html.tw-fallback .dark .text-white { color: #ffffff; }
+html.tw-fallback .text-slate-900 { color: #0f172a; }
+html.tw-fallback .dark .text-slate-300 { color: #cbd5e1; }
+html.tw-fallback .dark .text-slate-400 { color: #94a3b8; }
+html.tw-fallback .px-3 { padding-left: .75rem; padding-right: .75rem; }
+html.tw-fallback .px-4 { padding-left: 1rem; padding-right: 1rem; }
+html.tw-fallback .py-2 { padding-top: .5rem; padding-bottom: .5rem; }
+html.tw-fallback .py-2\.5 { padding-top: .625rem; padding-bottom: .625rem; }
+html.tw-fallback .p-6 { padding: 1.5rem; }
+html.tw-fallback .p-8 { padding: 2rem; }
+html.tw-fallback .shadow-soft { box-shadow: 0 4px 16px rgba(0,0,0,.15); }
+html.tw-fallback nav[aria-label="Breadcrumb"] ol { list-style: none; padding: 0; margin: 0; }
+html.tw-fallback nav[aria-label="Breadcrumb"] ol.flex { display: flex; }
+html.tw-fallback .btn { display: inline-flex; align-items: center; gap: .5rem; padding: .625rem 1rem; border-radius: .5rem; background: #4f46e5; color: #fff; }
+html.tw-fallback .card { background: #0f172a; border: 1px solid #1f2937; border-radius: 1rem; padding: 1rem; }
+html.tw-fallback input[type="text"],
+html.tw-fallback input[type="search"] { background: #0b1220; border: 2px solid #334155; color: #e2e8f0; border-radius: .75rem; padding: 1rem; width: 100%; }
