@@ -1,3 +1,3 @@
 Command: python -m pytest -q tests/test_missions_api.py tests/test_workflow_engine.py tests/test_http_liveness_min.py
 Result: PASSED (exit code 0)
-Notes: Short suite covering mission API CRUD (success/404/422), WorkflowEngine trace/self-heal (success/failure), http_liveness. CLI output suppressed in this environment.
+Notes: Short suite rerun after adding API 422/404 and SelfHeal failure coverage; CLI output suppressed in this environment.

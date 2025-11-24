@@ -94,3 +94,10 @@ async def test_create_artifact_missing_mission(client: AsyncClient):
     payload = {"type": "plan", "path": "missing", "version": "v1", "sha256": "deadbeef"}
     response = await client.post("/missions/00000000-0000-0000-0000-000000000000/artifacts", json=payload)
     assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_create_artifact_invalid_payload(client: AsyncClient, mission_id: str):
+    payload = {"path": "invalid"}  # missing required fields
+    response = await client.post(f"/missions/{mission_id}/artifacts", json=payload)
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY

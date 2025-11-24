@@ -29,8 +29,8 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 - src/mcp_agent_mail/routers/missions.py / __init__.py: ミッション一覧・アーティファクト CRUD API を FastAPI ルーターとして実装し、knowledge の簡易昇格も受け持つ。
 - src/mcp_agent_mail/workflow_engine.py: WorkflowRun trace ファイルと `WorkflowContext` 履歴を `data/logs/current/audit/workflow_runs` に記録するヘルパーを追加し、run start/complete/fail イベントを JSONL 保存。`SequentialWorkflow` が自動で trace_path をセットするようになり、self-heal/history ログの信頼性を向上。
 - tests/test_workflow_engine.py: trace_dir 用の fixture を追加し、run ごとの trace file の existence＋イベント記録を検証するように修正。
-- tests/test_workflow_engine.py: SelfHeal 流れで `self_heal_artifact` と `Knowledge` レコードが生成されることを検証し、artifact/knowledge がデータベースに残ることを確認。
-- tests/test_missions_api.py: Phase 2A の missions/artifacts API を FastAPI + AsyncClient で exercise し、Artifact 作成時に Knowledge が生成されることと 404 エラー系を検証。
+- tests/test_workflow_engine.py: SelfHeal 流れで `self_heal_artifact` と `Knowledge` レコードが生成されることを検証し、artifact/knowledge がデータベースに残ることを確認。SelfHeal 失敗パスで `self_heal_failure` アーティファクトも検証。
+- tests/test_missions_api.py: Phase 2A の missions/artifacts API を FastAPI + AsyncClient で exercise し、Artifact 作成時の Knowledge 昇格と 404/422 エラー系を検証。
 - reports/test/pytest_phase2a_run.txt + observability/policy/ci_evidence.jsonl: Pytest short suite（mission API + workflow + http、`-q`）を再実行し、`command`/SHA付きで再記録。
 - reports/test/ruff_phase2a_run.txt + observability/policy/ci_evidence.jsonl: `python -m ruff check src tests scripts` を実行し（出力なし）、成功エントリとして記録。
 - reports/test/npm_orchestrator_ui.txt + observability/policy/ci_evidence.jsonl: UI 資産移植後に `npm run lint && npm run test && npm run test:e2e --prefix apps/orchestrator-ui` を実行し、Jest/Playwright/axe PASS を記録。
@@ -43,8 +43,8 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 # TODO (priority order)
 
 1. Phase 2A: workflow_engine v1 (Sequential + self-heal) 実装と missions/task_groups/tasks/artifacts/knowledge マイグレーション・テストを進め、ci_evidence へ Plan/Test/Patch を記録（plan_diff `workflow-engine-phase2a`）。設計書/mission plan/plan_diff を再読し、SQLModel定義＋マイグレーション＋SelfHealテストのスコープを Agent MD に明記する。
-2. API/SelfHeal の異常系テスト拡充（422/400/失敗トレース）を追加し、pytest allowlist 短縮スイートとして再実行。結果を reports/test と ci_evidence に追記。
-3. Runner/CI 証跡: UI Gate/pytest/Jest/Playwright 実行結果を `observability/policy/ci_evidence.jsonl` と `reports/test/` に追記する運用を整備（UI Gate も改めて実測値で更新）。
+2. API/SelfHeal の異常系テストをさらに拡充（422/400/失敗トレース追加分を allowlist pytest に編入）し、reports/test と ci_evidence を更新。
+3. Runner/CI 証跡: UI Gate/pytest/Jest/Playwright 実行結果を `observability/policy/ci_evidence.jsonl` と `reports/test/` に追記する運用を整備（UI Gate を実測値で更新）。
 4. 未追跡ファイル（apps/, scripts/, package-lock.json など）の取り込み方針を決定し、必要分のみクリーン worktree へ移行する。
 
 # Assumptions

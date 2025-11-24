@@ -151,3 +151,46 @@ async def test_self_heal_workflow(db_session):
     events = [json.loads(line) for line in trace_path.read_text(encoding="utf-8").splitlines() if line.strip()]
     assert any(event.get("event") == "workflow_engine_run_started" for event in events)
     assert any(event.get("event") == "workflow_engine_run_completed" for event in events)
+
+
+@pytest.mark.asyncio
+async def test_self_heal_failure_records_artifact(db_session):
+    project = Project(slug="heal-fail", human_key="Heal Fail Project")
+    db_session.add(project)
+    await db_session.commit()
+
+    agent = Agent(project_id=project.id, name="HealFailAgent", program="test", model="test")
+    db_session.add(agent)
+    await db_session.commit()
+
+    mission = Mission(project_id=project.id, title="Heal Fail Mission")
+    db_session.add(mission)
+    await db_session.commit()
+
+    group = TaskGroup(mission_id=mission.id, title="Group 1")
+    db_session.add(group)
+    await db_session.commit()
+
+    class MockAlwaysFail(SelfHealWorkflow):
+        async def execute_task(self, task, context):
+            task.status = "failed"
+            task.error = "Simulated hard failure"
+            self.session.add(task)
+            await self.session.commit()
+
+    task1 = Task(group_id=group.id, agent_id=agent.id, title="Failing Task")
+    db_session.add(task1)
+    await db_session.commit()
+
+    engine = MockAlwaysFail(db_session, trace_dir=None)
+    status = await engine.run(mission)
+
+    assert status == "failed"
+    # recovery artifact/knowledge should be recorded as failure
+    artifacts = (await db_session.execute(select(Artifact).where(Artifact.type == "self_heal_failure"))).scalars().all()
+    assert artifacts
+    knowledge_entries = (
+        await db_session.execute(select(Knowledge).where(Knowledge.artifact_id.in_([a.id for a in artifacts])))
+    ).scalars().all()
+    assert knowledge_entries
+    assert knowledge_entries[0].summary is not None
