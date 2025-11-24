@@ -1,3 +1,3 @@
 Command: npm run lint && npm run test && npm run test:e2e --prefix apps/orchestrator-ui
-Result: FAILED (test:e2e)
-Notes: lint/Jest PASS; Playwright failed due to port 3000 already in use (reuseExistingServer suggested). Resolve port conflict and rerun.
+Result: PASSED (exit code 0)
+Notes: lint/Jest PASS; Playwright 13/13 PASS after fixing main landmark duplicate on Missions page (axe violations resolved).

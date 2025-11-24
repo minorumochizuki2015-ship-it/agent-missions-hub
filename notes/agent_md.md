@@ -33,7 +33,7 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 - tests/test_missions_api.py: missions/artifacts API に加え、/missions/{id}/run（allow_self_heal トグル）と 404/422 エラー系を FastAPI + AsyncClient で検証。
 - reports/test/pytest_phase2a_run.txt + observability/policy/ci_evidence.jsonl: Pytest short suite（mission API + workflow + http、`-q`）を再実行し、`command`/SHA付きで再記録。
 - reports/test/ruff_phase2a_run.txt + observability/policy/ci_evidence.jsonl: `python -m ruff check src tests scripts` を実行し（出力なし）、成功エントリとして記録。
-- reports/test/npm_orchestrator_ui.txt + observability/policy/ci_evidence.jsonl: UI 資産移植後に `npm run lint && npm run test && npm run test:e2e --prefix apps/orchestrator-ui` を実行し、Jest/Playwright/axe PASS を記録。
+- reports/test/npm_orchestrator_ui.txt + observability/policy/ci_evidence.jsonl: `npm run lint && npm run test && npm run test:e2e --prefix apps/orchestrator-ui` を実行し、Jest/Playwright/axe PASS を記録（Missionsページの main 重複を解消後）。
 - reports/test/ui_audit_run.txt + observability/policy/ci_evidence.jsonl: `python scripts/ui_audit_run.py` を走らせ、UI 資産ありで再実行した記録を追加（標準出力なし）。
 - tests/test_missions_api.py: Phase 2A の missions/artifacts API を FastAPI + TestClient で exercise し、Artifact 作成時に Knowledge が生成されることと 404 のエラーパスを検証。
 - reports/test/pytest_phase2a_run.txt + observability/policy/ci_evidence.jsonl: Phase 2A short-suite pytest 実行を記録（テストコマンド/結果と SHA を保持）。

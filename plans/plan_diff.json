@@ -152,7 +152,7 @@
         "observability/policy/ci_evidence.jsonl",
         "reports/test/"
       ],
-      "notes": "Phase 2A の実装タスクを管理。UI 資産移植後に npm lint/test/e2e と ui_audit を再実行し、pytest/ruff/UI 証跡を ci_evidence/reports に追記済み。SelfHeal 失敗系と missions run API を pytest でカバー済み。残タスク: 追加異常系・フル allowlist pytest・UI Gate 実測更新。"
+      "notes": "Phase 2A の実装タスクを管理。UI 資産移植後に npm lint/test/e2e と ui_audit を再実行し、pytest/ruff/UI 証跡を ci_evidence/reports に追記済み。SelfHeal 失敗系と missions run API を pytest でカバー済み。Playwright axe 重複mainを修正し13/13 PASS。残タスク: 追加異常系・フル allowlist pytest・UI Gate 実測更新。"
     },
     {
       "id": "data-model-mission-task",

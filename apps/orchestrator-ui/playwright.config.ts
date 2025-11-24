@@ -11,7 +11,7 @@ export default defineConfig({
   webServer: {
     command: 'next dev -p 3000',
     url: 'http://localhost:3000',
-    reuseExistingServer: false,
+    reuseExistingServer: true,
     timeout: 120_000,
     env: {
       NEXT_PUBLIC_SAFEOPS_API_BASE: 'http://localhost:8787',
