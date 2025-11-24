@@ -7,7 +7,7 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 - UI Gate（EN/JA）・lint・Jest・Playwright は PASS を維持。pytest はショートスイート（allowlist）中心に実行しており、ack/macro/attachment/HTTP-heavy/DB-lock 系は denylist で skip。
 - `feature/mvp-ui-audit` は origin と差分なし（HEAD=c782b6593626660a03f785dfec76a1d9a0f4e977）。rules/agent/*.yaml の余分な変更と未追跡資産は整理済みで、クリーン worktreeのみ使用。
 - `docs/plans/mvp_detailed_technical_design.md`, `docs/plans/mission_control_plan.md`, `plans/plan_diff.json`（`workflow-engine-phase2a`）を再読済み。CI 証跡・Agent MD も design からの方針に合わせてアップデート済み。
-- 作業ツリーは2つ存在：クリーン側 `C:\\Users\\User\\Trae\\ORCH-Next\\projects\\agent-missions-hub-remote` を正として作業・ステージングし、旧ツリー `...\\agent-missions-hub` は未追跡バッファに使用。
+- 作業ツリーは2つ存在：クリーン側 `C:\\Users\\User\\Trae\\ORCH-Next\\projects\\agent-missions-hub-remote` を正として作業・ステージングし、旧ツリー `...\\agent-missions-hub` は未追跡バッファに使用。push は安定する PowerShell 側の Git（例: `C:\\Program Files\\Git\\cmd\\git.exe push origin feature/mvp-ui-audit`）を使用する。WSL から push する場合は gh auth/credential.helper を事前設定。
 
 # Decisions
 
