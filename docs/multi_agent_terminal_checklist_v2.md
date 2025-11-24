@@ -33,6 +33,7 @@
 - Manager UI: Mission 一覧／TaskGroup タイムライン／Artifact タイルを表示し、Playwright/Jest で検証する
 - Graph/Inbox: Graph View は Phase 3 で TODO、Inbox は Mission スレッド化の計画を docs に記載する
 - 観測と記録: `ci_evidence.jsonl` に workflow_engine/manager_view イベント、`data/logs/current/audit/` にマイグレーション・実行ログを残す
+- v1 スコープ: Workflow は Sequential＋TaskGroup 内の簡易並列に限定し、DAG/AsyncThink/LangGraph など高度並列は Phase 3 以降。CLI 実行は Windows/PS7＋ConPTY で親 CLI（`.\.venv\Scripts\python.exe src\orchestrator\cli.py`）から `subprocess.Popen` 経由で起動。初期サポート CLI は CodexCLI＋Claude Code CLI のみ（その他はプレースホルダ）。WSL+tmux/CAO はオプション扱いで v1 の対象外。
 
 ## 備考
 - Nightly の `nightly_preview_diff` は 08:10:20 のスナップショット時刻を基準として記録（UI Gate の最新は 17:10:xx）。運用上は UI Gate を“最新”基準とし、nightlyは差分検知用途に限定。
