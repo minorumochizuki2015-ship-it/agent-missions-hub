@@ -29,8 +29,8 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 - src/mcp_agent_mail/routers/missions.py / __init__.py: ミッション一覧・アーティファクト CRUD API を FastAPI ルーターとして実装し、knowledge の簡易昇格も受け持つ。
 - src/mcp_agent_mail/workflow_engine.py: WorkflowRun trace ファイルと `WorkflowContext` 履歴を `data/logs/current/audit/workflow_runs` に記録するヘルパーを追加し、run start/complete/fail イベントを JSONL 保存。`SequentialWorkflow` が自動で trace_path をセットするようになり、self-heal/history ログの信頼性を向上。
 - tests/test_workflow_engine.py: trace_dir 用の fixture を追加し、run ごとの trace file の existence＋イベント記録を検証するように修正。
-- tests/test_workflow_engine.py: SelfHeal 流れで `self_heal_artifact` と `Knowledge` レコードが生成されることを検証し、artifact/knowledge がデータベースに残ることを確認。SelfHeal 失敗パスで `self_heal_failure` アーティファクトも検証。
-- tests/test_missions_api.py: Phase 2A の missions/artifacts API を FastAPI + AsyncClient で exercise し、Artifact 作成時の Knowledge 昇格と 404/422 エラー系を検証。
+- tests/test_workflow_engine.py: SelfHeal 流れで `self_heal_artifact` と `Knowledge` レコードが生成されることを検証し、artifact/knowledge がデータベースに残ることを確認。SelfHeal 失敗パスで `self_heal_failure` アーティファクトも検証。run API 経由の SelfHeal 成否も確認。
+- tests/test_missions_api.py: missions/artifacts API に加え、/missions/{id}/run（allow_self_heal トグル）と 404/422 エラー系を FastAPI + AsyncClient で検証。
 - reports/test/pytest_phase2a_run.txt + observability/policy/ci_evidence.jsonl: Pytest short suite（mission API + workflow + http、`-q`）を再実行し、`command`/SHA付きで再記録。
 - reports/test/ruff_phase2a_run.txt + observability/policy/ci_evidence.jsonl: `python -m ruff check src tests scripts` を実行し（出力なし）、成功エントリとして記録。
 - reports/test/npm_orchestrator_ui.txt + observability/policy/ci_evidence.jsonl: UI 資産移植後に `npm run lint && npm run test && npm run test:e2e --prefix apps/orchestrator-ui` を実行し、Jest/Playwright/axe PASS を記録。
@@ -69,6 +69,7 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 
 - `python -m pytest -q tests/test_missions_api.py tests/test_workflow_engine.py tests/test_http_liveness_min.py` → `reports/test/pytest_phase2a_run.txt` に記録（Pass, CLI 出力はこの環境で画面に現れず）。
 - `python -m pytest -q tests/test_storage_* tests/test_http_liveness_min.py` → `reports/test/pytest_phase2a_storage_run.txt` に記録（Pass）。
+- `python -m pytest -vv tests/test_workflow_engine.py tests/test_missions_api.py` → `reports/test/pytest_phase2b_run.txt` に記録（Pass, run API/self-heal/knowledge 失敗系を含む）。
 - `python -m ruff check src tests scripts` → `reports/test/ruff_phase2a_run.txt` に記録（出力なし／pass）。現行環境で `ruff` は Python モジュール経由で実行。
 - `npm run lint && npm run test && npm run test:e2e --prefix apps/orchestrator-ui` → `reports/test/npm_orchestrator_ui.txt` に記録。`apps/orchestrator-ui` フォルダが存在しないため実行できず（legacy worktree に移行予定）。
 - `python scripts/ui_audit_run.py` → `reports/test/ui_audit_run.txt` に記録（placeholder UI Audit run）。
