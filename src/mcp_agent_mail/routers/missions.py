@@ -61,7 +61,7 @@ class ArtifactRead(SQLModel):
 
 
 @router.get("/", response_model=list[MissionSummary])
-async def list_missions(session: Annotated[AsyncSession, Depends(get_session)]) -> list[MissionSummary]:
+async def list_missions(session: Annotated[AsyncSession, Depends(get_session)]) -> list[MissionSummary]:  # noqa: B008
     stmt = select(Mission)
     missions = (await session.execute(stmt)).scalars().all()
 
@@ -91,7 +91,7 @@ async def list_missions(session: Annotated[AsyncSession, Depends(get_session)]) 
 
 @router.get("/{mission_id}/artifacts", response_model=list[ArtifactRead])
 async def list_artifacts(
-    mission_id: UUID, session: Annotated[AsyncSession, Depends(get_session)]
+    mission_id: UUID, session: Annotated[AsyncSession, Depends(get_session)]  # noqa: B008
 ) -> list[ArtifactRead]:
     mission = await session.get(Mission, mission_id)
     if not mission:
@@ -124,7 +124,7 @@ async def list_artifacts(
 
 @router.post("/{mission_id}/artifacts", response_model=ArtifactRead, status_code=status.HTTP_201_CREATED)
 async def create_artifact(
-    mission_id: UUID, payload: ArtifactPayload, session: Annotated[AsyncSession, Depends(get_session)]
+    mission_id: UUID, payload: ArtifactPayload, session: Annotated[AsyncSession, Depends(get_session)]  # noqa: B008
 ) -> ArtifactRead:
     mission = await session.get(Mission, mission_id)
     if not mission:
@@ -186,7 +186,7 @@ class MissionRunResponse(BaseModel):
 
 @router.post("/{mission_id}/run", response_model=MissionRunResponse, status_code=status.HTTP_202_ACCEPTED)
 async def run_mission(
-    mission_id: UUID, allow_self_heal: bool = True, session: Annotated[AsyncSession, Depends(get_session)]
+    mission_id: UUID, allow_self_heal: bool = True, session: Annotated[AsyncSession, Depends(get_session)]  # noqa: B008
 ) -> MissionRunResponse:
     mission = await session.get(Mission, mission_id)
     if not mission:

@@ -2,4 +2,4 @@
 
 from .missions import router  # re-export for http app
 
-__all__ = ["router", "missions"]
+__all__ = ["missions", "router"]
