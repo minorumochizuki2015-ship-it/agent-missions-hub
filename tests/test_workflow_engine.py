@@ -1,10 +1,13 @@
+import json
+from pathlib import Path
+
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel, select
 
-from mcp_agent_mail.models import Agent, Mission, Project, Task, TaskGroup, WorkflowRun
+from mcp_agent_mail.models import Agent, Artifact, Knowledge, Mission, Project, Task, TaskGroup, WorkflowRun
 from mcp_agent_mail.workflow_engine import SelfHealWorkflow, SequentialWorkflow
 
 
@@ -19,9 +22,13 @@ async def db_session():
     async with async_session() as session:
         yield session
 
+@pytest.fixture
+def workflow_trace_dir(tmp_path: Path) -> Path:
+    return tmp_path / "workflow_runs"
+
 
 @pytest.mark.asyncio
-async def test_sequential_workflow_success(db_session):
+async def test_sequential_workflow_success(db_session, workflow_trace_dir: Path):
     # Setup data
     project = Project(slug="test-proj", human_key="Test Project")
     db_session.add(project)
@@ -46,7 +53,7 @@ async def test_sequential_workflow_success(db_session):
     await db_session.commit()
 
     # Run workflow
-    engine = SequentialWorkflow(db_session)
+    engine = SequentialWorkflow(db_session, trace_dir=workflow_trace_dir)
     status = await engine.run(mission)
 
     assert status == "completed"
@@ -57,6 +64,21 @@ async def test_sequential_workflow_success(db_session):
     assert run.status == "completed"
     assert run.mode == "sequential"
     assert run.ended_at is not None
+    assert run.trace_uri is not None
+    trace_path = Path(run.trace_uri)
+    assert trace_path.exists()
+    events = [json.loads(line) for line in trace_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert any(event.get("event") == "workflow_engine_run_started" for event in events)
+    assert any(event.get("event") == "workflow_engine_run_completed" for event in events)
+
+    artifacts = (await db_session.execute(select(Artifact).where(Artifact.type.like("self_heal%")))).scalars().all()
+    assert artifacts
+    knowledge_entries = (
+        await db_session.execute(select(Knowledge).where(Knowledge.artifact_id == artifacts[0].id))
+    ).scalars()
+    knowledge_list = list(knowledge_entries)
+    assert knowledge_list
+    assert knowledge_list[0].summary is not None
 
     # Verify tasks
     await db_session.refresh(task1)
@@ -102,7 +124,7 @@ async def test_self_heal_workflow(db_session):
     db_session.add(task1)
     await db_session.commit()
 
-    engine = MockFailingWorkflow(db_session)
+    engine = MockFailingWorkflow(db_session, trace_dir=workflow_trace_dir)
     status = await engine.run(mission)
 
     # Should be completed because of healing
@@ -122,3 +144,10 @@ async def test_self_heal_workflow(db_session):
 
     assert recovery_task is not None
     assert recovery_task.status == "completed"
+    run = (await db_session.execute(select(WorkflowRun))).scalars().first()
+    assert run.trace_uri is not None
+    trace_path = Path(run.trace_uri)
+    assert trace_path.exists()
+    events = [json.loads(line) for line in trace_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert any(event.get("event") == "workflow_engine_run_started" for event in events)
+    assert any(event.get("event") == "workflow_engine_run_completed" for event in events)

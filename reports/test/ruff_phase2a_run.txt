@@ -1,0 +1,3 @@
+Command: python -m ruff check src tests scripts
+Result: PASSED (exit code 0)
+Notes: No findings; executed via python module after UI assets migration.

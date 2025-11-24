@@ -136,12 +136,13 @@
     },
     {
       "id": "workflow-engine-phase2a",
-      "status": "planned",
+      "status": "in_progress",
       "description": "WorkflowEngine v1 (Sequential + self-heal) を MVP 詳細設計に沿って実装し、missions/task_groups/tasks/artifacts/knowledge スキーマとマイグレーション・テストを統合する。",
       "entries": [
         "src/mcp_agent_mail/workflow_engine.py",
         "src/mcp_agent_mail/models.py",
         "migrations/",
+        "src/mcp_agent_mail/routers/missions.py",
         "docs/plans/mvp_detailed_technical_design.md",
         "docs/plans/mission_control_plan.md",
         "tests/test_workflow_engine.py",
@@ -151,7 +152,7 @@
         "observability/policy/ci_evidence.jsonl",
         "reports/test/"
       ],
-      "notes": "Phase 2A の実装タスクを管理。Plan→Test→Patch の証跡を ci_evidence に記録し、短縮/フル pytest の実行ログを reports/test/ に保存する。"
+      "notes": "Phase 2A の実装タスクを管理。UI 資産移植後に npm lint/test/e2e と ui_audit を再実行し、pytest/ruff/UI 証跡を ci_evidence/reports に追記済み。残タスク: API/SelfHeal の異常系・フル allowlist pytest・UI Gate 実測更新。"
     },
     {
       "id": "data-model-mission-task",

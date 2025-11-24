@@ -183,9 +183,15 @@ class Knowledge(SQLModel, table=True):
 
     id: UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     artifact_id: UUID = Field(foreign_key="artifacts.id", index=True)
+    source_artifact_id: Optional[UUID] = Field(default=None, foreign_key="artifacts.id", index=True)
+    version: Optional[str] = Field(default=None, max_length=64)
+    sha256: Optional[str] = Field(default=None, max_length=64)
+    scope: str = Field(default="project", max_length=32)
     tags: Optional[list[str]] = Field(default=None, sa_column=Column(JSON, nullable=True))
-    reusable: bool = Field(default=False)
     summary: Optional[str] = Field(default=None, max_length=1024)
+    reusable: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class WorkflowRun(SQLModel, table=True):

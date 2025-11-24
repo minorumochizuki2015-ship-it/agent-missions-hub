@@ -1,0 +1,3 @@
+Command: python scripts/ui_audit_run.py
+Result: PASSED (exit code 0)
+Notes: UI assets present; script executed without stdout. Update artifacts/ui_audit if needed by downstream.

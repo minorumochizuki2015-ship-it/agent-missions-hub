@@ -2,30 +2,56 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import traceback
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from .models import Mission, Task, TaskGroup, WorkflowRun
+from .models import Artifact, Knowledge, Mission, Task, TaskGroup, WorkflowRun
+
+TRACE_DIR_DEFAULT = Path("data/logs/current/audit/workflow_runs")
 
 logger = logging.getLogger(__name__)
+
+
+def _build_trace_path(trace_dir: Path | None, run_id: UUID) -> Path:
+    """Trace ファイルのパスを準備し、親ディレクトリを確保する。"""
+    target_dir = trace_dir or TRACE_DIR_DEFAULT
+    target_dir = Path(target_dir)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    return target_dir / f"workflow_run_{run_id}.jsonl"
+
+
+def _write_trace_entry(trace_path: Path | None, event: str, payload: dict[str, Any]) -> None:
+    """Trace ファイルに JSON line を追記する。"""
+    if trace_path is None:
+        return
+    trace_path.parent.mkdir(parents=True, exist_ok=True)
+    entry = {"ts": datetime.now(timezone.utc).isoformat(), "event": event}
+    entry.update(payload)
+    with trace_path.open("a", encoding="utf-8") as fh:
+        json.dump(entry, fh, ensure_ascii=False)
+        fh.write("\n")
 
 
 class WorkflowContext:
     """ワークフロー実行中にタスク間で共有するコンテキストを保持する。"""
 
-    def __init__(self, mission_id: UUID, session: AsyncSession, run_id: UUID):
+    def __init__(self, mission_id: UUID, session: AsyncSession, run_id: UUID, trace_path: Path | None = None):
         self.mission_id = mission_id
         self.session = session
         self.run_id = run_id
         self.shared_data: dict[str, Any] = {}
         self.execution_history: list[dict[str, Any]] = []
+        self.trace_path = trace_path
 
     def update(self, key: str, value: Any) -> None:
         """共有データをセットする。"""
@@ -38,13 +64,15 @@ class WorkflowContext:
     def append_history(self, entry: dict[str, Any]) -> None:
         """実行履歴にイベントを追加する。"""
         self.execution_history.append(entry)
+        _write_trace_entry(self.trace_path, "workflow_engine_task_event", entry)
 
 
 class WorkflowEngine(ABC):
     """ワークフローエンジンの抽象基底クラス。"""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, trace_dir: Path | None = None):
         self.session = session
+        self.trace_dir = Path(trace_dir or TRACE_DIR_DEFAULT)
 
     @abstractmethod
     async def run(self, mission: Mission) -> str:
@@ -67,12 +95,25 @@ class SequentialWorkflow(WorkflowEngine):
             status="running",
             started_at=datetime.now(timezone.utc),
         )
+        trace_path = _build_trace_path(self.trace_dir, run.run_id)
+        run.trace_uri = str(trace_path)
         self.session.add(run)
         await self.session.commit()
 
-        context = WorkflowContext(mission.id, self.session, run.run_id)
+        context = WorkflowContext(mission.id, self.session, run.run_id, trace_path=trace_path)
         if mission.context:
             context.shared_data.update(mission.context)
+
+        _write_trace_entry(
+            trace_path,
+            "workflow_engine_run_started",
+            {
+                "mission_id": str(mission.id),
+                "mode": run.mode,
+                "status": run.status,
+                "run_id": str(run.run_id),
+            },
+        )
 
         try:
             # Fetch task groups sorted by order
@@ -97,12 +138,30 @@ class SequentialWorkflow(WorkflowEngine):
             traceback.print_exc()
             mission.status = "failed"
             run.status = "failed"
+            _write_trace_entry(
+                trace_path,
+                "workflow_engine_run_failed",
+                {
+                    "mission_id": str(mission.id),
+                    "run_id": str(run.run_id),
+                    "error": str(e),
+                },
+            )
             # In a real system, we might want to store the error in the mission model
 
         mission.updated_at = datetime.now(timezone.utc)
         self.session.add(mission)
         run.ended_at = datetime.now(timezone.utc)
         self.session.add(run)
+        _write_trace_entry(
+            trace_path,
+            "workflow_engine_run_completed",
+            {
+                "mission_id": str(mission.id),
+                "run_id": str(run.run_id),
+                "status": mission.status,
+            },
+        )
         await self.session.commit()
 
         logger.info(f"Mission {mission.id} finished with status: {mission.status}")
@@ -233,9 +292,68 @@ class SelfHealWorkflow(SequentialWorkflow):
                     group.status = "completed"  # Force complete for now
                     self.session.add(group)
                     await self.session.commit()
+                    await _record_self_heal_artifact(
+                        session=self.session,
+                        context=context,
+                        task=failed_task,
+                        summary=f"Recovered after {failed_task.title} -> {failed_task.error}",
+                    )
                     return  # Suppress the exception
                 else:
                     logger.error("Recovery failed.")
+                    await _record_self_heal_artifact(
+                        session=self.session,
+                        context=context,
+                        task=failed_task,
+                        summary=f"Recovery failed for {failed_task.title}: {failed_task.error}",
+                        success=False,
+                    )
                     raise e  # Re-raise original exception
             else:
                 raise e
+
+
+async def _record_self_heal_artifact(
+    session: AsyncSession,
+    context: WorkflowContext,
+    task: Task,
+    summary: str,
+    success: bool = True,
+) -> tuple[Artifact, Knowledge | None]:
+    """Record artifact + knowledge entry for self-heal events."""
+
+    run_id = context.run_id
+    mission_id = context.mission_id
+    version = context.get("workflow_version", "v1")
+    detail = summary or "Self-heal recovery triggered"
+    sha_seed = f"{run_id}:{task.id}:{detail}"
+    sha = hashlib.sha256(sha_seed.encode()).hexdigest()
+    artifact = Artifact(
+        mission_id=mission_id,
+        task_id=task.id,
+        type="self_heal_artifact" if success else "self_heal_failure",
+        scope="mission",
+        path=f"self_heal/{run_id}/{task.id}:{detail[:32]}",
+        version=version,
+        sha256=sha,
+        tags=["self-heal", "workflow"],
+        content_meta={"error": task.error, "status": task.status, "success": success},
+    )
+    session.add(artifact)
+    await session.commit()
+    await session.refresh(artifact)
+
+    knowledge = Knowledge(
+        artifact_id=artifact.id,
+        source_artifact_id=artifact.id,
+        version=artifact.version,
+        sha256=artifact.sha256,
+        scope=artifact.scope,
+        summary=detail[:1024],
+        tags=["self-heal", "knowledge"],
+        reusable=True,
+    )
+    session.add(knowledge)
+    await session.commit()
+    await session.refresh(knowledge)
+    return artifact, knowledge
