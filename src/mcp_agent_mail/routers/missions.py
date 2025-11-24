@@ -13,7 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import SQLModel
 
 from ..db import get_session
-from ..models import Artifact, Knowledge, Mission, TaskGroup
+from ..models import Artifact, Knowledge, Mission, Task, TaskGroup, WorkflowRun
+from ..workflow_engine import SelfHealWorkflow, SequentialWorkflow
 
 router = APIRouter(prefix="/missions", tags=["missions"])
 
@@ -173,3 +174,39 @@ async def create_artifact(
         tags=artifact.tags,
         knowledge_id=knowledge_id,
     )
+
+
+class MissionRunResponse(BaseModel):
+    """ワークフロー実行の結果概要。"""
+
+    mission_id: UUID
+    status: str
+    run_id: UUID
+
+
+@router.post("/{mission_id}/run", response_model=MissionRunResponse, status_code=status.HTTP_202_ACCEPTED)
+async def run_mission(
+    mission_id: UUID, allow_self_heal: bool = True, session: AsyncSession = Depends(get_session)
+) -> MissionRunResponse:
+    mission = await session.get(Mission, mission_id)
+    if not mission:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="MISSION_NOT_FOUND")
+
+    # Ensure there is at least one task_group; otherwise running is meaningless
+    tg_exists = await session.execute(select(TaskGroup.id).where(TaskGroup.mission_id == mission_id).limit(1))
+    if not tg_exists.first():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="NO_TASK_GROUPS")
+
+    workflow_cls = SelfHealWorkflow if allow_self_heal else SequentialWorkflow
+    engine = workflow_cls(session)
+    status_result = await engine.run(mission)
+
+    # pick latest workflow_run for this mission
+    run_row = await session.execute(
+        select(WorkflowRun).where(WorkflowRun.mission_id == mission_id).order_by(WorkflowRun.started_at.desc())
+    )
+    run = run_row.scalars().first()
+    if not run:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="RUN_NOT_RECORDED")
+
+    return MissionRunResponse(mission_id=mission_id, status=status_result, run_id=run.run_id)
