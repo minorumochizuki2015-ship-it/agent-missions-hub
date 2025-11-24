@@ -34,6 +34,7 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 - ci_evidence.jsonl: Windows ショートスイート PASS ログを追記予定（ショートスイート実行後に反映）。
 - plans/plan_diff.json: step `windows-short-suite` を追加し、allow/deny 導入を completed として管理。ack/macro/attachment の恒久対策は別ステップで計画化予定。
 - workflow_engine: WorkflowRun で run 開始/終了を記録し、タスク履歴をコンテキストに保存。タスク/グループは order 順に実行し、日本語 docstring 化。tests/test_workflow_engine.py で run 状態を検証。
+- ガバナンス文書をクリーン worktree に移植（作業方法.md / 監査・テスト方法.md / codexcli_git_ops_policy.md）。commit=d7b103a（detached HEAD）を作成したが push は認証/接続待ちでタイムアウトし未反映。
 
 # TODO (priority order)
 
@@ -56,6 +57,7 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 - Phase 2A (workflow_engine v1 + schema/migrations/tests) の実装準備を進め、設計書と plan_diff `workflow-engine-phase2a` を基準に着手。
 - Runner/CI 証跡フロー（UI Gate/pytest/Jest/Playwright）の運用整理と必要な実行ログの収集。
 - 未追跡ファイルの取捨選択とクリーン worktree への移行方針の確定。
+- push: commit d7b103a を origin/feature/mvp-ui-audit へ反映するため再試行（前回は timeout/credential 待ちで未完了）。
 
 # Tests
 
