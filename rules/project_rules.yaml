@@ -1,4 +1,4 @@
-version: 5
+version: 6
 name: "project_rules"
 product: "Trae"
 role: "Single source of truth for automated PLAN→TEST→PATCH→PROMOTION→RELEASE with strict safety, verifiable evidence, and agent orchestration"
@@ -42,7 +42,7 @@ context:
     reports_dir:       "observability/ui/report/"
     sandbox_root:      ".sandbox/"
     backups_dir:       "backups/"
-    approvals_ledger: APPROVALS.md
+    approvals_ledger:  "APPROVALS.md"
     review_checklist:  "ORCH/STATE/CHECKLISTS/<task_id>.md"
   io_formats_in:  ["code","markdown","yaml","json"]
   io_formats_out: ["patch","json","yaml","html","png"]
@@ -55,6 +55,7 @@ specs:                         # required agent specs
   audit_rules:       {file: ".trae/rules/AUDIT_rules.yaml"}
   approvals:         {file: ".trae/rules/APPROVALS.yaml"}
   cmd:               {file: ".trae/rules/CMD.yaml"}
+  git_ops:           {file: ".trae/rules/codexcli_git_ops_policy.md"}
   agent_spec_shared: {file: ".trae/rules/Agent Spec.yaml"}
 
 tools:
@@ -111,23 +112,23 @@ governance:
 agents:
   registry:
     orchestrator: "MCP-Orchestrator"
-    verify: "Web-Verify"
-    design: "Design-UI"
-    ui_audit: "UI-Audit"
-    audit: "AUDIT"
-    cmd: "CMD"
+    verify:       "Web-Verify"
+    design:       "Design-UI"
+    ui_audit:     "UI-Audit"
+    audit:        "AUDIT"
+    cmd:          "CMD"
   routing:
-    - {match: "contains(figma|shadcn|component|design)", delegate: "Design-UI", mode: "design"}
+    - {match: "contains(figma|shadcn|component|design)", delegate: "Design-UI",      mode: "design"}
     - {match: "contains(verify|source|news|latest|today|pdf)", delegate: "Web-Verify", mode: "verify"}
     - {match: "contains(ui-audit|axe|playwright|visual|lcp|tti|cls)", delegate: "UI-Audit", mode: "ui_audit"}
     - {match: "preview_dir present", delegate: "UI-Audit", mode: "ui_audit"}
     - {match: "default", delegate: "MCP-Orchestrator", mode: "auto"}
   contracts:
     cmd_accepts_status: ["OK","INCONCLUSIVE","DENIED","ERROR"]
-    design_ui_handoff: "artifacts/design_ui/"
-    ui_audit_handoff: "artifacts/audit_handoff.json"
+    design_ui_handoff:  "artifacts/design_ui/"
+    ui_audit_handoff:   "artifacts/audit_handoff.json"
     verify_sources_out: "observability/policy/sources.json"
-    approvals_ledger: "APPROVALS.md"
+    approvals_ledger:   "APPROVALS.md"
 
 language_routing:
   goal: "Use Python or Go per workload to hit SLOs while preserving determinism"
@@ -179,25 +180,25 @@ pipeline:                       # enforced gates
         - "detect-secrets + bandit"
         - "SBOM generate → sbom_dir"
       thresholds:
-        coverage_min: {unit: 0.85, integration: 0.75, e2e: 0.70}
+        coverage_min:      {unit: 0.85, integration: 0.75, e2e: 0.70}
         diff_coverage_min: {added_lines: 0.85, changed_lines: 0.80}
         vulnerabilities_max: {high: 0, critical: 0}
         perf_p95_sec: 2.0
       ui_required_if_flag:
-        screenshots: ["desktop.png","mobile.png"]
-        axe_serious_plus_max: 0
-        visual_diff_pct_max: 0.10
-        cls_max: 0.10
-        lcp_s_max: 2.5
-        tti_s_max: 3.0
+        screenshots:           ["desktop.png","mobile.png"]
+        axe_serious_plus_max:  0
+        visual_diff_pct_max:   0.10
+        cls_max:               0.10
+        lcp_s_max:             2.5
+        tti_s_max:             3.0
       outputs:
         - "TEST_REPORT.json"
         - "artifacts/<task_id>/ui/baseline/  # if UI"
 
     APPROVALS:
       ledger: "APPROVALS.md"
-      roles: ["CMD","AUDIT"]
-      two_person_rule: true
+      roles:  ["CMD","AUDIT"]
+      two_person_rule:      true
       forbid_self_approval: true
       required_fields: ["id","owner","scope","status","signed_by","ts_utc","manual_verification","expiry_utc"]
       ui_manual_verification:
@@ -235,32 +236,32 @@ pipeline:                       # enforced gates
         kill_switch: ".trae/disable_autostart"
 
 compliance_and_supply_chain:    # automated audits
-  sbom_required: true
+  sbom_required:       true
   provenance_required: true
   signatures:
-    signer: "cosign"
+    signer:        "cosign"
     verify_on_read: true
   license_policy:
     allowlist: ["MIT","BSD-2-Clause","BSD-3-Clause","Apache-2.0"]
-    denylist: ["AGPL-3.0-only","AGPL-3.0-or-later","GPL-3.0-only","GPL-3.0-or-later"]
+    denylist:  ["AGPL-3.0-only","AGPL-3.0-or-later","GPL-3.0-only","GPL-3.0-or-later"]
     action_if_violation: "block_release"
   vulnerability_policy:
-    thresholds: {high: 0, critical: 0}
+    thresholds:   {high: 0, critical: 0}
     evidence_file: "observability/vuln_scan.json"
   ui_evidence:
     screenshots_dir: "observability/ui/screens/"
-    traces_dir: "observability/ui/traces/"
-    reports_dir: "observability/ui/report/"
-    required_when: "templates|static|front-end|dashboard changes"
+    traces_dir:      "observability/ui/traces/"
+    reports_dir:     "observability/ui/report/"
+    required_when:   "templates|static|front-end|dashboard changes"
     budgets: {lcp_s: 2.5, tti_s: 3.0, cls_max: 0.10, visual_diff_pct: 0.10, axe_serious_plus_max: 0}
 
 security_and_privacy:
   secrets_placeholders: ["REDACTED","CHANGEME","jwt-ci","webhook-ci"]
-  tokens_in_outputs: false
-  pii_allowed: false
+  tokens_in_outputs:    false
+  pii_allowed:          false
   network:
     allowed_http_methods: ["GET","HEAD"]
-    forbid_post_unless: ["signed_webhook_to_internal_ci"]
+    forbid_post_unless:   ["signed_webhook_to_internal_ci"]
 
 observability:
   logs: ["structured_json"]
@@ -290,27 +291,47 @@ observability:
 
 automation:
   schedules:
-    - {id: "weekly-figma-scan", cron: "0 3 * * 1", action: {delegate: "Design-UI", inputs: {figma_ref: "team://recent", context: {preview: false}}}}
-    - {id: "nightly-ui-audit",  cron: "0 2 * * *", action: {delegate: "UI-Audit", inputs: {preview_dir: "artifacts/preview/", routes: ["/"]}}}
-    - {id: "watch-claims",      cron: "0 6 * * *", action: {delegate: "Web-Verify", inputs: {claim: "tracked claim", context: {run_mode: "watch", recency_days: 30}}}}
+    - id: "weekly-figma-scan"
+      cron: "0 3 * * 1"
+      action:
+        delegate: "Design-UI"
+        inputs:
+          figma_ref: "team://recent"
+          context: {preview: false}
+    - id: "nightly-ui-audit"
+      cron: "0 2 * * *"
+      action:
+        delegate: "UI-Audit"
+        inputs:
+          preview_dir: "artifacts/preview/"
+          routes: ["/"]
+    - id: "watch-claims"
+      cron: "0 6 * * *"
+      action:
+        delegate: "Web-Verify"
+        inputs:
+          claim: "tracked claim"
+          context: {run_mode: "watch", recency_days: 30}
   events:
-    - on: pull_request:opened
+    - on: "pull_request:opened"
       do:
-        - delegate: Web-Verify
-          inputs: {claim: "PR description", context: {topic_hint: news}}
-    - on: release:tagged
+        - delegate: "Web-Verify"
+          inputs:
+            claim: "PR description"
+            context: {topic_hint: "news"}
+    - on: "release:tagged"
       do:
-        - delegate: UI-Audit
-          inputs: {preview_dir: artifacts/preview/}
-    - on: observability:freeze_on
+        - delegate: "UI-Audit"
+          inputs: {preview_dir: "artifacts/preview/"}
+    - on: "observability:freeze_on"
       do:
-        - delegate: AUDIT
-          inputs: {task: open_postmortem, template: docs/postmortem.md}
+        - delegate: "AUDIT"
+          inputs: {task: "open_postmortem", template: "docs/postmortem.md"}
   queues:
     lanes:
       - {name: "P0", match: "contains(release|hotfix|rollback)", concurrency: 1}
-      - {name: "P1", match: "contains(audit|verify|design)", concurrency: 2}
-      - {name: "P2", match: "default", concurrency: 3}
+      - {name: "P1", match: "contains(audit|verify|design)",     concurrency: 2}
+      - {name: "P2", match: "default",                           concurrency: 3}
     backpressure: {max_queue: 50, action: "shed_P2_then_pause"}
   retries:
     policy: "exponential_backoff_jitter"
@@ -319,49 +340,49 @@ automation:
     dedup_window_s: 600
   circuit_breaker:
     rules:
-      - {tool: "Hyperbrowser", fail_rate_pct: 40, window: "10m", action: "open_5m_then_half_open"}
-      - {tool: "Brave Search", timeout_rate_pct: 40, window: "10m", action: "reduce_concurrency"}
+      - {tool: "Hyperbrowser",  fail_rate_pct: 40, window: "10m", action: "open_5m_then_half_open"}
+      - {tool: "Brave Search",  timeout_rate_pct: 40, window: "10m", action: "reduce_concurrency"}
 
 ci:
   required_steps:
-    - pre_commit
-    - black
-    - isort
-    - flake8
-    - mypy
-    - pytest
-    - diff_coverage
-    - golden_parity           # Python↔Go parity check
-    - sbom_generate_sign_verify
-    - secret_scan
-    - eol_check
-    - bandit
+    - "pre_commit"
+    - "black"
+    - "isort"
+    - "flake8"
+    - "mypy"
+    - "pytest"
+    - "diff_coverage"
+    - "golden_parity"           # Python↔Go parity check
+    - "sbom_generate_sign_verify"
+    - "secret_scan"
+    - "eol_check"
+    - "bandit"
   enforce_order: true
   continue_on_mypy_error: true
   evidence_bundle: "observability/policy/ci_evidence.jsonl"
   approvals:
     required_reviewers: 2
-    labels_required: [security, release]
+    labels_required: ["security","release"]
     dismiss_stale_reviews: true
     linear_history: true
   branch_protection:
     required_checks:
-      - pre_commit
-      - flake8
-      - mypy
-      - pytest
-      - coverage
-      - sbom_sign_verify
-      - secret_scan
-      - eol_check
-      - pre_commit
-      - flake8
-      - mypy
-      - pytest
-      - diff_coverage
-      - sbom_generate_sign_verify
-      - secret_scan
-      - eol_chec
+      - "pre_commit"
+      - "flake8"
+      - "mypy"
+      - "pytest"
+      - "coverage"
+      - "sbom_sign_verify"
+      - "secret_scan"
+      - "eol_check"
+      - "pre_commit"
+      - "flake8"
+      - "mypy"
+      - "pytest"
+      - "diff_coverage"
+      - "sbom_generate_sign_verify"
+      - "secret_scan"
+      - "eol_chec"
     required_reviews: 1
     codeowners_enforced: true
     dismiss_stale_reviews: true
@@ -379,6 +400,7 @@ acceptance_criteria:
     - "CODEOWNERS non-author review present; APPROVALS two-person where required"
     - "Policy-bot comments posted; dashboards updated; overview.html published"
     - "SafeOps rule_bootstrap hash manifest and dangerous command log entries captured with matching approvals"
+    - "Git operations (edit/test/commit/push/PR) follow codexcli_git_ops_policy.md (MODE + REMOTE_WRITE_ALLOWED + audit Status gates)"
     - "Python↔Go parity tests pass (golden diff==0) where applicable"
     - "Two consecutive PATCH runs with no content change produce identical SHA256"
   must_not:
