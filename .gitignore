@@ -182,6 +182,7 @@ presentation_test_results*.json
 *.db.new
 coverage.json
 logs/
+observability/policy/ci_evidence.jsonl
 !data/
 !data/logs/
 !data/logs/current/
@@ -207,6 +208,7 @@ data/verified/
 data/tmp/
 run_server_clean.sh.txt
 vendor/*
+src/mcp_agent_mail/static/vendor/tailwind.cdn.js
 # Pytest temp dirs (ensure cleanup not tracked)
 .pytest_tmp/
 .test_tmp/
@@ -242,6 +244,7 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 lerna-debug.log*
+*.tsbuildinfo
 
 # Build outputs
 dist/

@@ -23,7 +23,7 @@ _CONFIG: Final[AutoConfig] = AutoConfig(search_path=str(_resolve_search_root()))
 
 def _config_value(name: str, default: str) -> str:
     """環境変数または .env から設定値を取得し、未定義時はデフォルト値を返す。"""
-    return _CONFIG(name, default=default)
+    return str(_CONFIG(name, default=default))
 
 
 @dataclass(slots=True, frozen=True)

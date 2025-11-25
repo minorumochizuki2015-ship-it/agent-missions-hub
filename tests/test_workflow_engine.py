@@ -3,12 +3,20 @@ from pathlib import Path
 
 import pytest
 import pytest_asyncio
+from mcp_agent_mail.models import (
+    Agent,
+    Artifact,
+    Knowledge,
+    Mission,
+    Project,
+    Task,
+    TaskGroup,
+    WorkflowRun,
+)
+from mcp_agent_mail.workflow_engine import SelfHealWorkflow, SequentialWorkflow
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel, select
-
-from mcp_agent_mail.models import Agent, Artifact, Knowledge, Mission, Project, Task, TaskGroup, WorkflowRun
-from mcp_agent_mail.workflow_engine import SelfHealWorkflow, SequentialWorkflow
 
 
 # Test setup
@@ -21,6 +29,7 @@ async def db_session():
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with async_session() as session:
         yield session
+
 
 @pytest.fixture
 def workflow_trace_dir(tmp_path: Path) -> Path:
@@ -67,14 +76,30 @@ async def test_sequential_workflow_success(db_session, workflow_trace_dir: Path)
     assert run.trace_uri is not None
     trace_path = Path(run.trace_uri)
     assert trace_path.exists()
-    events = [json.loads(line) for line in trace_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    events = [
+        json.loads(line)
+        for line in trace_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
     assert any(event.get("event") == "workflow_engine_run_started" for event in events)
-    assert any(event.get("event") == "workflow_engine_run_completed" for event in events)
+    assert any(
+        event.get("event") == "workflow_engine_run_completed" for event in events
+    )
 
-    artifacts = (await db_session.execute(select(Artifact).where(Artifact.type.like("self_heal%")))).scalars().all()
+    artifacts = (
+        (
+            await db_session.execute(
+                select(Artifact).where(Artifact.type.like("self_heal%"))
+            )
+        )
+        .scalars()
+        .all()
+    )
     assert artifacts
     knowledge_entries = (
-        await db_session.execute(select(Knowledge).where(Knowledge.artifact_id == artifacts[0].id))
+        await db_session.execute(
+            select(Knowledge).where(Knowledge.artifact_id == artifacts[0].id)
+        )
     ).scalars()
     knowledge_list = list(knowledge_entries)
     assert knowledge_list
@@ -85,11 +110,14 @@ async def test_sequential_workflow_success(db_session, workflow_trace_dir: Path)
     await db_session.refresh(task2)
     assert task1.status == "completed"
     assert task2.status == "completed"
-    assert task1.output == {"result": "simulated_success", "timestamp": task1.output["timestamp"]}
+    assert task1.output == {
+        "result": "simulated_success",
+        "timestamp": task1.output["timestamp"],
+    }
 
 
 @pytest.mark.asyncio
-async def test_self_heal_workflow(db_session):
+async def test_self_heal_workflow(db_session, workflow_trace_dir: Path):
     # Setup data
     project = Project(slug="heal-proj", human_key="Heal Project")
     db_session.add(project)
@@ -138,7 +166,9 @@ async def test_self_heal_workflow(db_session):
     assert task1.status == "failed"
 
     # Check for recovery task
-    stmt = select(Task).where(Task.group_id == group.id, Task.title.contains("Recovery"))
+    stmt = select(Task).where(
+        Task.group_id == group.id, Task.title.contains("Recovery")
+    )
     result = await db_session.execute(stmt)
     recovery_task = result.scalars().first()
 
@@ -148,9 +178,15 @@ async def test_self_heal_workflow(db_session):
     assert run.trace_uri is not None
     trace_path = Path(run.trace_uri)
     assert trace_path.exists()
-    events = [json.loads(line) for line in trace_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    events = [
+        json.loads(line)
+        for line in trace_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
     assert any(event.get("event") == "workflow_engine_run_started" for event in events)
-    assert any(event.get("event") == "workflow_engine_run_completed" for event in events)
+    assert any(
+        event.get("event") == "workflow_engine_run_completed" for event in events
+    )
 
 
 @pytest.mark.asyncio
@@ -159,7 +195,9 @@ async def test_self_heal_failure_records_artifact(db_session):
     db_session.add(project)
     await db_session.commit()
 
-    agent = Agent(project_id=project.id, name="HealFailAgent", program="test", model="test")
+    agent = Agent(
+        project_id=project.id, name="HealFailAgent", program="test", model="test"
+    )
     db_session.add(agent)
     await db_session.commit()
 
@@ -187,10 +225,26 @@ async def test_self_heal_failure_records_artifact(db_session):
 
     assert status == "failed"
     # recovery artifact/knowledge should be recorded as failure
-    artifacts = (await db_session.execute(select(Artifact).where(Artifact.type == "self_heal_failure"))).scalars().all()
+    artifacts = (
+        (
+            await db_session.execute(
+                select(Artifact).where(Artifact.type == "self_heal_failure")
+            )
+        )
+        .scalars()
+        .all()
+    )
     assert artifacts
     knowledge_entries = (
-        await db_session.execute(select(Knowledge).where(Knowledge.artifact_id.in_([a.id for a in artifacts])))
-    ).scalars().all()
+        (
+            await db_session.execute(
+                select(Knowledge).where(
+                    Knowledge.artifact_id.in_([a.id for a in artifacts])
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
     assert knowledge_entries
     assert knowledge_entries[0].summary is not None

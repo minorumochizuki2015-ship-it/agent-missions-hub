@@ -13,8 +13,8 @@ from sqlalchemy import inspect
 from sqlalchemy.engine import Connection
 
 # revision identifiers, used by Alembic.
-revision: str = "25d1f3a8b32f"
-down_revision: Union[str, Sequence[str], None] = "84eef2bb1c4f"
+revision: str = "25d1f3a8b32f"  # pragma: allowlist secret - Alembic revision id
+down_revision: Union[str, Sequence[str], None] = "84eef2bb1c4f"  # pragma: allowlist secret
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

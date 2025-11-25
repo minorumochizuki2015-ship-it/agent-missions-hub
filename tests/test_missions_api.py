@@ -2,13 +2,12 @@ import pytest
 import pytest_asyncio
 from fastapi import FastAPI, status
 from httpx import AsyncClient
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlmodel import SQLModel
-
 from mcp_agent_mail.db import get_session
 from mcp_agent_mail.models import Artifact, Knowledge, Mission, Project
 from mcp_agent_mail.routers import missions
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlmodel import SQLModel
 
 
 @pytest_asyncio.fixture
@@ -67,12 +66,14 @@ async def test_list_missions(client: AsyncClient, mission_id: str):
 
 
 @pytest.mark.asyncio
-async def test_create_artifact_and_knowledge(client: AsyncClient, mission_id: str, session_factory):
+async def test_create_artifact_and_knowledge(
+    client: AsyncClient, mission_id: str, session_factory
+):
     payload = {
         "type": "plan",
         "path": "artifacts/plan-v1.json",
         "version": "v1.0",
-        "sha256": "abcde12345",
+        "sha256": "dummy-sha256",
         "tags": ["plan"],
         "knowledge_summary": "Extracted plan",
     }
@@ -92,8 +93,10 @@ async def test_create_artifact_and_knowledge(client: AsyncClient, mission_id: st
 
 @pytest.mark.asyncio
 async def test_create_artifact_missing_mission(client: AsyncClient):
-    payload = {"type": "plan", "path": "missing", "version": "v1", "sha256": "deadbeef"}
-    response = await client.post("/missions/00000000-0000-0000-0000-000000000000/artifacts", json=payload)
+    payload = {"type": "plan", "path": "missing", "version": "v1", "sha256": "dummy-sha256"}
+    response = await client.post(
+        "/missions/00000000-0000-0000-0000-000000000000/artifacts", json=payload
+    )
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 

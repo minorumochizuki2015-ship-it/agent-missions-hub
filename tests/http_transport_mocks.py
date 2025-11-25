@@ -41,11 +41,13 @@ class HttpTransportMockConfig:
         self.jwks_response = {"keys": [public_jwk]}
         return private_jwk, public_jwk
 
-    def add_external_response(self, url: str, response_data: Dict[str, Any], status_code: int = 200):
+    def add_external_response(
+        self, url: str, response_data: Dict[str, Any], status_code: int = 200
+    ):
         """外部HTTPレスポンスのモック設定"""
         self.external_http_responses[url] = {
             "data": response_data,
-            "status_code": status_code
+            "status_code": status_code,
         }
 
     def disable_rate_limit_check(self):
@@ -67,7 +69,9 @@ class MockHttpTransport:
         self.call_count += 1
 
         # JWKS URLの場合
-        if ("jwks" in url.lower() or ".well-known/jwks.json" in url) and self.config.jwks_response:
+        if (
+            "jwks" in url.lower() or ".well-known/jwks.json" in url
+        ) and self.config.jwks_response:
             response = MagicMock()
             response.status_code = 200
             response.json = lambda: self.config.jwks_response
@@ -105,7 +109,7 @@ class MockHttpTransport:
             "total_calls": self.call_count,
             "response_times": self.response_times,
             "average_response_time": self.get_average_response_time(),
-            "jwks_calls": len([t for t in self.response_times if t > 0])
+            "jwks_calls": len([t for t in self.response_times if t > 0]),
         }
 
 
@@ -116,7 +120,9 @@ def create_transport_mocks() -> tuple[HttpTransportMockConfig, MockHttpTransport
     return config, transport
 
 
-def apply_http_transport_mocks(monkeypatch, config: HttpTransportMockConfig, transport: MockHttpTransport):
+def apply_http_transport_mocks(
+    monkeypatch, config: HttpTransportMockConfig, transport: MockHttpTransport
+):
     """HTTPトランスポートのモックを適用
 
     注意: ローカルASGIアプリ(テスト対象)への呼び出しはモックしない。
@@ -134,8 +140,12 @@ def apply_http_transport_mocks(monkeypatch, config: HttpTransportMockConfig, tra
             base_str = str(base) if base else ""
         except Exception:
             base_str = ""
-        is_local_base = base_str.startswith(("http://test", "http://127.0.0.1", "http://localhost"))
-        has_asgi_transport = isinstance(kwargs.get("transport") or getattr(self, "_transport", None), ASGITransport)
+        is_local_base = base_str.startswith(
+            ("http://test", "http://127.0.0.1", "http://localhost")
+        )
+        has_asgi_transport = isinstance(
+            kwargs.get("transport") or getattr(self, "_transport", None), ASGITransport
+        )
         is_relative = isinstance(url, str) and url.startswith("/")
         return bool(is_local_base or has_asgi_transport or is_relative)
 
@@ -185,5 +195,5 @@ def setup_http_transport_mocks(monkeypatch, enable_rate_limit: bool = False):
         "config": config,
         "transport": transport,
         "private_jwk": private_jwk,
-        "mock_stats": mock_stats
+        "mock_stats": mock_stats,
     }

@@ -67,7 +67,9 @@ def build_app(settings: Settings | None = None) -> FastAPI:
     def list_missions(session: Session = db_dependency) -> list[dict]:
         """ミッション一覧。"""
 
-        rows = session.exec(select(Mission, Project).where(Mission.project_id == Project.id)).all()
+        rows = session.exec(
+            select(Mission, Project).where(Mission.project_id == Project.id)
+        ).all()
         result: list[dict] = []
         for mission, project in rows:
             result.append(
@@ -82,7 +84,9 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         return result
 
     @api_router.post("/missions", tags=["missions"])
-    def create_mission(payload: MissionCreate, session: Session = db_dependency) -> dict:
+    def create_mission(
+        payload: MissionCreate, session: Session = db_dependency
+    ) -> dict:
         """ミッションを作成。"""
 
         project = _project_for_slug(session, payload.project_slug)
@@ -95,15 +99,24 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         session.add(mission)
         session.commit()
         session.refresh(mission)
-        return {"id": mission.id, "project_slug": project.slug, "title": mission.title, "status": mission.status}
+        return {
+            "id": mission.id,
+            "project_slug": project.slug,
+            "title": mission.title,
+            "status": mission.status,
+        }
 
     @api_router.get("/task-groups", tags=["task_groups"])
     def list_task_groups(session: Session = db_dependency) -> list[TaskGroup]:
         return session.exec(select(TaskGroup)).all()
 
     @api_router.post("/task-groups", tags=["task_groups"])
-    def create_task_group(payload: TaskGroupCreate, session: Session = db_dependency) -> TaskGroup:
-        group = TaskGroup(mission_id=payload.mission_id, name=payload.name, sequence=payload.sequence)
+    def create_task_group(
+        payload: TaskGroupCreate, session: Session = db_dependency
+    ) -> TaskGroup:
+        group = TaskGroup(
+            mission_id=payload.mission_id, name=payload.name, sequence=payload.sequence
+        )
         session.add(group)
         session.commit()
         session.refresh(group)
@@ -135,7 +148,9 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         return session.exec(select(Artifact)).all()
 
     @api_router.post("/artifacts", tags=["artifacts"])
-    def create_artifact(payload: ArtifactCreate, session: Session = db_dependency) -> Artifact:
+    def create_artifact(
+        payload: ArtifactCreate, session: Session = db_dependency
+    ) -> Artifact:
         artifact = Artifact(
             mission_id=payload.mission_id,
             task_id=payload.task_id,
@@ -154,7 +169,9 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         return session.exec(select(Knowledge)).all()
 
     @api_router.post("/knowledge", tags=["knowledge"])
-    def create_knowledge(payload: KnowledgeCreate, session: Session = db_dependency) -> Knowledge:
+    def create_knowledge(
+        payload: KnowledgeCreate, session: Session = db_dependency
+    ) -> Knowledge:
         knowledge = Knowledge(
             mission_id=payload.mission_id,
             title=payload.title,
@@ -198,6 +215,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         app.router.lifespan_context = lifespan_context
         app.mount(mount_base, mcp_app)
     else:
+
         @app.get("/mcp", include_in_schema=False)
         async def mcp_unavailable() -> dict[str, str]:
             """fastmcp 未導入時の簡易応答。"""

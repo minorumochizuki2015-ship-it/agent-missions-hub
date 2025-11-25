@@ -1,0 +1,7 @@
+{
+  "task_id": "STORAGE-COVERAGE",
+  "holder": "WORK",
+  "branch": "feature/mvp-ui-audit",
+  "ts_acquired": "2025-11-25T17:32:00Z",
+  "note": "Lock for storage diff-cover hardening and SBOM run"
+}

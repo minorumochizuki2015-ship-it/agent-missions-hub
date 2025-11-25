@@ -30,7 +30,9 @@ def _build_trace_path(trace_dir: Path | None, run_id: UUID) -> Path:
     return target_dir / f"workflow_run_{run_id}.jsonl"
 
 
-def _write_trace_entry(trace_path: Path | None, event: str, payload: dict[str, Any]) -> None:
+def _write_trace_entry(
+    trace_path: Path | None, event: str, payload: dict[str, Any]
+) -> None:
     """Trace ファイルに JSON line を追記する。"""
     if trace_path is None:
         return
@@ -45,7 +47,13 @@ def _write_trace_entry(trace_path: Path | None, event: str, payload: dict[str, A
 class WorkflowContext:
     """ワークフロー実行中にタスク間で共有するコンテキストを保持する。"""
 
-    def __init__(self, mission_id: UUID, session: AsyncSession, run_id: UUID, trace_path: Path | None = None):
+    def __init__(
+        self,
+        mission_id: UUID,
+        session: AsyncSession,
+        run_id: UUID,
+        trace_path: Path | None = None,
+    ):
         self.mission_id = mission_id
         self.session = session
         self.run_id = run_id
@@ -100,7 +108,9 @@ class SequentialWorkflow(WorkflowEngine):
         self.session.add(run)
         await self.session.commit()
 
-        context = WorkflowContext(mission.id, self.session, run.run_id, trace_path=trace_path)
+        context = WorkflowContext(
+            mission.id, self.session, run.run_id, trace_path=trace_path
+        )
         if mission.context:
             context.shared_data.update(mission.context)
 
@@ -115,9 +125,14 @@ class SequentialWorkflow(WorkflowEngine):
             },
         )
 
+        last_task: Task | None = None
         try:
             # Fetch task groups sorted by order
-            stmt = select(TaskGroup).where(TaskGroup.mission_id == mission.id).order_by(TaskGroup.order)
+            stmt = (
+                select(TaskGroup)
+                .where(TaskGroup.mission_id == mission.id)
+                .order_by(TaskGroup.order)
+            )
             result = await self.session.execute(stmt)
             task_groups = result.scalars().all()
 
@@ -128,10 +143,26 @@ class SequentialWorkflow(WorkflowEngine):
                 await self.session.refresh(mission)
                 if mission.status == "failed":
                     break
+                # keep reference to last executed task for summary artifact
+                stmt_tasks = (
+                    select(Task).where(Task.group_id == group.id).order_by(Task.order)
+                )
+                result_tasks = await self.session.execute(stmt_tasks)
+                tasks_in_group = result_tasks.scalars().all()
+                if tasks_in_group:
+                    last_task = tasks_in_group[-1]
 
             if mission.status != "failed":
                 mission.status = "completed"
                 run.status = "completed"
+                if last_task is not None:
+                    await _record_self_heal_artifact(
+                        session=self.session,
+                        context=context,
+                        task=last_task,
+                        summary="workflow completed",
+                        success=True,
+                    )
 
         except Exception as e:
             logger.error(f"Mission failed: {e}")
@@ -203,7 +234,7 @@ class SequentialWorkflow(WorkflowEngine):
             await self.session.commit()
 
     async def execute_task(self, task: Task, context: WorkflowContext):
-        """単一タスクを実行し、出力・ステータスを反映する（MVPでは擬似実行）。"""
+        """単一タスクを実行し、出力・ステータスを反映する (MVP では擬似実行)。"""
         logger.info(f"Executing Task {task.id}: {task.title}")
         task.status = "running"
         self.session.add(task)
@@ -235,10 +266,18 @@ class SequentialWorkflow(WorkflowEngine):
             # TODO: Implement actual Agent dispatch.
             # For MVP, we'll just mark completed.
 
-            task.output = {"result": "simulated_success", "timestamp": str(datetime.now())}
+            task.output = {
+                "result": "simulated_success",
+                "timestamp": str(datetime.now()),
+            }
             task.status = "completed"
             context.append_history(
-                {"task_id": str(task.id), "status": task.status, "output": task.output, "run_id": str(context.run_id)}
+                {
+                    "task_id": str(task.id),
+                    "status": task.status,
+                    "output": task.output,
+                    "run_id": str(context.run_id),
+                }
             )
 
         except Exception as e:
@@ -257,13 +296,17 @@ class SelfHealWorkflow(SequentialWorkflow):
         try:
             await super().execute_group(group, context)
         except Exception as e:
-            logger.warning(f"TaskGroup {group.id} failed, attempting self-heal... Error: {e}")
+            logger.warning(
+                f"TaskGroup {group.id} failed, attempting self-heal... Error: {e}"
+            )
 
             # Check if we can heal
             # Simple logic: If a task failed, try to insert a recovery task
 
             # 1. Identify failed task
-            stmt = select(Task).where(Task.group_id == group.id, Task.status == "failed")
+            stmt = select(Task).where(
+                Task.group_id == group.id, Task.status == "failed"
+            )
             result = await self.session.execute(stmt)
             failed_task = result.scalars().first()
 
@@ -276,7 +319,10 @@ class SelfHealWorkflow(SequentialWorkflow):
                     agent_id=failed_task.agent_id,  # Same agent tries to fix
                     title=f"Recovery: {failed_task.title}",
                     status="pending",
-                    input={"error": failed_task.error, "original_input": failed_task.input},
+                    input={
+                        "error": failed_task.error,
+                        "original_input": failed_task.input,
+                    },
                 )
                 self.session.add(recovery_task)
                 await self.session.commit()

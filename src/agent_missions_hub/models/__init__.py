@@ -2,7 +2,16 @@
 
 from __future__ import annotations
 
-from .domain import Artifact, Knowledge, Mission, MissionStatus, Task, TaskGroup, TaskKind, TaskStatus
+from .domain import (
+    Artifact,
+    Knowledge,
+    Mission,
+    MissionStatus,
+    Task,
+    TaskGroup,
+    TaskKind,
+    TaskStatus,
+)
 
 __all__ = [
     "Artifact",

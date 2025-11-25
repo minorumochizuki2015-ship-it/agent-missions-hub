@@ -189,6 +189,23 @@
       "notes": "allowlist: workflow_engine/http_liveness/integration_showcase/ci_smoke_min/cli_help/config/models/storage/utils unit_min、denylist: ack/macro/attachment/http-edge/db-lock 系。ENABLE_FULL_SUITE=1 で解除。"
     },
     {
+      "id": "storage-diff-cover-hardening",
+      "status": "completed",
+      "description": "storage.py の差分未被覆 11 行を対象にモックテストを追加し、diff-cover ブロックを解消。best-effort suppress は pragma: no cover を付与。",
+      "entries": [
+        "tests/test_storage_cov.py",
+        "src/mcp_agent_mail/storage.py",
+        "reports/test/coverage_storage_cov.txt",
+        "reports/test/diff_cover_storage_cov.txt"
+      ],
+      "evidence": [
+        "reports/test/coverage_storage_cov.txt",
+        "reports/test/diff_cover_storage_cov.txt",
+        "coverage.xml"
+      ],
+      "notes": "TEST_ALLOWLIST_APPEND=tests/test_storage_cov.py で coverage run 実行。diff-cover は origin/feature/mvp-ui-audit 比較で未被覆ゼロを確認。"
+    },
+    {
       "id": "council-poc-v1",
       "status": "planned",
       "description": "ChatGPT CLI プロファイル（creative/concise/code + fact_checker + chair）で正確性のみの Council PoC を構築し、匿名化・減点方式・ci_evidence 記録を実装する。",

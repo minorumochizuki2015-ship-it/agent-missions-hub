@@ -1,0 +1,105 @@
+ーーーーーーーーーーーーーーーーーーー
+【監査依頼】
+
+対象：<プロジェクト名>（例：Agent Missions Hub）
+AIモデル：<使用モデル名>（例：GPT-5.1-Codex-Max）
+
+監査AI（AUDIT_rules.yaml）は、以下のルールを厳密に適用して監査・評価・指示作成を実施すること：
+- 監査・テスト方法.md
+- codexcli_git_ops_policy.md
+- AUDIT_rules.yaml（本監査AIの行動規約）
+
+監査の目的：
+1. 要件定義・設計・MVP基準との整合性チェック
+2. 実装の品質保証（Correctness / Security / Performance / Maintainability）
+3. テスト結果の精査
+4. GitOps基準（push/PR可否）の判定
+5. 作業AI（WORK_rules.yaml）に渡す「修正指示プロンプト」の生成
+
+監査AIは、本テンプレートで提示される情報のみを前提に、
+「監査・テスト方法.md」に定義された監査レポート形式に準拠して回答すること。
+
+ーーーーーーーーーーーーーーーーーーー
+【Git情報】
+
+Target Commit: <監査対象コミットSHA>
+Branch: <対象ブランチ名>
+
+ーーーーーーーーーーーーーーーーーーー
+【コンテキスト（任意）】
+
+タスク概要：
+- <Issue/チケット概要やタスク目的を簡潔に記載>
+
+関連ドキュメント：
+- 要件・設計：<docs/...> など（必要に応じて列挙）
+- チェックリスト：multi_agent_terminal_checklist_v2.md 等
+- マイルストン：multi_agent_terminal_milestones_v2.md 等
+- 設計書：agent_missions_hub_design_v2.md 等
+
+※必要な場合のみ記入。不要なら丸ごと削除可。
+
+ーーーーーーーーーーーーーーーーーーー
+【監査結果本文】
+
+<ここに直近の CI ログ／pytest 実行結果／前回監査ログなどをそのまま貼る>
+
+例：
+- CI 失敗ログ
+- pytest コマンドとその出力
+- 既存の監査レポート抜粋 など
+
+ーーーーーーーーーーーーーーーーーーー
+【作業結果】
+
+<ここに実装AI（WORK）または人間が行った「今回の変更内容」を記載する>
+
+推奨構造（例）：
+
+対応内容:
+- <行った対応を箇条書き>
+  - 例：Linux ネイティブ環境で uv sync / pytest 再実行
+  - 例：app.py にスタブ実装追加、router の引数順修正 など
+
+再テスト結果:
+- <実行したコマンドと結果>
+  - 例：ENABLE_FULL_SUITE=1 ... uv run pytest ... → PASSED など
+
+監査指摘への回答:
+- <どの指摘にどう対応したかを簡潔に記載>
+
+更新ファイル:
+- <変更したファイルパスを列挙>
+
+次の推奨ステップ（自己評価）:
+- <MVP 完了に向けて残タスクがあれば列挙>
+
+ーーーーーーーーーーーーーーーーーーー
+【出力要件（監査AIへの指示）】
+
+監査AIは、上記情報をもとに、以下の形式で出力すること：
+
+1. 監査レポート（Summary / Findings / Tests / Notes）
+   - Summary:
+     - Target Commit: <上記 Target Commit を再掲>
+     - Branch: <上記 Branch を再掲>
+     - Status: Block / Proceed with fixes / Proceed のいずれか
+     - Overall: 全体評価を1〜3行で要約
+   - Findings:
+     - Blocking / Major / Minor / Cosmetic に分類して列挙
+       - 各項目に「Detail」「Suggestion」を付与
+
+2. GitOps（codexcli_git_ops_policy.md）に基づく push/PR 可否判定
+   - 現時点での push / PR が許可されるか
+   - 許可／不許可の理由（テスト状況・リスクなど）
+
+3. 作業AI（WORK_rules.yaml）へ渡す「修正指示プロンプト全文」
+   - 修正対象ファイル
+   - 修正方針（どこをどう直すべきか）
+   - テスト戦略（実行すべきコマンド・観点）
+   - MVP 完了までの具体的ステップ（優先度順）
+
+4. 不明点や前提不足があれば、「不明点」として明示しつつ、
+   Status を conservative（Block または Proceed with fixes 寄り）に判定すること。
+
+ーーーーーーーーーーーーーーーーーーー

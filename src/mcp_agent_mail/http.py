@@ -9,6 +9,7 @@ import contextlib
 import importlib
 import json
 import logging
+import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -34,6 +35,7 @@ from .app import (
 )
 from .config import Settings, get_settings
 from .db import ensure_schema, get_session
+from .routers import missions
 from .storage import (
     AsyncFileLock,
     collect_lock_status,
@@ -49,14 +51,15 @@ from .storage import (
     write_agent_profile,
     write_file_reservation_record,
 )
-from .routers import missions
 
 
 async def _project_slug_from_id(pid: int | None) -> str | None:
     if pid is None:
         return None
     async with get_session() as session:
-        row = await session.execute(text("SELECT slug FROM projects WHERE id = :pid"), {"pid": pid})
+        row = await session.execute(
+            text("SELECT slug FROM projects WHERE id = :pid"), {"pid": pid}
+        )
         res = row.fetchone()
         return res[0] if res and res[0] else None
 
@@ -92,13 +95,19 @@ def _configure_logging(settings: Settings) -> None:
     if settings.log_json_enabled:
         processors.append(structlog.processors.JSONRenderer())
     else:
-        processors.append(structlog.processors.KeyValueRenderer(key_order=["event", "path", "status"]))
+        processors.append(
+            structlog.processors.KeyValueRenderer(key_order=["event", "path", "status"])
+        )
     structlog.configure(
         processors=processors,
-        wrapper_class=structlog.make_filtering_bound_logger(getattr(logging, settings.log_level.upper(), logging.INFO)),
+        wrapper_class=structlog.make_filtering_bound_logger(
+            getattr(logging, settings.log_level.upper(), logging.INFO)
+        ),
         cache_logger_on_first_use=True,
     )
-    logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.INFO))
+    logging.basicConfig(
+        level=getattr(logging, settings.log_level.upper(), logging.INFO)
+    )
 
     # Suppress verbose MCP library logging for stateless HTTP sessions
     # "Terminating session: None" is routine for stateless mode and just noise
@@ -122,6 +131,29 @@ def _configure_logging(settings: Settings) -> None:
     _LOGGING_CONFIGURED = True
 
 
+def _is_lightweight_http(settings: Settings) -> bool:
+    """テスト時に重い初期化をバイパスするか判定する。"""
+    flag = os.environ.get("HTTP_LIGHTWEIGHT")
+    if flag is not None:
+        return flag.strip().lower() in {"1", "true", "yes", "on"}
+    return settings.environment == "test" or "PYTEST_CURRENT_TEST" in os.environ
+
+
+def _build_lightweight_http_app(settings: Settings) -> FastAPI:
+    """外部依存を持たない軽量 HTTP アプリを返す。"""
+    fastapi_app = FastAPI(title="mcp_agent_mail_lightweight")
+
+    @fastapi_app.get("/health/liveness")
+    async def liveness() -> JSONResponse:
+        return JSONResponse({"status": "alive", "environment": settings.environment})
+
+    @fastapi_app.get("/health/readiness")
+    async def readiness() -> JSONResponse:
+        return JSONResponse({"status": "ready"})
+
+    return fastapi_app
+
+
 class BearerAuthMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: FastAPI, token: str, allow_localhost: bool = False) -> None:
         super().__init__(app)
@@ -134,15 +166,13 @@ class BearerAuthMiddleware(BaseHTTPMiddleware):
         if request.url.path.startswith("/health/"):
             return await call_next(request)
         # Public well-known endpoints should bypass auth
-        try:
+        with contextlib.suppress(Exception):
             if request.url.path in {
                 "/.well-known/oauth-authorization-server",
                 "/.well-known/oauth-authorization-server/mcp",
                 "/.well-known/jwks.json",
             }:
                 return await call_next(request)
-        except Exception:
-            pass
         # Allow localhost without Authorization when enabled
         try:
             client_host = request.client.host if request.client else ""
@@ -152,7 +182,9 @@ class BearerAuthMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         auth_header = request.headers.get("Authorization", "")
         if auth_header != f"Bearer {self._token}":
-            return JSONResponse({"detail": "Unauthorized"}, status_code=status.HTTP_401_UNAUTHORIZED)
+            return JSONResponse(
+                {"detail": "Unauthorized"}, status_code=status.HTTP_401_UNAUTHORIZED
+            )
         return await call_next(request)
 
     # 軽量ヘルスチェック用の早期応答ミドルウェア (Stateless MCP 経路のタイムアウト回避)
@@ -196,7 +228,9 @@ class SecurityAndRateLimitMiddleware(BaseHTTPMiddleware):
         self._rbac_enabled = bool(getattr(settings.http, "rbac_enabled", True))
         self._reader_roles = set(getattr(settings.http, "rbac_reader_roles", []) or [])
         self._writer_roles = set(getattr(settings.http, "rbac_writer_roles", []) or [])
-        self._readonly_tools = set(getattr(settings.http, "rbac_readonly_tools", []) or [])
+        self._readonly_tools = set(
+            getattr(settings.http, "rbac_readonly_tools", []) or []
+        )
         self._default_role = getattr(settings.http, "rbac_default_role", "tools")
         # Token bucket state (memory)
         from time import monotonic
@@ -205,9 +239,9 @@ class SecurityAndRateLimitMiddleware(BaseHTTPMiddleware):
         self._buckets: dict[str, tuple[float, float]] = {}
         # Redis client (optional)
         self._redis = None
-        if getattr(settings.http, "rate_limit_backend", "memory") == "redis" and getattr(
-            settings.http, "rate_limit_redis_url", ""
-        ):
+        if getattr(
+            settings.http, "rate_limit_backend", "memory"
+        ) == "redis" and getattr(settings.http, "rate_limit_redis_url", ""):
             try:
                 redis_asyncio = importlib.import_module("redis.asyncio")
                 Redis = redis_asyncio.Redis
@@ -257,7 +291,9 @@ class SecurityAndRateLimitMiddleware(BaseHTTPMiddleware):
         return None
 
     @staticmethod
-    def _classify_request(path: str, method: str, body_bytes: bytes) -> tuple[str, str | None]:
+    def _classify_request(
+        path: str, method: str, body_bytes: bytes
+    ) -> tuple[str, str | None]:
         """Return (kind, tool_name) where kind is 'tools'|'resources'|'other'."""
         if method.upper() != "POST":
             return "other", None
@@ -280,11 +316,18 @@ class SecurityAndRateLimitMiddleware(BaseHTTPMiddleware):
     def _rate_limits_for(self, kind: str) -> tuple[int, int]:
         # return (per_minute, burst)
         if kind == "tools":
-            rpm = int(getattr(self.settings.http, "rate_limit_tools_per_minute", 60) or 60)
+            rpm = int(
+                getattr(self.settings.http, "rate_limit_tools_per_minute", 60) or 60
+            )
             burst = int(getattr(self.settings.http, "rate_limit_tools_burst", 0) or 0)
         elif kind == "resources":
-            rpm = int(getattr(self.settings.http, "rate_limit_resources_per_minute", 120) or 120)
-            burst = int(getattr(self.settings.http, "rate_limit_resources_burst", 0) or 0)
+            rpm = int(
+                getattr(self.settings.http, "rate_limit_resources_per_minute", 120)
+                or 120
+            )
+            burst = int(
+                getattr(self.settings.http, "rate_limit_resources_burst", 0) or 0
+            )
         else:
             rpm = int(getattr(self.settings.http, "rate_limit_per_minute", 60) or 60)
             burst = 0
@@ -300,7 +343,7 @@ class SecurityAndRateLimitMiddleware(BaseHTTPMiddleware):
 
         # Redis backend
         if self._redis is not None:
-            try:
+            with contextlib.suppress(Exception):
                 lua = (
                     "local key = KEYS[1]\n"
                     "local now = tonumber(ARGV[1])\n"
@@ -317,11 +360,10 @@ class SecurityAndRateLimitMiddleware(BaseHTTPMiddleware):
                     "redis.call('EXPIRE', key, math.ceil(burst / math.max(rate, 0.001)))\n"
                     "return allowed\n"
                 )
-                allowed = await self._redis.eval(lua, 1, f"rl:{key}", now, rate_per_sec, burst)
+                allowed = await self._redis.eval(
+                    lua, 1, f"rl:{key}", now, rate_per_sec, burst
+                )
                 return bool(int(allowed or 0) == 1)
-            except Exception:
-                # Fallback to memory on Redis failure
-                pass
 
         # In-memory token bucket
         tokens, ts = self._buckets.get(key, (float(burst), now))
@@ -350,23 +392,31 @@ class SecurityAndRateLimitMiddleware(BaseHTTPMiddleware):
             with contextlib.suppress(Exception):
                 body_bytes = await request.body()
 
-        kind, tool_name = self._classify_request(request.url.path, request.method, body_bytes)
+        kind, tool_name = self._classify_request(
+            request.url.path, request.method, body_bytes
+        )
 
         # Debug logging for tools/call
         if kind == "tools" and tool_name:
             import structlog
 
-            structlog.get_logger("http").info("middleware.tool_call_detected", tool=tool_name)
+            structlog.get_logger("http").info(
+                "middleware.tool_call_detected", tool=tool_name
+            )
 
         # JWT auth (if enabled)
         if self._jwt_enabled:
             auth_header = request.headers.get("Authorization", "")
             if not auth_header.startswith("Bearer "):
-                return JSONResponse({"detail": "Unauthorized"}, status_code=status.HTTP_401_UNAUTHORIZED)
+                return JSONResponse(
+                    {"detail": "Unauthorized"}, status_code=status.HTTP_401_UNAUTHORIZED
+                )
             token = auth_header.split(" ", 1)[1].strip()
             claims_dict = await self._decode_jwt(token)
             if claims_dict is None:
-                return JSONResponse({"detail": "Unauthorized"}, status_code=status.HTTP_401_UNAUTHORIZED)
+                return JSONResponse(
+                    {"detail": "Unauthorized"}, status_code=status.HTTP_401_UNAUTHORIZED
+                )
             claims = cast(dict[str, Any], claims_dict)
             request.state.jwt_claims = claims
             roles_raw = claims.get(self.settings.http.jwt_role_claim, [])
@@ -385,7 +435,9 @@ class SecurityAndRateLimitMiddleware(BaseHTTPMiddleware):
                 client_host = request.client.host if request.client else ""
             except Exception:
                 client_host = ""
-            if bool(getattr(self.settings.http, "allow_localhost_unauthenticated", False)) and client_host in {
+            if bool(
+                getattr(self.settings.http, "allow_localhost_unauthenticated", False)
+            ) and client_host in {
                 "127.0.0.1",
                 "::1",
                 "localhost",
@@ -397,7 +449,9 @@ class SecurityAndRateLimitMiddleware(BaseHTTPMiddleware):
             client_host = request.client.host if request.client else ""
         except Exception:
             client_host = ""
-        is_local_ok = bool(getattr(self.settings.http, "allow_localhost_unauthenticated", False)) and client_host in {
+        is_local_ok = bool(
+            getattr(self.settings.http, "allow_localhost_unauthenticated", False)
+        ) and client_host in {
             "127.0.0.1",
             "::1",
             "localhost",
@@ -411,17 +465,28 @@ class SecurityAndRateLimitMiddleware(BaseHTTPMiddleware):
                 if not tool_name:
                     # Without name, assume write-required to be safe
                     if not is_writer:
-                        return JSONResponse({"detail": "Forbidden"}, status_code=status.HTTP_403_FORBIDDEN)
+                        return JSONResponse(
+                            {"detail": "Forbidden"},
+                            status_code=status.HTTP_403_FORBIDDEN,
+                        )
                 else:
                     if tool_name in self._readonly_tools:
                         if not is_reader and not is_writer:
-                            return JSONResponse({"detail": "Forbidden"}, status_code=status.HTTP_403_FORBIDDEN)
+                            return JSONResponse(
+                                {"detail": "Forbidden"},
+                                status_code=status.HTTP_403_FORBIDDEN,
+                            )
                     else:
                         if not is_writer:
-                            return JSONResponse({"detail": "Forbidden"}, status_code=status.HTTP_403_FORBIDDEN)
+                            return JSONResponse(
+                                {"detail": "Forbidden"},
+                                status_code=status.HTTP_403_FORBIDDEN,
+                            )
 
         # Rate limiting
-        if self.settings.http.rate_limit_enabled and not (kind == "tools" and tool_name == "ensure_project"):
+        if self.settings.http.rate_limit_enabled and not (
+            kind == "tools" and tool_name == "ensure_project"
+        ):
             rpm, burst = self._rate_limits_for(kind)
             identity = request.client.host if request.client else "ip-unknown"
             # Prefer stable subject from JWT if present
@@ -438,14 +503,16 @@ class SecurityAndRateLimitMiddleware(BaseHTTPMiddleware):
                 allowed = await self._consume_bucket(key, rpm, burst)
                 if not allowed:
                     return JSONResponse(
-                        {"detail": "Rate limit exceeded"}, status_code=status.HTTP_429_TOO_MANY_REQUESTS
+                        {"detail": "Rate limit exceeded"},
+                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                     )
             else:
                 key = f"{kind}:{endpoint}:{identity}"
                 allowed = await self._consume_bucket(key, rpm, burst)
                 if not allowed:
                     return JSONResponse(
-                        {"detail": "Rate limit exceeded"}, status_code=status.HTTP_429_TOO_MANY_REQUESTS
+                        {"detail": "Rate limit exceeded"},
+                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                     )
 
         return await call_next(request)
@@ -488,33 +555,40 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 try:
                     await ensure_schema()
                     async with get_session() as session:
-                        rows = await session.execute(text("SELECT DISTINCT project_id FROM file_reservations"))
+                        rows = await session.execute(
+                            text("SELECT DISTINCT project_id FROM file_reservations")
+                        )
                         pids = [r[0] for r in rows.fetchall() if r[0] is not None]
                     for pid in pids:
                         with contextlib.suppress(Exception):
                             await _expire_stale_file_reservations(pid)
-                    try:
+                    with contextlib.suppress(Exception):
                         rich_console = importlib.import_module("rich.console")
                         rich_panel = importlib.import_module("rich.panel")
                         Console = rich_console.Console
                         Panel = rich_panel.Panel
                         Console().print(
                             Panel.fit(
-                                f"projects_scanned={len(pids)}", title="File Reservations Cleanup", border_style="cyan"
+                                f"projects_scanned={len(pids)}",
+                                title="File Reservations Cleanup",
+                                border_style="cyan",
                             )
                         )
-                    except Exception:
-                        pass
                     with contextlib.suppress(Exception):
-                        structlog.get_logger("tasks").info("file_reservations_cleanup", projects_scanned=len(pids))
-                except Exception:
-                    pass
+                        structlog.get_logger("tasks").info(
+                            "file_reservations_cleanup", projects_scanned=len(pids)
+                        )
+                except Exception as exc:
+                    structlog.get_logger("tasks").warning(
+                        "file_reservations_cleanup_failed", error=str(exc)
+                    )
                 await asyncio.sleep(settings.file_reservations_cleanup_interval_seconds)
 
         async def _worker_ack_ttl() -> None:
             import datetime as _dt
 
             while True:
+                log = structlog.get_logger("ack.ttl")
                 try:
                     await ensure_schema()
                     async with get_session() as session:
@@ -533,7 +607,10 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     for mid, project_id, created_ts, agent_id in rows:
                         # Normalize to timezone-aware UTC before arithmetic; SQLite may yield naive datetimes
                         ts = created_ts
-                        if getattr(ts, "tzinfo", None) is None or ts.tzinfo.utcoffset(ts) is None:
+                        if (
+                            getattr(ts, "tzinfo", None) is None
+                            or ts.tzinfo.utcoffset(ts) is None
+                        ):
                             ts = ts.replace(tzinfo=_dt.timezone.utc)
                         else:
                             ts = ts.astimezone(_dt.timezone.utc)
@@ -563,7 +640,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                                     ("ttl_s: ", "cyan"),
                                     (str(settings.ack_ttl_seconds), "white"),
                                 )
-                                con.print(Panel(body, title="ACK Overdue", border_style="red"))
+                                con.print(
+                                    Panel(body, title="ACK Overdue", border_style="red")
+                                )
                             except Exception:
                                 print(
                                     f"ack-warning message_id={mid} project_id={project_id} agent_id={agent_id} age_s={int(age)} ttl_s={settings.ack_ttl_seconds}"
@@ -586,10 +665,17 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                                         # Resolve recipient name
                                         async with get_session() as s_lookup:
                                             name_row = await s_lookup.execute(
-                                                text("SELECT name FROM agents WHERE id = :aid"), {"aid": agent_id}
+                                                text(
+                                                    "SELECT name FROM agents WHERE id = :aid"
+                                                ),
+                                                {"aid": agent_id},
                                             )
                                             name_res = name_row.fetchone()
-                                        recipient_name = name_res[0] if name_res and name_res[0] else "*"
+                                        recipient_name = (
+                                            name_res[0]
+                                            if name_res and name_res[0]
+                                            else "*"
+                                        )
                                         pattern = (
                                             f"agents/{recipient_name}/inbox/{y_dir}/{m_dir}/*.md"
                                             if recipient_name != "*"
@@ -640,9 +726,17 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                                                         holder_agent_id = hid2
                                                         # Write profile.json to archive
                                                         archive = await ensure_archive(
-                                                            settings, (await _project_slug_from_id(project_id)) or ""
+                                                            settings,
+                                                            (
+                                                                await _project_slug_from_id(
+                                                                    project_id
+                                                                )
+                                                            )
+                                                            or "",
                                                         )
-                                                        async with AsyncFileLock(archive.lock_path):
+                                                        async with AsyncFileLock(
+                                                            archive.lock_path
+                                                        ):
                                                             await write_agent_profile(
                                                                 archive,
                                                                 {
@@ -651,7 +745,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                                                                     "program": "ops",
                                                                     "model": "system",
                                                                     "project_slug": (
-                                                                        await _project_slug_from_id(project_id)
+                                                                        await _project_slug_from_id(
+                                                                            project_id
+                                                                        )
                                                                     )
                                                                     or "",
                                                                     "inception_ts": now.astimezone().isoformat(),
@@ -671,17 +767,27 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                                                     "pid": project_id,
                                                     "holder": holder_agent_id,
                                                     "pattern": pattern,
-                                                    "exclusive": 1 if settings.ack_escalation_claim_exclusive else 0,
+                                                    "exclusive": (
+                                                        1
+                                                        if settings.ack_escalation_claim_exclusive
+                                                        else 0
+                                                    ),
                                                     "reason": "ack-overdue",
                                                     "cts": now,
                                                     "ets": now
-                                                    + _dt.timedelta(seconds=settings.ack_escalation_claim_ttl_seconds),
+                                                    + _dt.timedelta(
+                                                        seconds=settings.ack_escalation_claim_ttl_seconds
+                                                    ),
                                                 },
                                             )
                                             await s2.commit()
                                         # Also write JSON artifact to archive
-                                        project_slug = (await _project_slug_from_id(project_id)) or ""
-                                        archive = await ensure_archive(settings, project_slug)
+                                        project_slug = (
+                                            await _project_slug_from_id(project_id)
+                                        ) or ""
+                                        archive = await ensure_archive(
+                                            settings, project_slug
+                                        )
                                         expires_at = now + _dt.timedelta(
                                             seconds=settings.ack_escalation_claim_ttl_seconds
                                         )
@@ -690,7 +796,8 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                                                 archive,
                                                 {
                                                     "project": project_slug,
-                                                    "agent": settings.ack_escalation_claim_holder_name or "ops",
+                                                    "agent": settings.ack_escalation_claim_holder_name
+                                                    or "ops",
                                                     "path_pattern": pattern,
                                                     "exclusive": settings.ack_escalation_claim_exclusive,
                                                     "reason": "ack-overdue",
@@ -698,10 +805,10 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                                                     "expires_ts": expires_at.astimezone().isoformat(),
                                                 },
                                             )
-                                    except Exception:
-                                        pass
-                except Exception:
-                    pass
+                                    except Exception as exc:
+                                        log.warning("ack_escalation_record_failed", error=str(exc))
+                except Exception as exc:
+                    log.warning("ack_ttl_scan_failed", error=str(exc))
                 await asyncio.sleep(settings.ack_ttl_scan_interval_seconds)
 
         async def _worker_tool_metrics() -> None:
@@ -711,8 +818,8 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     snapshot = _tool_metrics_snapshot()
                     if snapshot:
                         log.info("tool_metrics_snapshot", tools=snapshot)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    log.warning("tool_metrics_snapshot_failed", error=str(exc))
                 await asyncio.sleep(max(5, settings.tool_metrics_emit_interval_seconds))
 
         async def _worker_retention_quota() -> None:
@@ -734,13 +841,19 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     # Compile ignore patterns once per loop
                     import fnmatch as _fnmatch
 
-                    ignore_patterns = list(getattr(settings, "retention_ignore_project_patterns", []) or [])
-                    for proj_dir in storage_root.iterdir() if storage_root.exists() else []:
+                    ignore_patterns = list(
+                        getattr(settings, "retention_ignore_project_patterns", []) or []
+                    )
+                    for proj_dir in (
+                        storage_root.iterdir() if storage_root.exists() else []
+                    ):
                         if not proj_dir.is_dir():
                             continue
                         proj_name = proj_dir.name
                         # Skip test/demo projects in real server runs
-                        if any(_fnmatch.fnmatch(proj_name, pat) for pat in ignore_patterns):
+                        if any(
+                            _fnmatch.fnmatch(proj_name, pat) for pat in ignore_patterns
+                        ):
                             continue
                         msg_root = proj_dir / "messages"
                         if msg_root.exists():
@@ -749,7 +862,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                                     for f in mdir.iterdir() if mdir.is_dir() else []:
                                         if f.suffix.lower() == ".md":
                                             with _suppress(Exception):
-                                                ts = _dt.datetime.fromtimestamp(f.stat().st_mtime, _dt.timezone.utc)
+                                                ts = _dt.datetime.fromtimestamp(
+                                                    f.stat().st_mtime, _dt.timezone.utc
+                                                )
                                                 if ts < cutoff:
                                                     old_messages += 1
                         # Count per-agent inbox files (agents/*/inbox/YYYY/MM/*.md)
@@ -767,7 +882,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                                 with _suppress(Exception):
                                     sz = sub.stat().st_size
                                     total_attach_bytes += sz
-                                    per_project_attach[proj_name] = per_project_attach.get(proj_name, 0) + sz
+                                    per_project_attach[proj_name] = (
+                                        per_project_attach.get(proj_name, 0) + sz
+                                    )
                     structlog.get_logger("maintenance").info(
                         "retention_quota_report",
                         old_messages=old_messages,
@@ -784,13 +901,19 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                         for proj, used in per_project_attach.items():
                             if used >= limit_b:
                                 structlog.get_logger("maintenance").warning(
-                                    "quota_attachments_exceeded", project=proj, used_bytes=used, limit_bytes=limit_b
+                                    "quota_attachments_exceeded",
+                                    project=proj,
+                                    used_bytes=used,
+                                    limit_bytes=limit_b,
                                 )
                     if inbox_limit > 0:
                         for proj, cnt in per_project_inbox_counts.items():
                             if cnt >= inbox_limit:
                                 structlog.get_logger("maintenance").warning(
-                                    "quota_inbox_exceeded", project=proj, inbox_count=cnt, limit=inbox_limit
+                                    "quota_inbox_exceeded",
+                                    project=proj,
+                                    inbox_count=cnt,
+                                    limit=inbox_limit,
                                 )
                 await asyncio.sleep(max(60, settings.retention_report_interval_seconds))
 
@@ -828,18 +951,20 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
     # Now construct FastAPI with the composed lifespan so ASGI transports run it
     fastapi_app = FastAPI(lifespan=lifespan_context)
 
-    try:
+    with contextlib.suppress(Exception):
         static_root = Path(__file__).resolve().parent / "static"
-        fastapi_app.mount("/static", StaticFiles(directory=str(static_root)), name="static")
-    except Exception:
-        pass
+        fastapi_app.mount(
+            "/static", StaticFiles(directory=str(static_root)), name="static"
+        )
 
     # Simple request logging (configurable)
     if settings.http.request_log_enabled:
         import time as _time
 
         class RequestLoggingMiddleware(BaseHTTPMiddleware):
-            async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
+            async def dispatch(
+                self, request: Request, call_next: RequestResponseEndpoint
+            ):
                 start = _time.time()
                 response = await call_next(request)
                 dur_ms = int((_time.time() - start) * 1000)
@@ -869,7 +994,10 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                         ("  "),
                         (path, "bold white"),
                         ("  "),
-                        (f"{status_code}", "bold green" if 200 <= status_code < 400 else "bold red"),
+                        (
+                            f"{status_code}",
+                            "bold green" if 200 <= status_code < 400 else "bold red",
+                        ),
                         ("  "),
                         (f"{dur_ms}ms", "bold yellow"),
                     )
@@ -879,7 +1007,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     )
                     console.print(Panel(body, title=title, border_style="dim"))
                 except Exception:
-                    print(f"http method={method} path={path} status={status_code} ms={dur_ms} client={client}")
+                    print(
+                        f"http method={method} path={path} status={status_code} ms={dur_ms} client={client}"
+                    )
                 return response
 
         fastapi_app.add_middleware(RequestLoggingMiddleware)
@@ -890,7 +1020,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
         fastapi_app.add_middleware(
             BearerAuthMiddleware,
             token=settings.http.bearer_token,
-            allow_localhost=bool(getattr(settings.http, "allow_localhost_unauthenticated", False)),
+            allow_localhost=bool(
+                getattr(settings.http, "allow_localhost_unauthenticated", False)
+            ),
         )
     # Stateless MCP のベースパスに対するヘルスチェック早期応答 (テスト安定化)
     with contextlib.suppress(Exception):
@@ -934,12 +1066,18 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 rich_panel = importlib.import_module("rich.panel")
                 Console = rich_console.Console
                 Panel = rich_panel.Panel
-                Console().print(Panel.fit(str(exc), title="Readiness Error", border_style="red"))
+                Console().print(
+                    Panel.fit(str(exc), title="Readiness Error", border_style="red")
+                )
             except Exception:
-                pass
+                structlog.get_logger("health").warning(
+                    "readiness_error_rich_failed", error=str(exc)
+                )
             with contextlib.suppress(Exception):
                 structlog.get_logger("health").error("readiness_error", error=str(exc))
-            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+            ) from exc
         return JSONResponse({"status": "ready"})
 
     # Minimal Prometheus-style metrics endpoint (JSON snapshot for CI/tests)
@@ -954,7 +1092,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
         except Exception as exc:
             with contextlib.suppress(Exception):
                 structlog.get_logger("metrics").error("metrics_error", error=str(exc))
-            return JSONResponse({"detail": str(exc)}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return JSONResponse(
+                {"detail": str(exc)}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     # Well-known OAuth metadata endpoints (some clients probe these); return harmless JSON
     @fastapi_app.get("/.well-known/oauth-authorization-server")
@@ -994,7 +1134,11 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             from bleach.css_sanitizer import CSSSanitizer  # type: ignore
         except Exception:  # tinycss2 may be missing; degrade gracefully
             CSSSanitizer = None  # type: ignore
-        from jinja2 import Environment, FileSystemLoader, select_autoescape  # type: ignore
+        from jinja2 import (  # type: ignore
+            Environment,
+            FileSystemLoader,
+            select_autoescape,
+        )
 
         templates_root = Path(__file__).resolve().parent / "templates"
         env = Environment(
@@ -1005,7 +1149,13 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
         # HTML sanitizer (allow safe images and limited CSS)
         _css_sanitizer = (
             CSSSanitizer(
-                allowed_css_properties=["color", "background-color", "text-align", "text-decoration", "font-weight"]
+                allowed_css_properties=[
+                    "color",
+                    "background-color",
+                    "text-align",
+                    "text-decoration",
+                    "font-weight",
+                ]
             )
             if CSSSanitizer
             else None
@@ -1055,7 +1205,16 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 "table": ["class", "style"],
                 "td": ["class", "style"],
                 "th": ["class", "style"],
-                "img": ["src", "alt", "title", "width", "height", "loading", "decoding", "class"],
+                "img": [
+                    "src",
+                    "alt",
+                    "title",
+                    "width",
+                    "height",
+                    "loading",
+                    "decoding",
+                    "class",
+                ],
             },
             protocols=["http", "https", "mailto", "data"],
             strip=True,
@@ -1076,7 +1235,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             raw = (raw or "").strip()
             if not raw:
                 return "", "", "both", []
-            scope_pref = scope_preference if scope_preference in {"subject", "body"} else "both"
+            scope_pref = (
+                scope_preference if scope_preference in {"subject", "body"} else "both"
+            )
             # tokens: key:"phrase" | "phrase" | key:word | word
             parts = re.findall(r"\w+:\"[^\"]+\"|\"[^\"]+\"|\w+:[^\s]+|[^\s]+", raw)
             exprs: list[str] = []
@@ -1093,7 +1254,11 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 if ":" in p and not p.startswith('"'):
                     key, val = p.split(":", 1)
                 val = val.strip()
-                val_inner = val[1:-1] if val.startswith('"') and val.endswith('"') and len(val) >= 2 else val
+                val_inner = (
+                    val[1:-1]
+                    if val.startswith('"') and val.endswith('"') and len(val) >= 2
+                    else val
+                )
                 like_terms.append(val_inner)
                 if key in {"subject", "body"}:
                     exprs.append(f"{key}:{_quote(val_inner)}")
@@ -1106,7 +1271,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                         exprs.append(f"body:{_quote(val_inner)}")
                         tokens.append({"field": "body", "value": val_inner})
                     else:
-                        exprs.append(f"(subject:{_quote(val_inner)} OR body:{_quote(val_inner)})")
+                        exprs.append(
+                            f"(subject:{_quote(val_inner)} OR body:{_quote(val_inner)})"
+                        )
                         tokens.append({"field": "both", "value": val_inner})
             fts = " AND ".join(exprs) if exprs else ""
             like_pat = "%" + "%".join(like_terms) + "%" if like_terms else ""
@@ -1120,7 +1287,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             payload = collect_lock_status(settings_local)
             return JSONResponse(payload)
 
-        async def _build_unified_inbox_payload(*, limit: int = 500, include_projects: bool = True) -> dict[str, Any]:
+        async def _build_unified_inbox_payload(
+            *, limit: int = 500, include_projects: bool = True
+        ) -> dict[str, Any]:
             """Fetch unified inbox data for HTML and JSON consumers."""
 
             safe_limit = max(1, min(int(limit), 1000))
@@ -1174,13 +1343,21 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
 
                     for r in rows.fetchall():
                         body = r[2] or ""
-                        excerpt = body[:150].replace("#", "").replace("*", "").replace("`", "").strip()
+                        excerpt = (
+                            body[:150]
+                            .replace("#", "")
+                            .replace("*", "")
+                            .replace("`", "")
+                            .strip()
+                        )
                         if len(body) > 150:
                             excerpt += "..."
 
                         created_ts = r[3]
                         if isinstance(created_ts, str):
-                            created_dt = datetime.fromisoformat(created_ts.replace("Z", "+00:00"))
+                            created_dt = datetime.fromisoformat(
+                                created_ts.replace("Z", "+00:00")
+                            )
                         else:
                             created_dt = created_ts
 
@@ -1214,7 +1391,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                                 "body_md": r[2] or "",
                                 "excerpt": excerpt,
                                 "created_ts": str(r[3]),
-                                "created_full": created_dt.strftime("%B %d, %Y at %I:%M %p"),
+                                "created_full": created_dt.strftime(
+                                    "%B %d, %Y at %I:%M %p"
+                                ),
                                 "created_relative": created_relative,
                                 "importance": r[4] or "normal",
                                 "thread_id": r[5],
@@ -1222,7 +1401,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                                 "project_slug": r[7],
                                 "project_name": r[8],
                                 "recipients": ", ".join(
-                                    part.strip() for part in (r[9] or "").split(",") if part.strip()
+                                    part.strip()
+                                    for part in (r[9] or "").split(",")
+                                    if part.strip()
                                 ),
                                 "read": False,
                             }
@@ -1230,11 +1411,15 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
 
                     if include_projects:
                         rows = await session.execute(
-                            text("SELECT id, slug, human_key, created_at FROM projects ORDER BY created_at DESC")
+                            text(
+                                "SELECT id, slug, human_key, created_at FROM projects ORDER BY created_at DESC"
+                            )
                         )
                         for r in rows.fetchall():
                             project_id = int(r[0])
-                            siblings = sibling_map.get(project_id, {"confirmed": [], "suggested": []})
+                            siblings = sibling_map.get(
+                                project_id, {"confirmed": [], "suggested": []}
+                            )
                             projects.append(
                                 {
                                     "id": project_id,
@@ -1247,12 +1432,18 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                             )
 
             except Exception as exc:  # pragma: no cover - defensive logging
-                logging.error("Error fetching unified inbox data", exc_info=True, extra={"error": str(exc)})
+                logging.error(
+                    "Error fetching unified inbox data",
+                    exc_info=True,
+                    extra={"error": str(exc)},
+                )
 
             return {"messages": messages, "projects": projects}
 
         @fastapi_app.get("/mail", response_class=HTMLResponse)
-        async def mail_unified_inbox(request: Request, lang: str | None = None) -> HTMLResponse:
+        async def mail_unified_inbox(
+            request: Request, lang: str | None = None
+        ) -> HTMLResponse:
             """Unified inbox showing ALL messages across ALL projects (Gmail-style) + Projects below"""
 
             payload = await _build_unified_inbox_payload()
@@ -1308,7 +1499,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
         ) -> JSONResponse:
             """JSON feed for the unified inbox view (used for background refresh)."""
 
-            payload = await _build_unified_inbox_payload(limit=limit, include_projects=include_projects)
+            payload = await _build_unified_inbox_payload(
+                limit=limit, include_projects=include_projects
+            )
             if not include_projects:
                 # Reduce payload size when polling for message updates only
                 payload["projects"] = []
@@ -1322,12 +1515,16 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             sibling_map = await get_project_sibling_data()
             async with get_session() as session:
                 rows = await session.execute(
-                    text("SELECT id, slug, human_key, created_at FROM projects ORDER BY created_at DESC")
+                    text(
+                        "SELECT id, slug, human_key, created_at FROM projects ORDER BY created_at DESC"
+                    )
                 )
                 projects = []
                 for r in rows.fetchall():
                     project_id = int(r[0])
-                    siblings = sibling_map.get(project_id, {"confirmed": [], "suggested": []})
+                    siblings = sibling_map.get(
+                        project_id, {"confirmed": [], "suggested": []}
+                    )
                     projects.append(
                         {
                             "id": project_id,
@@ -1340,7 +1537,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     )
             return await _render("mail_index.html", projects=projects)
 
-        @fastapi_app.get("/mail/{project}", response_class=HTMLResponse, response_model=None)
+        @fastapi_app.get(
+            "/mail/{project}", response_class=HTMLResponse, response_model=None
+        )
         async def mail_project(
             project: str,
             request: Request,
@@ -1353,7 +1552,10 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             await ensure_schema()
             async with get_session() as session:
                 proj = await session.execute(
-                    text("SELECT id, slug, human_key FROM projects WHERE slug = :k OR human_key = :k"), {"k": project}
+                    text(
+                        "SELECT id, slug, human_key FROM projects WHERE slug = :k OR human_key = :k"
+                    ),
+                    {"k": project},
                 )
                 prow = proj.fetchone()
                 if not prow:
@@ -1396,7 +1598,7 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     # Prefer FTS5 when available (fts_messages maintained by triggers)
                     fts_expr, like_pat, like_scope, tokens = _parse_fts_query(q, scope)
                     weights = (0.0, 3.0, 1.0) if (boost or 0) else (0.0, 1.0, 1.0)
-                    fts_sql = (
+                    fts_sql = (  # nosec B608 - query assembled from fixed clauses and bound params
                         "SELECT m.id, m.subject, s.name, m.created_ts, m.importance, m.thread_id, "
                         "snippet(fts_messages, 2, '<mark>', '</mark>', '…', 18) AS body_snippet, "
                         "(length(snippet(fts_messages, 2, '<mark>', '</mark>', '…', 18)) - length(replace(snippet(fts_messages, 2, '<mark>', '</mark>', '…', 18), '<mark>', ''))) / 6 AS hits "
@@ -1410,7 +1612,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                         + "LIMIT 50"
                     )
                     try:
-                        search = await session.execute(text(fts_sql), {"pid": pid, "q": fts_expr or q})
+                        search = await session.execute(
+                            text(fts_sql), {"pid": pid, "q": fts_expr or q}
+                        )
                         matched_messages = [
                             {
                                 "id": r[0],
@@ -1432,7 +1636,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                             like_sql = "SELECT m.id, m.subject, s.name, m.created_ts, m.importance, m.thread_id FROM messages m JOIN agents s ON s.id = m.sender_id WHERE m.project_id = :pid AND m.body_md LIKE :pat ORDER BY m.created_ts DESC LIMIT 50"
                         else:
                             like_sql = "SELECT m.id, m.subject, s.name, m.created_ts, m.importance, m.thread_id FROM messages m JOIN agents s ON s.id = m.sender_id WHERE m.project_id = :pid AND (m.subject LIKE :pat OR m.body_md LIKE :pat) ORDER BY m.created_ts DESC LIMIT 50"
-                        search = await session.execute(text(like_sql), {"pid": pid, "pat": like_pat or f"%{q}%"})
+                        search = await session.execute(
+                            text(like_sql), {"pid": pid, "pat": like_pat or f"%{q}%"}
+                        )
                         matched_messages = [
                             {
                                 "id": r[0],
@@ -1446,7 +1652,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                             }
                             for r in search.fetchall()
                         ]
-            lang_sel = (lang or (request.query_params.get("lang") if request else None) or "en").lower()
+            lang_sel = (
+                lang or (request.query_params.get("lang") if request else None) or "en"
+            ).lower()
             return await _render(
                 "mail_project.html",
                 project={"id": pid, "slug": prow[1], "human_key": prow[2]},
@@ -1460,15 +1668,22 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 lang=lang_sel,
             )
 
-        @fastapi_app.post("/api/projects/{project_id}/siblings/{other_id}", response_class=JSONResponse)
-        async def update_project_sibling(project_id: int, other_id: int, request: Request) -> JSONResponse:
+        @fastapi_app.post(
+            "/api/projects/{project_id}/siblings/{other_id}",
+            response_class=JSONResponse,
+        )
+        async def update_project_sibling(
+            project_id: int, other_id: int, request: Request
+        ) -> JSONResponse:
             try:
                 payload = await request.json()
             except Exception:
                 payload = {}
             action = str(payload.get("action", "")).lower()
             if action not in {"confirm", "dismiss", "reset"}:
-                return JSONResponse({"error": "Invalid action"}, status_code=status.HTTP_400_BAD_REQUEST)
+                return JSONResponse(
+                    {"error": "Invalid action"}, status_code=status.HTTP_400_BAD_REQUEST
+                )
 
             target_status = {
                 "confirm": "confirmed",
@@ -1477,11 +1692,18 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             }[action]
 
             try:
-                suggestion = await update_project_sibling_status(project_id, other_id, target_status)
+                suggestion = await update_project_sibling_status(
+                    project_id, other_id, target_status
+                )
             except ValueError as exc:
-                return JSONResponse({"error": str(exc)}, status_code=status.HTTP_400_BAD_REQUEST)
+                return JSONResponse(
+                    {"error": str(exc)}, status_code=status.HTTP_400_BAD_REQUEST
+                )
             except NoResultFound:
-                return JSONResponse({"error": "Project pair not found"}, status_code=status.HTTP_404_NOT_FOUND)
+                return JSONResponse(
+                    {"error": "Project pair not found"},
+                    status_code=status.HTTP_404_NOT_FOUND,
+                )
             except Exception as exc:
                 structlog.get_logger("sibling").exception(
                     "project_sibling.update_failed",
@@ -1491,14 +1713,20 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     error=str(exc),
                 )
                 return JSONResponse(
-                    {"error": "Unable to update sibling status"}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    {"error": "Unable to update sibling status"},
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
 
-            return JSONResponse({"status": suggestion["status"], "suggestion": suggestion})
+            return JSONResponse(
+                {"status": suggestion["status"], "suggestion": suggestion}
+            )
 
         @fastapi_app.get("/mail/unified-inbox", response_class=HTMLResponse)
         async def unified_inbox(
-            request: Request, limit: int = 100, filter_importance: str | None = None, lang: str | None = None
+            request: Request,
+            limit: int = 100,
+            filter_importance: str | None = None,
+            lang: str | None = None,
         ) -> HTMLResponse:
             """Unified inbox showing messages from all active agents across all projects."""
             with contextlib.suppress(Exception):
@@ -1563,13 +1791,20 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 importance_conditions = []
                 query_params = {"lim": limit}
 
-                if filter_importance and filter_importance.lower() in ["urgent", "high"]:
+                if filter_importance and filter_importance.lower() in [
+                    "urgent",
+                    "high",
+                ]:
                     importance_conditions.append("m.importance IN ('urgent', 'high')")
 
-                where_clause = "WHERE " + " AND ".join(importance_conditions) if importance_conditions else "WHERE 1=1"
+                where_clause = (
+                    "WHERE " + " AND ".join(importance_conditions)
+                    if importance_conditions
+                    else "WHERE 1=1"
+                )
 
                 messages_query = await session.execute(
-                    text(
+                    text(  # nosec B608 - where_clause built from validated filters
                         f"""
                     SELECT
                         m.id, m.subject, m.body_md, m.created_ts, m.importance, m.thread_id,
@@ -1640,12 +1875,16 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             )
 
         @fastapi_app.get("/mail/{project}/inbox/{agent}", response_class=HTMLResponse)
-        async def mail_inbox(project: str, agent: str, limit: int = 50, page: int = 1) -> HTMLResponse:
+        async def mail_inbox(
+            project: str, agent: str, limit: int = 50, page: int = 1
+        ) -> HTMLResponse:
             await ensure_schema()
             async with get_session() as session:
                 prow = (
                     await session.execute(
-                        text("SELECT id, slug, human_key FROM projects WHERE slug = :k OR human_key = :k"),
+                        text(
+                            "SELECT id, slug, human_key FROM projects WHERE slug = :k OR human_key = :k"
+                        ),
                         {"k": project},
                     )
                 ).fetchone()
@@ -1654,7 +1893,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 pid = int(prow[0])
                 arow = (
                     await session.execute(
-                        text("SELECT id, name FROM agents WHERE project_id = :pid AND lower(name) = lower(:name)"),
+                        text(
+                            "SELECT id, name FROM agents WHERE project_id = :pid AND lower(name) = lower(:name)"
+                        ),
                         {"pid": pid, "name": agent},
                     )
                 ).fetchone()
@@ -1704,7 +1945,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             async with get_session() as session:
                 prow = (
                     await session.execute(
-                        text("SELECT id, slug, human_key FROM projects WHERE slug = :k OR human_key = :k"),
+                        text(
+                            "SELECT id, slug, human_key FROM projects WHERE slug = :k OR human_key = :k"
+                        ),
                         {"k": project},
                     )
                 ).fetchone()
@@ -1739,12 +1982,20 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                         {"pid": pid, "th": th, "id": mid},
                     )
                     thread_items = [
-                        {"id": rr[0], "subject": rr[1], "from": rr[2], "created": str(rr[3])}
+                        {
+                            "id": rr[0],
+                            "subject": rr[1],
+                            "from": rr[2],
+                            "created": str(rr[3]),
+                        }
                         for rr in th_rows.fetchall()
                     ]
             # Convert markdown body to HTML for display (server-side render)
             body_html = (
-                markdown2.markdown(mrow[2] or "", extras=["fenced-code-blocks", "tables", "strike", "cuddled-lists"])
+                markdown2.markdown(
+                    mrow[2] or "",
+                    extras=["fenced-code-blocks", "tables", "strike", "cuddled-lists"],
+                )
                 if mrow[2]
                 else ""
             )
@@ -1757,8 +2008,10 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 settings = get_settings()
                 archive = await ensure_archive(settings, prow[1])
                 commit_sha = await get_message_commit_sha(archive, mid)
-            except Exception:
-                pass  # Commit SHA is optional
+            except Exception as exc:
+                structlog.get_logger("mail.render").info(
+                    "commit_sha_unavailable", error=str(exc)
+                )  # commit SHA is optional
 
             return await _render(
                 "mail_message.html",
@@ -1779,7 +2032,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             )
 
         @fastapi_app.post("/mail/{project}/inbox/{agent}/mark-read")
-        async def mark_selected_messages_read(project: str, agent: str, request: Request) -> JSONResponse:
+        async def mark_selected_messages_read(
+            project: str, agent: str, request: Request
+        ) -> JSONResponse:
             """Mark specific messages as read for an agent."""
             await ensure_schema()
 
@@ -1789,7 +2044,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 message_ids: list[int] = request_body.get("message_ids", [])
 
                 if not message_ids:
-                    raise HTTPException(status_code=400, detail="No message IDs provided")
+                    raise HTTPException(
+                        status_code=400, detail="No message IDs provided"
+                    )
 
                 # Limit to prevent SQL parameter overflow (SQLite default limit is 999)
                 # Also prevents abuse - if someone wants to mark 1000+ messages, use "mark all"
@@ -1803,7 +2060,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     # Get project
                     prow = (
                         await session.execute(
-                            text("SELECT id, slug FROM projects WHERE slug = :k OR human_key = :k"),
+                            text(
+                                "SELECT id, slug FROM projects WHERE slug = :k OR human_key = :k"
+                            ),
                             {"k": project},
                         )
                     ).fetchone()
@@ -1815,7 +2074,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     # Get agent
                     arow = (
                         await session.execute(
-                            text("SELECT id FROM agents WHERE project_id = :pid AND name = :name"),
+                            text(
+                                "SELECT id FROM agents WHERE project_id = :pid AND name = :name"
+                            ),
                             {"pid": pid, "name": agent},
                         )
                     ).fetchone()
@@ -1828,12 +2089,14 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     now = datetime.now(timezone.utc)
 
                     # Use IN clause with parameter binding
-                    placeholders = ",".join([f":mid{i}" for i in range(len(message_ids))])
+                    placeholders = ",".join(
+                        [f":mid{i}" for i in range(len(message_ids))]
+                    )
                     params = {"aid": aid, "now": now}
                     params.update({f"mid{i}": mid for i, mid in enumerate(message_ids)})
 
                     result = await session.execute(
-                        text(
+                        text(  # nosec B608 - placeholders are generated bind params
                             f"""
                             UPDATE message_recipients
                             SET read_ts = :now
@@ -1864,7 +2127,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 import traceback
 
                 traceback.print_exc()
-                raise HTTPException(status_code=500, detail=f"Failed to mark messages as read: {exc!s}") from exc
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to mark messages as read: {exc!s}"
+                ) from exc
 
         @fastapi_app.post("/mail/{project}/inbox/{agent}/mark-all-read")
         async def mark_all_messages_read(project: str, agent: str) -> JSONResponse:
@@ -1876,7 +2141,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     # Get project
                     prow = (
                         await session.execute(
-                            text("SELECT id, slug FROM projects WHERE slug = :k OR human_key = :k"),
+                            text(
+                                "SELECT id, slug FROM projects WHERE slug = :k OR human_key = :k"
+                            ),
                             {"k": project},
                         )
                     ).fetchone()
@@ -1888,7 +2155,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     # Get agent
                     arow = (
                         await session.execute(
-                            text("SELECT id FROM agents WHERE project_id = :pid AND name = :name"),
+                            text(
+                                "SELECT id FROM agents WHERE project_id = :pid AND name = :name"
+                            ),
                             {"pid": pid, "name": agent},
                         )
                     ).fetchone()
@@ -1929,9 +2198,13 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 import traceback
 
                 traceback.print_exc()
-                raise HTTPException(status_code=500, detail=f"Failed to mark messages as read: {exc!s}") from exc
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to mark messages as read: {exc!s}"
+                ) from exc
 
-        @fastapi_app.get("/mail/{project}/thread/{thread_id}", response_class=HTMLResponse)
+        @fastapi_app.get(
+            "/mail/{project}/thread/{thread_id}", response_class=HTMLResponse
+        )
         async def mail_thread(project: str, thread_id: str) -> HTMLResponse:
             """Display all messages in a thread chronologically (Gmail-style conversation view).
 
@@ -1943,7 +2216,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 # Get project
                 prow = (
                     await session.execute(
-                        text("SELECT id, slug, human_key FROM projects WHERE slug = :k OR human_key = :k"),
+                        text(
+                            "SELECT id, slug, human_key FROM projects WHERE slug = :k OR human_key = :k"
+                        ),
                         {"k": project},
                     )
                 ).fetchone()
@@ -1991,7 +2266,13 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     body_html = ""
                     if r[2]:  # body_md
                         body_html = markdown2.markdown(
-                            r[2], extras=["fenced-code-blocks", "tables", "strike", "cuddled-lists"]
+                            r[2],
+                            extras=[
+                                "fenced-code-blocks",
+                                "tables",
+                                "strike",
+                                "cuddled-lists",
+                            ],
                         )
                         body_html = _html_cleaner.clean(body_html)
 
@@ -2016,7 +2297,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
 
                 # Get unique subject (use first message's subject, with fallback)
                 thread_subject = (
-                    messages[0]["subject"] if messages and messages[0]["subject"] else f"Thread {thread_id}"
+                    messages[0]["subject"]
+                    if messages and messages[0]["subject"]
+                    else f"Thread {thread_id}"
                 )
 
                 return await _render(
@@ -2042,7 +2325,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             async with get_session() as session:
                 prow = (
                     await session.execute(
-                        text("SELECT id, slug, human_key FROM projects WHERE slug = :k OR human_key = :k"),
+                        text(
+                            "SELECT id, slug, human_key FROM projects WHERE slug = :k OR human_key = :k"
+                        ),
                         {"k": project},
                     )
                 ).fetchone()
@@ -2051,7 +2336,7 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 pid = int(prow[0])
                 fts_expr, like_pat, like_scope, tokens = _parse_fts_query(q, scope)
                 weights = (0.0, 3.0, 1.0) if (boost or 0) else (0.0, 1.0, 1.0)
-                fts_sql = (
+                fts_sql = (  # nosec B608 - query assembled from fixed clauses and bound params
                     "SELECT m.id, m.subject, s.name, m.created_ts, m.importance, m.thread_id, "
                     "snippet(fts_messages, 2, '<mark>', '</mark>', '…', 22) AS body_snippet, "
                     "(length(snippet(fts_messages, 2, '<mark>', '</mark>', '…', 22)) - length(replace(snippet(fts_messages, 2, '<mark>', '</mark>', '…', 22), '<mark>', ''))) / 6 AS hits "
@@ -2065,7 +2350,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     + "LIMIT :lim"
                 )
                 try:
-                    rows = await session.execute(text(fts_sql), {"pid": pid, "q": fts_expr or q, "lim": limit})
+                    rows = await session.execute(
+                        text(fts_sql), {"pid": pid, "q": fts_expr or q, "lim": limit}
+                    )
                     results = [
                         {
                             "id": r[0],
@@ -2087,7 +2374,8 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     else:
                         like_sql = "SELECT m.id, m.subject, s.name, m.created_ts, m.importance, m.thread_id FROM messages m JOIN agents s ON s.id = m.sender_id WHERE m.project_id = :pid AND (m.subject LIKE :pat OR m.body_md LIKE :pat) ORDER BY m.created_ts DESC LIMIT :lim"
                     rows = await session.execute(
-                        text(like_sql), {"pid": pid, "pat": like_pat or f"%{q}%", "lim": limit}
+                        text(like_sql),
+                        {"pid": pid, "pat": like_pat or f"%{q}%", "lim": limit},
                     )
                     results = [
                         {
@@ -2114,13 +2402,17 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             )
 
         # File reservations and attachments views
-        @fastapi_app.get("/mail/{project}/file_reservations", response_class=HTMLResponse)
+        @fastapi_app.get(
+            "/mail/{project}/file_reservations", response_class=HTMLResponse
+        )
         async def mail_file_reservations(project: str) -> HTMLResponse:
             await ensure_schema()
             async with get_session() as session:
                 prow = (
                     await session.execute(
-                        text("SELECT id, slug, human_key FROM projects WHERE slug = :k OR human_key = :k"),
+                        text(
+                            "SELECT id, slug, human_key FROM projects WHERE slug = :k OR human_key = :k"
+                        ),
                         {"k": project},
                     )
                 ).fetchone()
@@ -2157,7 +2449,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             async with get_session() as session:
                 prow = (
                     await session.execute(
-                        text("SELECT id, slug, human_key FROM projects WHERE slug = :k OR human_key = :k"),
+                        text(
+                            "SELECT id, slug, human_key FROM projects WHERE slug = :k OR human_key = :k"
+                        ),
                         {"k": project},
                     )
                 ).fetchone()
@@ -2176,20 +2470,37 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                         attachments = r[3] or []
                     except Exception:
                         attachments = []
-                    items.append({"id": r[0], "subject": r[1], "created": str(r[2]), "attachments": attachments})
-            return await _render("mail_attachments.html", project={"slug": prow[1], "human_key": prow[2]}, items=items)
+                    items.append(
+                        {
+                            "id": r[0],
+                            "subject": r[1],
+                            "created": str(r[2]),
+                            "attachments": attachments,
+                        }
+                    )
+            return await _render(
+                "mail_attachments.html",
+                project={"slug": prow[1], "human_key": prow[2]},
+                items=items,
+            )
 
         # ========== Human Overseer Routes ==========
 
-        @fastapi_app.get("/mail/{project}/overseer/compose", response_class=HTMLResponse)
-        async def overseer_compose(project: str, request: Request, lang: str | None = None) -> HTMLResponse:
+        @fastapi_app.get(
+            "/mail/{project}/overseer/compose", response_class=HTMLResponse
+        )
+        async def overseer_compose(
+            project: str, request: Request, lang: str | None = None
+        ) -> HTMLResponse:
             """Display Human Overseer message composer."""
             await ensure_schema()
             async with get_session() as session:
                 # Get project
                 prow = (
                     await session.execute(
-                        text("SELECT id, slug, human_key FROM projects WHERE slug = :k OR human_key = :k"),
+                        text(
+                            "SELECT id, slug, human_key FROM projects WHERE slug = :k OR human_key = :k"
+                        ),
                         {"k": project},
                     )
                 ).fetchone()
@@ -2199,11 +2510,16 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 # Get all agents for this project
                 pid = int(prow[0])
                 agent_rows = await session.execute(
-                    text("SELECT name FROM agents WHERE project_id = :pid ORDER BY name"), {"pid": pid}
+                    text(
+                        "SELECT name FROM agents WHERE project_id = :pid ORDER BY name"
+                    ),
+                    {"pid": pid},
                 )
                 agents = [{"name": r[0]} for r in agent_rows.fetchall()]
 
-            lang_sel = (lang or (request.query_params.get("lang") if request else None) or "en").lower()
+            lang_sel = (
+                lang or (request.query_params.get("lang") if request else None) or "en"
+            ).lower()
             return await _render(
                 "overseer_compose.html",
                 project={"slug": prow[1], "human_key": prow[2]},
@@ -2224,21 +2540,36 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 body_md: str = request_body.get("body_md", "").strip()
                 thread_id: str | None = request_body.get("thread_id")
                 convert_images: bool = bool(request_body.get("convert_images", True))
-                attachments_policy: str = (request_body.get("attachments_policy") or "auto").strip().lower()
+                attachments_policy: str = (
+                    (request_body.get("attachments_policy") or "auto").strip().lower()
+                )
 
                 # Comprehensive validation
                 if not recipients:
-                    raise HTTPException(status_code=400, detail="At least one recipient is required")
+                    raise HTTPException(
+                        status_code=400, detail="At least one recipient is required"
+                    )
                 if len(recipients) > 100:
-                    raise HTTPException(status_code=400, detail="Too many recipients (maximum 100 agents)")
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Too many recipients (maximum 100 agents)",
+                    )
                 if not subject:
                     raise HTTPException(status_code=400, detail="Subject is required")
                 if len(subject) > 200:
-                    raise HTTPException(status_code=400, detail="Subject too long (maximum 200 characters)")
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Subject too long (maximum 200 characters)",
+                    )
                 if not body_md:
-                    raise HTTPException(status_code=400, detail="Message body is required")
+                    raise HTTPException(
+                        status_code=400, detail="Message body is required"
+                    )
                 if len(body_md) > 50000:
-                    raise HTTPException(status_code=400, detail="Message body too long (maximum 50,000 characters)")
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Message body too long (maximum 50,000 characters)",
+                    )
 
                 # Remove duplicate recipients while preserving order
                 recipients = list(dict.fromkeys(recipients))
@@ -2280,12 +2611,14 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     from .storage import ensure_archive, process_attachments
 
                     archive = await ensure_archive(settings_local, project_slug)
-                    updated_body, attachments_meta, commit_paths = await process_attachments(
-                        archive,
-                        full_body,
-                        None,
-                        convert_images,
-                        embed_policy=attachments_policy,
+                    updated_body, attachments_meta, commit_paths = (
+                        await process_attachments(
+                            archive,
+                            full_body,
+                            None,
+                            convert_images,
+                            embed_policy=attachments_policy,
+                        )
                     )
                     now = datetime.now(timezone.utc)
                     message_dict = {
@@ -2321,7 +2654,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     # Get project
                     prow = (
                         await session.execute(
-                            text("SELECT id, slug, human_key FROM projects WHERE slug = :k OR human_key = :k"),
+                            text(
+                                "SELECT id, slug, human_key FROM projects WHERE slug = :k OR human_key = :k"
+                            ),
                             {"k": project},
                         )
                     ).fetchone()
@@ -2337,7 +2672,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     overseer_name = "HumanOverseer"
                     overseer_row = (
                         await session.execute(
-                            text("SELECT id, name FROM agents WHERE project_id = :pid AND name = :name"),
+                            text(
+                                "SELECT id, name FROM agents WHERE project_id = :pid AND name = :name"
+                            ),
                             {"pid": project_id, "name": overseer_name},
                         )
                     ).fetchone()
@@ -2345,10 +2682,12 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     if not overseer_row:
                         # Create HumanOverseer agent (use INSERT OR IGNORE to handle race conditions)
                         await session.execute(
-                            text("""
+                            text(
+                                """
                                 INSERT OR IGNORE INTO agents (project_id, name, program, model, task_description, contact_policy, inception_ts, last_active_ts)
                                 VALUES (:pid, :name, :program, :model, :task, :policy, :ts, :ts)
-                            """),
+                            """
+                            ),
                             {
                                 "pid": project_id,
                                 "name": overseer_name,
@@ -2364,13 +2703,18 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                         # Fetch the agent (whether we just created it or another request did)
                         overseer_row = (
                             await session.execute(
-                                text("SELECT id, name FROM agents WHERE project_id = :pid AND name = :name"),
+                                text(
+                                    "SELECT id, name FROM agents WHERE project_id = :pid AND name = :name"
+                                ),
                                 {"pid": project_id, "name": overseer_name},
                             )
                         ).fetchone()
 
                         if not overseer_row:
-                            raise HTTPException(status_code=500, detail="Failed to create HumanOverseer agent")
+                            raise HTTPException(
+                                status_code=500,
+                                detail="Failed to create HumanOverseer agent",
+                            )
 
                     # Extract overseer_id for later use
                     overseer_id = overseer_row[0]
@@ -2379,11 +2723,13 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     now = datetime.now(timezone.utc)
 
                     result = await session.execute(
-                        text("""
+                        text(
+                            """
                             INSERT INTO messages (project_id, sender_id, subject, body_md, importance, thread_id, created_ts, ack_required)
                             VALUES (:pid, :sid, :subj, :body, :imp, :tid, :ts, :ack)
                             RETURNING id
-                        """),
+                        """
+                        ),
                         {
                             "pid": project_id,
                             "sid": overseer_id,
@@ -2397,7 +2743,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     )
                     message_row = result.fetchone()
                     if not message_row:
-                        raise HTTPException(status_code=500, detail="Failed to create message")
+                        raise HTTPException(
+                            status_code=500, detail="Failed to create message"
+                        )
                     message_id = message_row[0]
 
                     # Insert recipients (skip DB writes in test env to avoid executemany issues)
@@ -2407,25 +2755,41 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     if _get().environment == "test":
                         valid_recipients = list(recipients)
                     else:
-                        placeholders = ", ".join([f":name_{i}" for i in range(len(recipients))])
+                        placeholders = ", ".join(
+                            [f":name_{i}" for i in range(len(recipients))]
+                        )
                         params = {"pid": project_id}
-                        params.update({f"name_{i}": name for i, name in enumerate(recipients)})
+                        params.update(
+                            {f"name_{i}": name for i, name in enumerate(recipients)}
+                        )
                         recipient_rows = await session.execute(
-                            text(f"SELECT id, name FROM agents WHERE project_id = :pid AND name IN ({placeholders})"),
+                            text(  # nosec B608 - placeholders generated from recipient list
+                                f"SELECT id, name FROM agents WHERE project_id = :pid AND name IN ({placeholders})"
+                            ),
                             params,
                         )
-                        recipient_map = {row[1]: row[0] for row in recipient_rows.fetchall()}
-                        valid_recipients = [name for name in recipients if name in recipient_map]
+                        recipient_map = {
+                            row[1]: row[0] for row in recipient_rows.fetchall()
+                        }
+                        valid_recipients = [
+                            name for name in recipients if name in recipient_map
+                        ]
                         if valid_recipients:
                             insert_params = [
-                                {"mid": message_id, "aid": recipient_map[name], "kind": "to"}
+                                {
+                                    "mid": message_id,
+                                    "aid": recipient_map[name],
+                                    "kind": "to",
+                                }
                                 for name in valid_recipients
                             ]
                             await session.execute(
-                                text("""
+                                text(
+                                    """
                                     INSERT INTO message_recipients (message_id, agent_id, kind)
                                     VALUES (:mid, :aid, :kind)
-                                """),
+                                """
+                                ),
                                 insert_params,
                             )
                         if not valid_recipients:
@@ -2436,16 +2800,22 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                             )
 
                     # Write to Git archive BEFORE committing to database (for transaction consistency)
-                    from .storage import ensure_archive, process_attachments, write_message_bundle
+                    from .storage import (
+                        ensure_archive,
+                        process_attachments,
+                        write_message_bundle,
+                    )
 
                     settings = get_settings()
                     archive = await ensure_archive(settings, project_slug)
-                    updated_body, attachments_meta, commit_paths = await process_attachments(
-                        archive,
-                        full_body,
-                        None,
-                        convert_images,
-                        embed_policy=attachments_policy,
+                    updated_body, attachments_meta, commit_paths = (
+                        await process_attachments(
+                            archive,
+                            full_body,
+                            None,
+                            convert_images,
+                            embed_policy=attachments_policy,
+                        )
                     )
 
                     # Build message dict for Git
@@ -2480,12 +2850,14 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                         # Rollback database transaction if Git write fails
                         await session.rollback()
                         raise HTTPException(
-                            status_code=500, detail=f"Failed to write message to Git archive: {git_error!s}"
+                            status_code=500,
+                            detail=f"Failed to write message to Git archive: {git_error!s}",
                         ) from git_error
 
                     # Update HumanOverseer activity timestamp (after successful Git write, before commit)
                     await session.execute(
-                        text("UPDATE agents SET last_active_ts = :ts WHERE id = :id"), {"ts": now, "id": overseer_id}
+                        text("UPDATE agents SET last_active_ts = :ts WHERE id = :id"),
+                        {"ts": now, "id": overseer_id},
                     )
 
                     # Commit all changes atomically: agent creation/update + message + recipients
@@ -2507,7 +2879,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 import traceback
 
                 traceback.print_exc()
-                raise HTTPException(status_code=500, detail=f"Failed to send message: {e!s}") from e
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to send message: {e!s}"
+                ) from e
 
         # ========== Archive Visualization Routes ==========
 
@@ -2543,9 +2917,15 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     repo = GitRepo(str(repo_root))
                     # Use efficient commit counting with limit to prevent DoS
                     commit_count = sum(1 for _ in repo.iter_commits(max_count=10000))
-                    total_commits = "10,000+" if commit_count == 10000 else f"{commit_count:,}"
+                    total_commits = (
+                        "10,000+" if commit_count == 10000 else f"{commit_count:,}"
+                    )
                     last_commit = next(repo.iter_commits(max_count=1), None)
-                    last_commit_time = last_commit.authored_datetime.strftime("%b %d, %Y") if last_commit else "Never"
+                    last_commit_time = (
+                        last_commit.authored_datetime.strftime("%b %d, %Y")
+                        if last_commit
+                        else "Never"
+                    )
 
                     # Count projects (with limit for performance)
                     projects_dir = repo_root / "projects"
@@ -2553,7 +2933,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                         # Use islice to avoid loading all dirs into memory
                         from itertools import islice
 
-                        project_count = sum(1 for p in islice(projects_dir.iterdir(), 100) if p.is_dir())
+                        project_count = sum(
+                            1 for p in islice(projects_dir.iterdir(), 100) if p.is_dir()
+                        )
                     else:
                         project_count = 0
 
@@ -2566,14 +2948,23 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                         def _run_du():
                             return _subprocess.run(
                                 ["du", "-sh", str(repo_root)],
-                                capture_output=True,
+                                capture_output=True,  # nosec B404,B603,B607 - fixed utility call
                                 text=True,
                                 timeout=5.0,
                             )
 
                         result = await _asyncio.to_thread(_run_du)
-                        repo_size = result.stdout.split()[0] if getattr(result, "returncode", 1) == 0 else "Unknown"
-                    except (_subprocess.TimeoutExpired, FileNotFoundError, PermissionError, OSError):
+                        repo_size = (
+                            result.stdout.split()[0]
+                            if getattr(result, "returncode", 1) == 0
+                            else "Unknown"
+                        )
+                    except (
+                        _subprocess.TimeoutExpired,
+                        FileNotFoundError,
+                        PermissionError,
+                        OSError,
+                    ):
                         # du not available, took too long, or other OS error
                         repo_size = "Unknown"
                     except Exception:
@@ -2592,7 +2983,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
 
             # Get list of projects for picker
             async with get_session() as session:
-                rows = await session.execute(text("SELECT slug, human_key FROM projects ORDER BY human_key"))
+                rows = await session.execute(
+                    text("SELECT slug, human_key FROM projects ORDER BY human_key")
+                )
                 projects = [{"slug": r[0], "human_key": r[1]} for r in rows.fetchall()]
 
             return await _render(
@@ -2633,7 +3026,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             from git import Repo as GitRepo
 
             if not (repo_root / ".git").exists():
-                return await _render("error.html", message="Archive repository not found")
+                return await _render(
+                    "error.html", message="Archive repository not found"
+                )
 
             try:
                 repo = GitRepo(str(repo_root))
@@ -2659,13 +3054,19 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             from git import Repo as GitRepo
 
             if not (repo_root / ".git").exists():
-                return await _render("error.html", message="Archive repository not found")
+                return await _render(
+                    "error.html", message="Archive repository not found"
+                )
 
             # Default to first project if not specified
             if not project:
                 async with get_session() as session:
                     row = (
-                        await session.execute(text("SELECT slug, human_key FROM projects ORDER BY id LIMIT 1"))
+                        await session.execute(
+                            text(
+                                "SELECT slug, human_key FROM projects ORDER BY id LIMIT 1"
+                            )
+                        )
                     ).fetchone()
                     if row:
                         project = row[0]
@@ -2676,7 +3077,10 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             project_name = project
             async with get_session() as session:
                 row = (
-                    await session.execute(text("SELECT human_key FROM projects WHERE slug = :s"), {"s": project})
+                    await session.execute(
+                        text("SELECT human_key FROM projects WHERE slug = :s"),
+                        {"s": project},
+                    )
                 ).fetchone()
                 if row:
                     project_name = row[0]
@@ -2684,14 +3088,23 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             repo = GitRepo(str(repo_root))
             commits = await get_timeline_commits(repo, project, limit=100)
 
-            return await _render("archive_timeline.html", commits=commits, project=project, project_name=project_name)
+            return await _render(
+                "archive_timeline.html",
+                commits=commits,
+                project=project,
+                project_name=project_name,
+            )
 
         @fastapi_app.get("/mail/archive/browser", response_class=HTMLResponse)
-        async def archive_browser(project: str | None = None, path: str = "") -> HTMLResponse:
+        async def archive_browser(
+            project: str | None = None, path: str = ""
+        ) -> HTMLResponse:
             """Browse archive files and directories."""
             if not project:
                 # Show project selector - requires project parameter
-                return await _render("error.html", message="Please select a project to browse")
+                return await _render(
+                    "error.html", message="Please select a project to browse"
+                )
 
             # Validate project slug
             if not _validate_project_slug(project):
@@ -2701,14 +3114,18 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             archive = await ensure_archive(settings, project)
             tree = await get_archive_tree(archive, path)
 
-            return await _render("archive_browser.html", tree=tree, project=project, path=path)
+            return await _render(
+                "archive_browser.html", tree=tree, project=project, path=path
+            )
 
         @fastapi_app.get("/mail/archive/browser/{project}/file")
         async def archive_browser_file(project: str, path: str) -> JSONResponse:
             """Get file content from archive."""
             # Validate project slug
             if not _validate_project_slug(project):
-                raise HTTPException(status_code=400, detail="Invalid project identifier")
+                raise HTTPException(
+                    status_code=400, detail="Invalid project identifier"
+                )
 
             try:
                 settings = get_settings()
@@ -2721,7 +3138,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 return JSONResponse(content=content)
             except ValueError as err:
                 # Path validation errors
-                raise HTTPException(status_code=400, detail="Invalid file path") from err
+                raise HTTPException(
+                    status_code=400, detail="Invalid file path"
+                ) from err
             except Exception as err:
                 raise HTTPException(status_code=404, detail="File not found") from err
 
@@ -2738,13 +3157,19 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             from git import Repo as GitRepo
 
             if not (repo_root / ".git").exists():
-                return await _render("error.html", message="Archive repository not found")
+                return await _render(
+                    "error.html", message="Archive repository not found"
+                )
 
             # Default to first project
             if not project:
                 async with get_session() as session:
                     row = (
-                        await session.execute(text("SELECT slug, human_key FROM projects ORDER BY id LIMIT 1"))
+                        await session.execute(
+                            text(
+                                "SELECT slug, human_key FROM projects ORDER BY id LIMIT 1"
+                            )
+                        )
                     ).fetchone()
                     if row:
                         project = row[0]
@@ -2755,7 +3180,10 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             project_name = project
             async with get_session() as session:
                 row = (
-                    await session.execute(text("SELECT human_key FROM projects WHERE slug = :s"), {"s": project})
+                    await session.execute(
+                        text("SELECT human_key FROM projects WHERE slug = :s"),
+                        {"s": project},
+                    )
                 ).fetchone()
                 if row:
                     project_name = row[0]
@@ -2763,19 +3191,27 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             repo = GitRepo(str(repo_root))
             graph = await get_agent_communication_graph(repo, project, limit=200)
 
-            return await _render("archive_network.html", graph=graph, project=project, project_name=project_name)
+            return await _render(
+                "archive_network.html",
+                graph=graph,
+                project=project,
+                project_name=project_name,
+            )
 
         @fastapi_app.get("/api/projects/{project}/agents")
         async def api_project_agents(project: str) -> JSONResponse:
             """Get list of agents for a project."""
             # Validate project slug
             if not _validate_project_slug(project):
-                raise HTTPException(status_code=400, detail="Invalid project identifier")
+                raise HTTPException(
+                    status_code=400, detail="Invalid project identifier"
+                )
 
             async with get_session() as session:
                 # Get project ID
                 proj_result = await session.execute(
-                    text("SELECT id FROM projects WHERE slug = :k OR human_key = :k"), {"k": project}
+                    text("SELECT id FROM projects WHERE slug = :k OR human_key = :k"),
+                    {"k": project},
                 )
                 prow = proj_result.fetchone()
                 if not prow:
@@ -2783,7 +3219,10 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
 
                 # Get agents for this project
                 agents_result = await session.execute(
-                    text("SELECT name FROM agents WHERE project_id = :pid ORDER BY name"), {"pid": prow[0]}
+                    text(
+                        "SELECT name FROM agents WHERE project_id = :pid ORDER BY name"
+                    ),
+                    {"pid": prow[0]},
                 )
                 agents = [r[0] for r in agents_result.fetchall()]
 
@@ -2794,26 +3233,35 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             """Display time-travel interface."""
             # Get all projects
             async with get_session() as session:
-                rows = await session.execute(text("SELECT slug FROM projects ORDER BY human_key"))
+                rows = await session.execute(
+                    text("SELECT slug FROM projects ORDER BY human_key")
+                )
                 projects = [r[0] for r in rows.fetchall()]
 
             return await _render("archive_time_travel.html", projects=projects)
 
         @fastapi_app.get("/mail/archive/time-travel/snapshot")
-        async def archive_time_travel_snapshot(project: str, agent: str, timestamp: str) -> JSONResponse:
+        async def archive_time_travel_snapshot(
+            project: str, agent: str, timestamp: str
+        ) -> JSONResponse:
             """Get historical inbox snapshot."""
             # Validate project slug
             if not _validate_project_slug(project):
-                raise HTTPException(status_code=400, detail="Invalid project identifier")
+                raise HTTPException(
+                    status_code=400, detail="Invalid project identifier"
+                )
 
             # Validate agent name (alphanumeric only)
             if not agent or not re.match(r"^[A-Za-z0-9]+$", agent):
                 raise HTTPException(status_code=400, detail="Invalid agent name format")
 
             # Validate timestamp format (basic ISO 8601 check)
-            if not timestamp or not re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}", timestamp):
+            if not timestamp or not re.match(
+                r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}", timestamp
+            ):
                 raise HTTPException(
-                    status_code=400, detail="Invalid timestamp format. Use ISO 8601 format (YYYY-MM-DDTHH:MM)"
+                    status_code=400,
+                    detail="Invalid timestamp format. Use ISO 8601 format (YYYY-MM-DDTHH:MM)",
                 )
 
             try:
@@ -2822,14 +3270,20 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 repo = await ensure_archive(settings, project)
 
                 # Get historical snapshot
-                snapshot = await get_historical_inbox_snapshot(repo, agent, timestamp, limit=200)
+                snapshot = await get_historical_inbox_snapshot(
+                    repo, agent, timestamp, limit=200
+                )
 
                 return JSONResponse(snapshot)
 
             except Exception as e:
                 # Log error but return empty result rather than failing
                 structlog.get_logger("archive").warning(
-                    "time_travel_failed", project=project, agent=agent, timestamp=timestamp, error=str(e)
+                    "time_travel_failed",
+                    project=project,
+                    agent=agent,
+                    timestamp=timestamp,
+                    error=str(e),
                 )
                 return JSONResponse(
                     {
@@ -2858,13 +3312,17 @@ def app() -> FastAPI:
     Returns a FastAPI instance using current Settings.
     """
     settings = get_settings()
+    if _is_lightweight_http(settings):
+        return _build_lightweight_http_app(settings)
     return build_http_app(settings)
 
 
 def main() -> None:
     """Run the HTTP transport using settings-specified host/port."""
 
-    parser = argparse.ArgumentParser(description="Run the MCP Agent Mail HTTP transport")
+    parser = argparse.ArgumentParser(
+        description="Run the MCP Agent Mail HTTP transport"
+    )
     parser.add_argument("--host", help="Override HTTP host", default=None)
     parser.add_argument("--port", help="Override HTTP port", type=int, default=None)
     parser.add_argument("--log-level", help="Uvicorn log level", default="info")

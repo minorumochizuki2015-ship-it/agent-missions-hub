@@ -7,7 +7,9 @@ from typing import Any, Dict, List
 try:  # pragma: no cover - dependency guard
     from fastmcp import FastMCP  # type: ignore
 except ImportError as exc:  # pragma: no cover - fail fast when dependency missing
-    raise ImportError("fastmcp FastMCP API is required. Please upgrade/install fastmcp>=0.3.") from exc
+    raise ImportError(
+        "fastmcp FastMCP API is required. Please upgrade/install fastmcp>=0.3."
+    ) from exc
 from sqlmodel import select
 
 from .db import Agent, Message, Project, get_session, init_db

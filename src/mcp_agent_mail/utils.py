@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import random
 import re
+import secrets
 from typing import Iterable, Optional
 
 ADJECTIVES: Iterable[str] = (
@@ -47,8 +47,8 @@ def slugify(value: str) -> str:
 
 def generate_agent_name() -> str:
     """Return a random adjective+noun combination."""
-    adjective = random.choice(tuple(ADJECTIVES))
-    noun = random.choice(tuple(NOUNS))
+    adjective = secrets.choice(tuple(ADJECTIVES))
+    noun = secrets.choice(tuple(NOUNS))
     return f"{adjective}{noun}"
 
 

@@ -1,6 +1,5 @@
 import pytest
 from fastapi.testclient import TestClient
-
 from mcp_agent_mail.app import app
 
 

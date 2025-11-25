@@ -61,17 +61,23 @@ class ArtifactRead(SQLModel):
 
 
 @router.get("/", response_model=list[MissionSummary])
-async def list_missions(session: Annotated[AsyncSession, Depends(get_session)]) -> list[MissionSummary]:  # noqa: B008
+async def list_missions(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> list[MissionSummary]:
     stmt = select(Mission)
     missions = (await session.execute(stmt)).scalars().all()
 
     tg_counts = await session.execute(
-        select(TaskGroup.mission_id, func.count(TaskGroup.id)).group_by(TaskGroup.mission_id)
+        select(TaskGroup.mission_id, func.count(TaskGroup.id)).group_by(
+            TaskGroup.mission_id
+        )
     )
     tg_map = {row[0]: row[1] for row in tg_counts}
 
     artifact_counts = await session.execute(
-        select(Artifact.mission_id, func.count(Artifact.id)).group_by(Artifact.mission_id)
+        select(Artifact.mission_id, func.count(Artifact.id)).group_by(
+            Artifact.mission_id
+        )
     )
     artifact_map = {row[0]: row[1] for row in artifact_counts}
 
@@ -91,17 +97,25 @@ async def list_missions(session: Annotated[AsyncSession, Depends(get_session)]) 
 
 @router.get("/{mission_id}/artifacts", response_model=list[ArtifactRead])
 async def list_artifacts(
-    mission_id: UUID, session: Annotated[AsyncSession, Depends(get_session)]  # noqa: B008
+    mission_id: UUID, session: Annotated[AsyncSession, Depends(get_session)]
 ) -> list[ArtifactRead]:
     mission = await session.get(Mission, mission_id)
     if not mission:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="MISSION_NOT_FOUND")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="MISSION_NOT_FOUND"
+        )
 
-    stmt = select(Artifact).where(Artifact.mission_id == mission_id).order_by(Artifact.path)
+    stmt = (
+        select(Artifact)
+        .where(Artifact.mission_id == mission_id)
+        .order_by(Artifact.path)
+    )
     artifacts = (await session.execute(stmt)).scalars().all()
 
     knowledge_entries = await session.execute(
-        select(Knowledge.artifact_id, Knowledge.id).where(Knowledge.artifact_id.in_([a.id for a in artifacts]))
+        select(Knowledge.artifact_id, Knowledge.id).where(
+            Knowledge.artifact_id.in_([a.id for a in artifacts])
+        )
     )
     knowledge_map = {row[0]: row[1] for row in knowledge_entries}
 
@@ -122,13 +136,21 @@ async def list_artifacts(
     ]
 
 
-@router.post("/{mission_id}/artifacts", response_model=ArtifactRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{mission_id}/artifacts",
+    response_model=ArtifactRead,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_artifact(
-    mission_id: UUID, payload: ArtifactPayload, session: Annotated[AsyncSession, Depends(get_session)]  # noqa: B008
+    mission_id: UUID,
+    payload: ArtifactPayload,
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> ArtifactRead:
     mission = await session.get(Mission, mission_id)
     if not mission:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="MISSION_NOT_FOUND")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="MISSION_NOT_FOUND"
+        )
 
     artifact = Artifact(
         mission_id=mission_id,
@@ -184,18 +206,30 @@ class MissionRunResponse(BaseModel):
     run_id: UUID
 
 
-@router.post("/{mission_id}/run", response_model=MissionRunResponse, status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/{mission_id}/run",
+    response_model=MissionRunResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
 async def run_mission(
-    mission_id: UUID, allow_self_heal: bool = True, session: Annotated[AsyncSession, Depends(get_session)]  # noqa: B008
+    mission_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    allow_self_heal: bool = True,
 ) -> MissionRunResponse:
     mission = await session.get(Mission, mission_id)
     if not mission:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="MISSION_NOT_FOUND")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="MISSION_NOT_FOUND"
+        )
 
     # Ensure there is at least one task_group; otherwise running is meaningless
-    tg_exists = await session.execute(select(TaskGroup.id).where(TaskGroup.mission_id == mission_id).limit(1))
+    tg_exists = await session.execute(
+        select(TaskGroup.id).where(TaskGroup.mission_id == mission_id).limit(1)
+    )
     if not tg_exists.first():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="NO_TASK_GROUPS")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="NO_TASK_GROUPS"
+        )
 
     workflow_cls = SelfHealWorkflow if allow_self_heal else SequentialWorkflow
     engine = workflow_cls(session)
@@ -203,10 +237,16 @@ async def run_mission(
 
     # pick latest workflow_run for this mission
     run_row = await session.execute(
-        select(WorkflowRun).where(WorkflowRun.mission_id == mission_id).order_by(WorkflowRun.started_at.desc())
+        select(WorkflowRun)
+        .where(WorkflowRun.mission_id == mission_id)
+        .order_by(WorkflowRun.started_at.desc())
     )
     run = run_row.scalars().first()
     if not run:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="RUN_NOT_RECORDED")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="RUN_NOT_RECORDED"
+        )
 
-    return MissionRunResponse(mission_id=mission_id, status=status_result, run_id=run.run_id)
+    return MissionRunResponse(
+        mission_id=mission_id, status=status_result, run_id=run.run_id
+    )

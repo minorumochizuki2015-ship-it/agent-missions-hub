@@ -63,7 +63,9 @@ class Task(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     mission_id: int = Field(foreign_key="mission.id", index=True)
-    group_id: Optional[int] = Field(default=None, foreign_key="taskgroup.id", index=True)
+    group_id: Optional[int] = Field(
+        default=None, foreign_key="taskgroup.id", index=True
+    )
     kind: str
     status: str = Field(default="pending")
     assignee_agent_id: Optional[int] = Field(default=None, foreign_key="agent.id")

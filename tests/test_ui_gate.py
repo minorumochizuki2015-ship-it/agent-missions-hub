@@ -12,16 +12,17 @@ import asyncio
 import json
 import os
 import subprocess
-import time
 import sys
+import time
 from contextlib import suppress
 from pathlib import Path
 
 import pytest
 import requests
-import pytest
 
-playwright = pytest.importorskip("playwright.async_api", reason="Playwright not installed in this environment")
+playwright = pytest.importorskip(
+    "playwright.async_api", reason="Playwright not installed in this environment"
+)
 async_playwright = playwright.async_playwright
 
 from mcp_agent_mail.config import get_settings
@@ -75,7 +76,9 @@ def start_server():
     env["HTTP_HOST"] = HOST
     env["HTTP_PORT"] = PORT
     # coverage: サブプロセスでcoverageを開始
-    env["COVERAGE_PROCESS_START"] = str(Path(__file__).resolve().parent.parent / ".coveragerc")
+    env["COVERAGE_PROCESS_START"] = str(
+        Path(__file__).resolve().parent.parent / ".coveragerc"
+    )
     env["PYTEST_ADDOPTS"] = "--cov=mcp_agent_mail --cov-report=term-missing"
     # UI Gateを開放するための最低限のガード緩和
     env["HTTP_RBAC_ENABLED"] = "false"
@@ -181,7 +184,9 @@ async def test_ui_gate_unified_inbox_accessibility(start_server, server_url):
 
             # Web Vitals計測
             try:
-                await page.add_script_tag(url="https://unpkg.com/web-vitals@3/dist/web-vitals.umd.js")
+                await page.add_script_tag(
+                    url="https://unpkg.com/web-vitals@3/dist/web-vitals.umd.js"
+                )
                 await page.evaluate(
                     """() => {
                         window.__vitals = {};
@@ -203,8 +208,7 @@ async def test_ui_gate_unified_inbox_accessibility(start_server, server_url):
             # 結果サマリー作成
             violations = axe_results.get("violations", [])
             serious_violations = [
-                v for v in violations
-                if v.get("impact") in {"serious", "critical"}
+                v for v in violations if v.get("impact") in {"serious", "critical"}
             ]
 
             summary = {
@@ -213,7 +217,7 @@ async def test_ui_gate_unified_inbox_accessibility(start_server, server_url):
                 "test_name": "test_ui_gate_unified_inbox_accessibility",
                 "document": {
                     "title": doc_info.get("title"),
-                    "lang": doc_info.get("lang")
+                    "lang": doc_info.get("lang"),
                 },
                 "axe": {
                     "violations": len(violations),
@@ -222,17 +226,17 @@ async def test_ui_gate_unified_inbox_accessibility(start_server, server_url):
                         {
                             "id": v.get("id"),
                             "impact": v.get("impact"),
-                            "nodes": len(v.get("nodes", []))
+                            "nodes": len(v.get("nodes", [])),
                         }
                         for v in violations
-                    ]
+                    ],
                 },
                 "web_vitals": {
                     "CLS": vitals.get("CLS"),
                     "LCP": vitals.get("LCP"),
-                    "FID": vitals.get("FID")
+                    "FID": vitals.get("FID"),
                 },
-                "screenshot": str(screenshot_path).replace("\\", "/")
+                "screenshot": str(screenshot_path).replace("\\", "/"),
             }
 
             # ゲート判定:重大な違反がなければ合格
@@ -253,7 +257,9 @@ async def test_ui_gate_unified_inbox_accessibility(start_server, server_url):
             )
 
             # アサーション
-            assert len(serious_violations) == 0, f"重大なアクセシビリティ違反が{len(serious_violations)}件検出されました"
+            assert (
+                len(serious_violations) == 0
+            ), f"重大なアクセシビリティ違反が{len(serious_violations)}件検出されました"
 
         finally:
             await browser.close()
@@ -279,8 +285,7 @@ async def test_ui_gate_navigation_flow(start_server, server_url):
             # Unified Inboxへのリンクが存在することを確認
             try:
                 inbox_link = await page.wait_for_selector(
-                    f'a[href*="{UNIFIED_INBOX_URL}"]',
-                    timeout=5000
+                    f'a[href*="{UNIFIED_INBOX_URL}"]', timeout=5000
                 )
                 assert inbox_link is not None, "Unified Inboxへのリンクが見つかりません"
             except Exception:
@@ -305,14 +310,13 @@ async def test_ui_gate_responsive_design(start_server, server_url):
         # 複数のビューポートサイズでテスト
         viewports = [
             {"width": 1920, "height": 1080},  # デスクトップ
-            {"width": 768, "height": 1024},   # タブレット
-            {"width": 375, "height": 667},    # モバイル
+            {"width": 768, "height": 1024},  # タブレット
+            {"width": 375, "height": 667},  # モバイル
         ]
 
         for viewport in viewports:
             context = await browser.new_context(
-                viewport=viewport,
-                device_scale_factor=1
+                viewport=viewport, device_scale_factor=1
             )
             page = await context.new_page()
 
@@ -322,7 +326,9 @@ async def test_ui_gate_responsive_design(start_server, server_url):
                 await page.wait_for_timeout(1000)  # レイアウト確定待機
 
                 # ビューポートサイズでスクリーンショット
-                screenshot_name = f"responsive_{viewport['width']}x{viewport['height']}.png"
+                screenshot_name = (
+                    f"responsive_{viewport['width']}x{viewport['height']}.png"
+                )
                 screenshot_path = SCREENSHOTS_DIR / screenshot_name
 
                 await page.screenshot(path=str(screenshot_path), full_page=True)

@@ -1,0 +1,1 @@
+{"ts":"2025-11-25T17:33:00Z","action":"sbom_generated","command":"python -m cyclonedx_py environment .venv/Scripts/python.exe --output-file observability/policy/sbom.json --output-format JSON --no-validate","output":"observability/policy/sbom.json","sha256":"e9d085a3d237bf323c37a9c546311854c4ac0a8b3154eded613ff270276212bd"}

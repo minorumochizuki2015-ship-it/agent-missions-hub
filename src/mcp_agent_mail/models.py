@@ -23,7 +23,9 @@ class Project(SQLModel, table=True):
 
 class Agent(SQLModel, table=True):
     __tablename__ = "agents"
-    __table_args__ = (UniqueConstraint("project_id", "name", name="uq_agent_project_name"),)
+    __table_args__ = (
+        UniqueConstraint("project_id", "name", name="uq_agent_project_name"),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     project_id: int = Field(foreign_key="projects.id", index=True)
@@ -39,7 +41,9 @@ class Agent(SQLModel, table=True):
     inception_ts: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     last_active_ts: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     attachments_policy: str = Field(default="auto", max_length=16)
-    contact_policy: str = Field(default="auto", max_length=16)  # open | auto | contacts_only | block_all
+    contact_policy: str = Field(
+        default="auto", max_length=16
+    )  # open | auto | contacts_only | block_all
 
 
 class MessageRecipient(SQLModel, table=True):
@@ -91,14 +95,24 @@ class AgentLink(SQLModel, table=True):
     """
 
     __tablename__ = "agent_links"
-    __table_args__ = (UniqueConstraint("a_project_id", "a_agent_id", "b_project_id", "b_agent_id", name="uq_agentlink_pair"),)
+    __table_args__ = (
+        UniqueConstraint(
+            "a_project_id",
+            "a_agent_id",
+            "b_project_id",
+            "b_agent_id",
+            name="uq_agentlink_pair",
+        ),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     a_project_id: int = Field(foreign_key="projects.id", index=True)
     a_agent_id: int = Field(foreign_key="agents.id", index=True)
     b_project_id: int = Field(foreign_key="projects.id", index=True)
     b_agent_id: int = Field(foreign_key="agents.id", index=True)
-    status: str = Field(default="pending", max_length=16)  # pending | approved | blocked
+    status: str = Field(
+        default="pending", max_length=16
+    )  # pending | approved | blocked
     reason: str = Field(default="", max_length=512)
     created_ts: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_ts: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -109,13 +123,19 @@ class ProjectSiblingSuggestion(SQLModel, table=True):
     """LLM-ranked sibling project suggestion (undirected pair)."""
 
     __tablename__ = "project_sibling_suggestions"
-    __table_args__ = (UniqueConstraint("project_a_id", "project_b_id", name="uq_project_sibling_pair"),)
+    __table_args__ = (
+        UniqueConstraint(
+            "project_a_id", "project_b_id", name="uq_project_sibling_pair"
+        ),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     project_a_id: int = Field(foreign_key="projects.id", index=True)
     project_b_id: int = Field(foreign_key="projects.id", index=True)
     score: float = Field(default=0.0)
-    status: str = Field(default="suggested", max_length=16)  # suggested | confirmed | dismissed
+    status: str = Field(
+        default="suggested", max_length=16
+    )  # suggested | confirmed | dismissed
     rationale: str = Field(default="", max_length=4096)
     created_ts: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     evaluated_ts: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -129,9 +149,13 @@ class Mission(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     project_id: int = Field(foreign_key="projects.id", index=True)
     title: str = Field(max_length=255)
-    status: str = Field(default="pending", max_length=32)  # pending|running|completed|failed
+    status: str = Field(
+        default="pending", max_length=32
+    )  # pending|running|completed|failed
     owner: Optional[str] = Field(default=None, max_length=128)
-    run_mode: str = Field(default="sequential", max_length=32)  # sequential|parallel|loop
+    run_mode: str = Field(
+        default="sequential", max_length=32
+    )  # sequential|parallel|loop
     context: Optional[dict] = Field(default=None, sa_column=Column(JSON, nullable=True))
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -152,7 +176,9 @@ class Task(SQLModel, table=True):
     __tablename__ = "tasks"
 
     id: UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    mission_id: Optional[UUID] = Field(default=None, foreign_key="missions.id", index=True)
+    mission_id: Optional[UUID] = Field(
+        default=None, foreign_key="missions.id", index=True
+    )
     group_id: UUID = Field(foreign_key="task_groups.id", index=True)
     agent_id: int = Field(foreign_key="agents.id", index=True)
     title: str = Field(max_length=255)
@@ -174,8 +200,12 @@ class Artifact(SQLModel, table=True):
     path: str = Field(max_length=1024)
     version: str = Field(max_length=64)
     sha256: str = Field(max_length=64)
-    content_meta: Optional[dict] = Field(default=None, sa_column=Column(JSON, nullable=True))
-    tags: Optional[list[str]] = Field(default=None, sa_column=Column(JSON, nullable=True))
+    content_meta: Optional[dict] = Field(
+        default=None, sa_column=Column(JSON, nullable=True)
+    )
+    tags: Optional[list[str]] = Field(
+        default=None, sa_column=Column(JSON, nullable=True)
+    )
 
 
 class Knowledge(SQLModel, table=True):
@@ -183,11 +213,15 @@ class Knowledge(SQLModel, table=True):
 
     id: UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     artifact_id: UUID = Field(foreign_key="artifacts.id", index=True)
-    source_artifact_id: Optional[UUID] = Field(default=None, foreign_key="artifacts.id", index=True)
+    source_artifact_id: Optional[UUID] = Field(
+        default=None, foreign_key="artifacts.id", index=True
+    )
     version: Optional[str] = Field(default=None, max_length=64)
     sha256: Optional[str] = Field(default=None, max_length=64)
     scope: str = Field(default="project", max_length=32)
-    tags: Optional[list[str]] = Field(default=None, sa_column=Column(JSON, nullable=True))
+    tags: Optional[list[str]] = Field(
+        default=None, sa_column=Column(JSON, nullable=True)
+    )
     summary: Optional[str] = Field(default=None, max_length=1024)
     reusable: bool = Field(default=False)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

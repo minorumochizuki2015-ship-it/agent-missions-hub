@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import random
+import secrets
 import threading
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
@@ -43,7 +43,9 @@ _schema_ready = False
 _schema_lock: asyncio.Lock | None = None
 
 
-def retry_on_db_lock(max_retries: int = 5, base_delay: float = 0.1, max_delay: float = 5.0):
+def retry_on_db_lock(
+    max_retries: int = 5, base_delay: float = 0.1, max_delay: float = 5.0
+):
     """Decorator to retry async functions on SQLite database lock errors with exponential backoff + jitter.
 
     Args:
@@ -84,15 +86,17 @@ def retry_on_db_lock(max_retries: int = 5, base_delay: float = 0.1, max_delay: f
 
                     last_exception = e
 
-                    # Calculate exponential backoff with jitter
+                    # Calculate exponential backoff with jitter using a secure RNG to satisfy bandit
                     delay = min(base_delay * (2**attempt), max_delay)
-                    jitter = delay * 0.25 * (2 * random.random() - 1)  # ±25% jitter
-                    total_delay = delay + jitter
+                    jitter_ratio = (secrets.randbelow(2001) / 1000.0) - 1.0  # range [-1, 1]
+                    total_delay = delay + (delay * 0.25 * jitter_ratio)
 
                     # Log the retry (if logging is available)
                     import logging
 
-                    func_name = getattr(func, "__name__", getattr(func, "__qualname__", "<callable>"))
+                    func_name = getattr(
+                        func, "__name__", getattr(func, "__qualname__", "<callable>")
+                    )
                     logging.warning(
                         f"Database locked, retrying {func_name} "
                         f"(attempt {attempt + 1}/{max_retries}) after {total_delay:.2f}s"
@@ -199,20 +203,24 @@ def init_engine(settings: Settings | None = None) -> None:
     resolved_settings = settings or get_settings()
     engine = _build_engine(resolved_settings.database)
     _engine = engine
-    _session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    _session_factory = async_sessionmaker(
+        engine, expire_on_commit=False, class_=AsyncSession
+    )
 
 
 def get_engine() -> AsyncEngine:
     if _engine is None:
         init_engine()
-    assert _engine is not None
+    if _engine is None:  # pragma: no cover - defensive guard
+        raise RuntimeError("Engine failed to initialize")
     return _engine
 
 
 def get_session_factory() -> async_sessionmaker[AsyncSession]:
     if _session_factory is None:
         init_engine()
-    assert _session_factory is not None
+    if _session_factory is None:  # pragma: no cover - defensive guard
+        raise RuntimeError("Session factory failed to initialize")
     return _session_factory
 
 
@@ -338,9 +346,15 @@ def _setup_fts(connection) -> None:
         """
     )
     # Additional performance indexes for common access patterns
-    connection.exec_driver_sql("CREATE INDEX IF NOT EXISTS idx_messages_created_ts ON messages(created_ts)")
-    connection.exec_driver_sql("CREATE INDEX IF NOT EXISTS idx_messages_thread_id ON messages(thread_id)")
-    connection.exec_driver_sql("CREATE INDEX IF NOT EXISTS idx_messages_importance ON messages(importance)")
+    connection.exec_driver_sql(
+        "CREATE INDEX IF NOT EXISTS idx_messages_created_ts ON messages(created_ts)"
+    )
+    connection.exec_driver_sql(
+        "CREATE INDEX IF NOT EXISTS idx_messages_thread_id ON messages(thread_id)"
+    )
+    connection.exec_driver_sql(
+        "CREATE INDEX IF NOT EXISTS idx_messages_importance ON messages(importance)"
+    )
     connection.exec_driver_sql(
         "CREATE INDEX IF NOT EXISTS idx_file_reservations_expires_ts ON file_reservations(expires_ts)"
     )
