@@ -51,6 +51,12 @@ async def expire_stale_file_reservations(project_id: int | None) -> None:
     return None
 
 
+async def _expire_stale_file_reservations(project_id: int | None) -> None:
+    """後方互換のためのエイリアス。"""
+
+    await expire_stale_file_reservations(project_id)
+
+
 class _DummyMcpServer:
     """HTTP 向け MCP サーバースタブ。"""
 
