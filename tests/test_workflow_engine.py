@@ -246,7 +246,7 @@ async def test_self_heal_failure_records_artifact(db_session):
         (
             await db_session.execute(
                 select(Knowledge).where(
-                    Knowledge.artifact_id.in_([a.id for a in artifacts])
+                    Knowledge.artifact_id.in_([a.id for a in artifacts])  # type: ignore[attr-defined]
                 )
             )
         )
