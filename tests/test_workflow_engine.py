@@ -1,3 +1,4 @@
+# pyright: reportOptionalMemberAccess=false, reportOptionalSubscript=false, reportOptionalIterable=false
 # pytype: disable=attribute-error
 
 import json
