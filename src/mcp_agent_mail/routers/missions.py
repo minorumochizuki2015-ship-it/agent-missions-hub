@@ -8,7 +8,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import SQLModel
 
@@ -112,12 +112,15 @@ async def list_artifacts(
     )
     artifacts = (await session.execute(stmt)).scalars().all()
 
-    knowledge_entries = await session.execute(
-        select(Knowledge.artifact_id, Knowledge.id).where(
-            Knowledge.artifact_id.in_([a.id for a in artifacts])
-        )
+    artifact_ids = {a.id for a in artifacts}
+    knowledge_rows = await session.execute(
+        select(Knowledge.artifact_id, Knowledge.id)
     )
-    knowledge_map = {row[0]: row[1] for row in knowledge_entries}
+    knowledge_map = {
+        row[0]: row[1]
+        for row in knowledge_rows.all()
+        if row[0] in artifact_ids
+    }
 
     return [
         ArtifactRead(
@@ -239,7 +242,7 @@ async def run_mission(
     run_row = await session.execute(
         select(WorkflowRun)
         .where(WorkflowRun.mission_id == mission_id)
-        .order_by(WorkflowRun.started_at.desc())
+        .order_by(desc(WorkflowRun.started_at))
     )
     run = run_row.scalars().first()
     if not run:

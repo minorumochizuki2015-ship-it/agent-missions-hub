@@ -1,0 +1,17 @@
+[src]
+include = ["src", "tests"]
+exclude = [
+  "legacy/**",
+  "notes/**",
+  "migrations/**",
+  "scripts/**",
+  "apps/**",
+  "src/agent_missions_hub/**",
+  "src/mcp_agent_mail/http.py",
+  "src/mcp_agent_mail/db.py",
+  "tests/test_conftest_cov.py",
+  "tests/test_storage_cov.py",
+  "tests/test_missions_api.py",
+  "tests/http_transport_mocks.py",
+  "src/mcp_agent_mail/storage.py",
+]

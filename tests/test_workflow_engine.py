@@ -29,7 +29,9 @@ async def db_session():
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
 
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async_session = sessionmaker(  # type: ignore[arg-type]
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
     async with async_session() as session:
         yield session
 
@@ -89,26 +91,19 @@ async def test_sequential_workflow_success(db_session, workflow_trace_dir: Path)
         event.get("event") == "workflow_engine_run_completed" for event in events
     )
 
-    artifacts = (
-        (
-            await db_session.execute(
-                select(Artifact).where(Artifact.type.like("self_heal%"))  # type: ignore[attr-defined]
-            )
-        )
-        .scalars()
-        .all()
+    artifact_rows = (await db_session.execute(select(Artifact))).scalars().all()
+    assert artifact_rows
+    artifact = next(
+        (row for row in artifact_rows if row.type is not None and row.type.startswith("self_heal")),
+        None,
     )
-    assert artifacts
-    artifact = artifacts[0]
     assert artifact is not None
-    knowledge_entries = await db_session.execute(
-        select(Knowledge).where(Knowledge.artifact_id == artifact.id)
+    knowledge_rows = (await db_session.execute(select(Knowledge))).scalars().all()
+    assert knowledge_rows
+    first_knowledge = next(
+        (row for row in knowledge_rows if row.artifact_id == artifact.id), None
     )
-    knowledge_list = list(knowledge_entries.scalars())
-    assert knowledge_list
-    first_knowledge = knowledge_list[0]
-    assert first_knowledge is not None
-    assert first_knowledge.summary is not None
+    assert first_knowledge is not None and first_knowledge.summary is not None
 
     # Verify tasks
     await db_session.refresh(task1)
@@ -172,15 +167,16 @@ async def test_self_heal_workflow(db_session, workflow_trace_dir: Path):
     assert task1.status == "failed"
 
     # Check for recovery task
-    stmt = select(Task).where(
-        Task.group_id == group.id,
-        Task.title.contains("Recovery"),  # type: ignore[attr-defined]
+    task_rows = (
+        (await db_session.execute(select(Task).where(Task.group_id == group.id)))
+        .scalars()
+        .all()
     )
-    result = await db_session.execute(stmt)
-    recovery_task = result.scalars().first()
-
-    assert recovery_task is not None
-    assert recovery_task.status == "completed"
+    recovery_task = next(
+        (row for row in task_rows if row.title is not None and "Recovery" in row.title),
+        None,
+    )
+    assert recovery_task is not None and recovery_task.status == "completed"
     run = (await db_session.execute(select(WorkflowRun))).scalars().first()
     assert run.trace_uri is not None
     trace_path = Path(run.trace_uri)
@@ -232,26 +228,14 @@ async def test_self_heal_failure_records_artifact(db_session):
 
     assert status == "failed"
     # recovery artifact/knowledge should be recorded as failure
-    artifacts = (
-        (
-            await db_session.execute(
-                select(Artifact).where(Artifact.type == "self_heal_failure")
-            )
-        )
-        .scalars()
-        .all()
-    )
-    assert artifacts
-    knowledge_entries = (
-        (
-            await db_session.execute(
-                select(Knowledge).where(
-                    Knowledge.artifact_id.in_([a.id for a in artifacts])  # type: ignore[attr-defined]
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
-    assert knowledge_entries
-    assert knowledge_entries[0].summary is not None
+    artifacts = (await db_session.execute(select(Artifact))).scalars().all()
+    failure_artifacts = [
+        row for row in artifacts if row.type is not None and row.type == "self_heal_failure"
+    ]
+    assert failure_artifacts
+    knowledge_rows = (await db_session.execute(select(Knowledge))).scalars().all()
+    related_knowledge = [
+        row for row in knowledge_rows if row.artifact_id in {a.id for a in failure_artifacts}
+    ]
+    assert related_knowledge
+    assert related_knowledge[0].summary is not None
