@@ -19,6 +19,12 @@ class _ArtifactPayload(BaseModel):
     sha256: str
 
 
+async def expire_stale_file_reservations(project_id: int | None) -> None:
+    """ファイル予約の期限切れを掃除するダミー処理（HTTP からの互換用）。"""
+
+    return None
+
+
 def _tool_metrics_snapshot() -> dict[str, Any]:
     """ツールメトリクスのダミースナップショット。"""
 

@@ -1,3 +1,5 @@
+# pytype: disable=attribute-error
+
 import json
 from pathlib import Path
 
