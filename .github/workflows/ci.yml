@@ -18,6 +18,108 @@ on:
         default: "0"
 
 jobs:
+  decide-gates:
+    name: Decide Auto Gates
+    runs-on: ubuntu-latest
+    outputs:
+      AUTO_GATE_UI: ${{ steps.decider.outputs.AUTO_GATE_UI }}
+      AUTO_GATE_SBOM: ${{ steps.decider.outputs.AUTO_GATE_SBOM }}
+      AUTO_GATE_SECRET_SCAN: ${{ steps.decider.outputs.AUTO_GATE_SECRET_SCAN }}
+      AUTO_GATE_BANDIT: ${{ steps.decider.outputs.AUTO_GATE_BANDIT }}
+      AUTO_GATE_GITOPS_PLAN: ${{ steps.decider.outputs.AUTO_GATE_GITOPS_PLAN }}
+      AUTO_GATE_GITOPS_APPROVALS: ${{ steps.decider.outputs.AUTO_GATE_GITOPS_APPROVALS }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies (decider)
+        run: pip install pyyaml
+      - name: Collect PR labels
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "GITHUB_PR_LABELS=${{ join(github.event.pull_request.labels.*.name, ',') }}" >> $GITHUB_ENV
+      - name: Decide Auto Gates
+        id: decider
+        run: |
+          python scripts/auto_gate_decider.py --base "${{ github.base_ref }}" --head "${{ github.sha }}"
+        env:
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
+          GITHUB_REF: ${{ github.ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+
+  ui-gate:
+    name: UI Gate (auto)
+    runs-on: ubuntu-latest
+    needs: decide-gates
+    if: needs.decide-gates.outputs.AUTO_GATE_UI != 'skip'
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Skip placeholder
+        run: echo "UI Gate実行は既存パイプラインに統合予定（auto_gate_decider で run 判定）"
+
+  sbom:
+    name: SBOM (auto)
+    runs-on: ubuntu-latest
+    needs: decide-gates
+    if: needs.decide-gates.outputs.AUTO_GATE_SBOM != 'skip'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: SBOM placeholder
+        run: echo "SBOM 実行は別スクリプトと連携予定（auto_gate_decider で run 判定）"
+
+  secret-scan:
+    name: Secret Scan (auto)
+    runs-on: ubuntu-latest
+    needs: decide-gates
+    if: needs.decide-gates.outputs.AUTO_GATE_SECRET_SCAN != 'skip'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Secret scan placeholder
+        run: echo "Secret scan 実行は別スクリプトと連携予定（auto_gate_decider で run 判定）"
+
+  bandit:
+    name: Bandit (auto)
+    runs-on: ubuntu-latest
+    needs: decide-gates
+    if: needs.decide-gates.outputs.AUTO_GATE_BANDIT != 'skip'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Bandit placeholder
+        run: echo "Bandit 実行は別スクリプトと連携予定（auto_gate_decider で run 判定）"
+
+  gitops-plan:
+    name: GitOps Plan Check (auto)
+    runs-on: ubuntu-latest
+    needs: decide-gates
+    if: needs.decide-gates.outputs.AUTO_GATE_GITOPS_PLAN != 'skip'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: GitOps plan placeholder
+        run: echo "plans/diff-plan.json チェックは別スクリプトと連携予定（auto_gate_decider で run 判定）"
+
+  gitops-approvals:
+    name: GitOps Approvals Check (auto)
+    runs-on: ubuntu-latest
+    needs: decide-gates
+    if: needs.decide-gates.outputs.AUTO_GATE_GITOPS_APPROVALS != 'skip'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: GitOps approvals placeholder
+        run: echo "APPROVALS/SafeOps/LOCK チェックは別スクリプトと連携予定（auto_gate_decider で run 判定）"
+
   ruff:
     name: Ruff Lint
     runs-on: ubuntu-latest

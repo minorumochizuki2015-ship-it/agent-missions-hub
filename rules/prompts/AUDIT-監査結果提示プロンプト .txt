@@ -103,3 +103,33 @@ Branch: <対象ブランチ名>
    Status を conservative（Block または Proceed with fixes 寄り）に判定すること。
 
 ーーーーーーーーーーーーーーーーーーー
+【WORKへの追加指示（MVPまでの実行タスク）】
+- フェーズ優先度:
+  1) Phase 2A: missions/task_groups/tasks/artifacts/knowledge の ER を確定し、Alembic マイグレーションを追加。
+     - 差分を plans/diff-plan.json に記録し、migration 実行ログを data/logs/current/audit/ に保存。
+     - pytest 最小セットでマイグレーション適用を検証。
+  2) Phase 2B: WorkflowEngine 本実装（workflow_runs 記録・self-heal ポリシー実装・ci_evidence 連携）。
+     - tests/test_workflow_engine.py を拡張し、トレース/アーティファクト/knowledge 記録を検証。
+  3) Phase 2C: Manager UI/Agent Mail 統合の実装開始。Playwright/Jest テスト追加・UI Gate 実行可否を判断。
+     - UI 変更が入る場合は `scripts/ui_audit_run.py`（JA/EN）を再実行し、`observability/policy/ci_evidence.jsonl` を更新。
+  4) Phase 2D: CLI Orchestrator（CodexCLI/Claude CLI PTY起動）を `src/orchestrator/cli.py`（新設想定）に実装。
+     - ミニ E2E デモを実行し、ci_evidence に run_id を記録。
+
+- テスト/証跡必須リスト:
+  - `uvx ty check`
+  - `.\.venv\Scripts\python.exe -m pytest -q`（少なくとも workflow_engine/HTTP liveness 系）
+  - 変更があれば coverage/diff-cover → reports/test/* へ保存し、必要に応じ ci_evidence に記録
+  - SBOM: `python -m cyclonedx_py ...`（既存フローに合わせて observability/policy/sbom*.json へ）
+  - UI Gate が不要な場合も「スキップ理由」を observability/policy/ci_evidence.jsonl に追記（例: “No UI changes in this diff”）
+  - APPROVALS 二者承認と SafeOps/LOCK を更新
+
+- 修正対象ファイルの初期候補:
+  - データモデル/マイグレーション: `migrations/versions/*.py`, `src/mcp_agent_mail/models.py` ほか ER 変更に伴う設定
+  - WorkflowEngine: `src/mcp_agent_mail/workflow_engine.py`, `tests/test_workflow_engine.py`, `ci_evidence` 連携コード
+  - Manager UI/Agent Mail: 関連する templates/components, Playwright/Jest テスト追加
+  - CLI Orchestrator: `src/orchestrator/cli.py`（新規）, 設計に沿った config
+
+- 禁止/注意:
+  - Any 新規導入禁止、Optional は None 取り扱い明示
+  - Plan→Test→Patch の記録を残す（diff-plan.json 更新必須）
+  - UI Gate 実行の有無を必ず証跡化（スキップ時も理由を明記）
