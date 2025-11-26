@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+
 def build_mcp_server() -> object:
     from .app import build_mcp_server as _build_mcp_server
 

@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
+import structlog
 from filelock import SoftFileLock, Timeout
 from git import Actor, Repo
 from PIL import Image
@@ -832,15 +833,15 @@ async def get_commit_detail(
     repo: Repo, sha: str, max_diff_size: int = 5 * 1024 * 1024
 ) -> dict[str, Any]:
     """
-    Get detailed information about a specific commit including full diff.
+    Get detailed information about a specific commit including the full diff.
 
     Args:
-        repo: GitPython Repo object
-        sha: Commit SHA (full or abbreviated)
-        max_diff_size: Maximum diff size in bytes (default 5MB)
+        repo: GitPython Repo object.
+        sha: Commit SHA (full or abbreviated).
+        max_diff_size: Maximum diff size in bytes (default 5 MB).
 
     Returns:
-        Dict with commit metadata and diff information
+        Dict with commit metadata and diff information.
     """
     def _get_detail() -> dict[str, Any]:
         # Validate SHA format (basic check)
