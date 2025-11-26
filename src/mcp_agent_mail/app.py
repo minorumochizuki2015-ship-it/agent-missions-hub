@@ -19,12 +19,6 @@ class _ArtifactPayload(BaseModel):
     sha256: str
 
 
-async def expire_stale_file_reservations(project_id: int | None) -> None:
-    """ファイル予約の期限切れを掃除するダミー処理（HTTP からの互換用）。"""
-
-    return None
-
-
 def _tool_metrics_snapshot() -> dict[str, Any]:
     """ツールメトリクスのダミースナップショット。"""
 
@@ -38,7 +32,7 @@ async def get_project_sibling_data() -> dict[str, Any]:
 
 
 async def refresh_project_sibling_suggestions() -> None:
-    """プロジェクト関連提案を更新するダミー。"""
+    """プロジェクト関連の提案を更新するダミー。"""
 
     return None
 
@@ -49,6 +43,12 @@ async def update_project_sibling_status(
     """プロジェクト関連ステータスを返すダミー。"""
 
     return {"project_id": project_id, "other_id": other_id, "status": target_status}
+
+
+async def expire_stale_file_reservations(project_id: int | None) -> None:
+    """ファイル予約の期限切れを掃除するダミー処理(HTTP互換用)。"""
+
+    return None
 
 
 class _DummyMcpServer:
