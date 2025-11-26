@@ -92,7 +92,7 @@ async def test_sequential_workflow_success(db_session, workflow_trace_dir: Path)
     artifacts = (
         (
             await db_session.execute(
-                select(Artifact).where(Artifact.type.like("self_heal%"))
+                select(Artifact).where(Artifact.type.like("self_heal%"))  # type: ignore[attr-defined]
             )
         )
         .scalars()
@@ -173,7 +173,8 @@ async def test_self_heal_workflow(db_session, workflow_trace_dir: Path):
 
     # Check for recovery task
     stmt = select(Task).where(
-        Task.group_id == group.id, Task.title.contains("Recovery")
+        Task.group_id == group.id,
+        Task.title.contains("Recovery"),  # type: ignore[attr-defined]
     )
     result = await db_session.execute(stmt)
     recovery_task = result.scalars().first()
