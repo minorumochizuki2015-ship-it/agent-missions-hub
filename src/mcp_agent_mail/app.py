@@ -1,4 +1,4 @@
-"""Application factory and MCP server stubs used by HTTP transportとテスト用 FastAPI."""
+"""HTTP トランスポート向けの MCP サーバースタブと FastAPI テストアプリ。"""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 
 class _ArtifactPayload(BaseModel):
-    """アーティファクト作成用の簡易ペイロード."""
+    """アーティファクト作成用のペイロード。"""
 
     mission_id: UUID
     type: str
@@ -19,38 +19,38 @@ class _ArtifactPayload(BaseModel):
     sha256: str
 
 
-async def _expire_stale_file_reservations(project_id: int | None) -> None:
-    """ファイル予約の期限切れクリーンアップ（スタブ・効果なし）。"""
-    return None
-
-
 def _tool_metrics_snapshot() -> dict[str, Any]:
-    """ツール利用メトリクスのスナップショット（スタブ）。"""
+    """ツールメトリクスのダミースナップショット。"""
+
     return {}
 
 
 async def get_project_sibling_data() -> dict[str, Any]:
-    """プロジェクト間の関連情報を返すスタブ。"""
+    """プロジェクト関連データを返すダミー。"""
+
     return {}
 
 
 async def refresh_project_sibling_suggestions() -> None:
-    """プロジェクト関連候補を更新するスタブ。"""
+    """プロジェクト関連提案を更新するダミー。"""
+
     return None
 
 
 async def update_project_sibling_status(
     project_id: int, other_id: int, target_status: str
 ) -> dict[str, Any]:
-    """プロジェクト関連ステータスを更新するスタブ。"""
+    """プロジェクト関連ステータスを返すダミー。"""
+
     return {"project_id": project_id, "other_id": other_id, "status": target_status}
 
 
 class _DummyMcpServer:
-    """HTTP 用 MCP サーバースタブ。"""
+    """HTTP 向け MCP サーバースタブ。"""
 
     def http_app(self, *args: object, **kwargs: object) -> FastAPI:
-        """stateless MCP HTTP サブアプリのスタブを返す。"""
+        """stateless な MCP HTTP サブアプリを返す。"""
+
         mcp_app = FastAPI(title="mcp_agent_mail_mcp_stub")
 
         @mcp_app.get("/")
@@ -61,18 +61,20 @@ class _DummyMcpServer:
 
 
 def build_mcp_server() -> _DummyMcpServer:
-    """HTTP トランスポートが期待する MCP サーバースタブを構築する。"""
+    """MCP サーバースタブを生成する。"""
+
     return _DummyMcpServer()
 
 
 def app() -> FastAPI:
-    """簡易な FastAPI アプリケーションを返す。
+    """簡易 FastAPI アプリを返す。
 
     - /health/liveness: ヘルスチェック
-    - /missions/{id}: 未存在ミッションを 404 として返す
-    - /artifacts: バリデーションにより 422 を返す（不足項目）
-    - /artifacts/{id}/promote: 未存在で 404（または UUID 変換失敗で 422）
+    - /missions/{id}: 存在しないミッションとして 404 を返す
+    - /artifacts: バリデーションエラーで 422 を返す
+    - /artifacts/{id}/promote: 存在しない場合は 404、UUID 変換失敗時は 422 を返す
     """
+
     fastapi_app = FastAPI(title="mcp_agent_mail")
 
     @fastapi_app.get("/health/liveness")
