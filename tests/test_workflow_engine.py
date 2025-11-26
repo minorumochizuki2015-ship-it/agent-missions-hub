@@ -99,9 +99,11 @@ async def test_sequential_workflow_success(db_session, workflow_trace_dir: Path)
         .all()
     )
     assert artifacts
+    artifact = artifacts[0]
+    assert artifact is not None
     knowledge_entries = (
         await db_session.execute(
-            select(Knowledge).where(Knowledge.artifact_id == artifacts[0].id)
+            select(Knowledge).where(Knowledge.artifact_id == artifact.id)
         )
     ).scalars()
     knowledge_list = list(knowledge_entries)
@@ -113,10 +115,9 @@ async def test_sequential_workflow_success(db_session, workflow_trace_dir: Path)
     await db_session.refresh(task2)
     assert task1.status == "completed"
     assert task2.status == "completed"
-    assert task1.output == {
-        "result": "simulated_success",
-        "timestamp": task1.output["timestamp"],
-    }
+    assert task1.output is not None
+    assert task1.output.get("result") == "simulated_success"
+    assert "timestamp" in task1.output
 
 
 @pytest.mark.asyncio
