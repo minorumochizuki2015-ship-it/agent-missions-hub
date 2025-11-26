@@ -31,6 +31,7 @@
 - [ ] UI-Audit (JA/EN) スクリプトを `scripts/` に実装し、`observability/policy/ci_evidence.jsonl` へ追記
 - [ ] `rules/APPROVALS.md` の二者承認フローを agent-missions-hub 用に更新
 - [ ] `docs/plans/migration_up_down.md`（後述）に正式マイグレーション案を記載
+- [ ] Auto Gate: `auto_gate_rules.yaml` に基づき CI で `auto_gate_decider` を実行し、`ci_evidence.jsonl` に `event=auto_gate_decision`（component=ui_gate/sbom/secret_scan/bandit/gitops_*, decision=run|skip|force_run, reason, base/head/pr）を記録する
 
 #### 1.3 次アクション
 - `scripts/ui_audit_run.py` を `.venv\Scripts\python.exe` 固定で実行できる runner プロファイル（`ui-audit`）を `scripts/runner.py` に追加し、JA/EN 両ビューの結果を `ui_gate_pass_sync` イベントとして集約。

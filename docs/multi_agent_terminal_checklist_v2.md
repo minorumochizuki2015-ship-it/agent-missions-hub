@@ -3,8 +3,12 @@
 更新日時: 2025-11-20T11:02:09Z (UTC換算)
 
 ## UI Gate 状況
-- 現在: 未確認（artifacts/preview/ や ui_audit 成果物が最新ではないため再生成が必要）
-- 次の手順で再取得すること:
+- Auto Gate v1 を導入する。`auto_gate_rules.yaml` を参照し、`auto_gate_decider.py`（CI）で UI Gate の run/skip を判定する。
+  - 判定結果は `event=auto_gate_decision` として `observability/policy/ci_evidence.jsonl` に記録する（component=ui_gate, decision=run/skip/force_run, reason を必須）。
+  - 判定エラーや巨大 diff（閾値超過）、`main`/`release/*` へのマージ、`label: run-ui-gate` が付いた PR では強制実行（decision=run/force_run）。
+  - 対象パス例: `apps/orchestrator-ui/**`, `src/**/templates/**`, `**/*.css|scss|ts|tsx`, `playwright.config*`, `scripts/ui_audit*.py`, `package*.json`。
+  - UI Gate 実行時は従来どおり `npm run ui:audit:ci`（または `scripts/ui_audit_run.py`）を実行し、summary/screenshot/HTML の SHA を `ui_audit_executed` / `ui_gate_pass_*` として ci_evidence に追記。
+- ローカルでの手動実行が必要な場合は従来手順を踏むこと:
   1. `npm run lint && npm run test && npm run test:e2e --prefix apps/orchestrator-ui`
   2. `python scripts/ui_audit_run.py`（JA/EN 両方）
   3. `artifacts/ui_audit/summary*.json`・`screens/*.png`・`report.html` の SHA を `observability/policy/ci_evidence.jsonl` に追記
@@ -29,7 +33,7 @@
 - Artifacts/Knowledge: sha/version/tags を保持し、promote API で Knowledge に昇格できる
 - Manager UI: Mission 一覧／TaskGroup タイムライン／Artifact タイルを表示し、Playwright/Jest で検証する
 - Graph/Inbox: Graph View は Phase 3 で TODO、Inbox は Mission スレッド化の計画を docs に記載する
-- 観測と記録: `ci_evidence.jsonl` に workflow_engine/manager_view イベント、`data/logs/current/audit/` にマイグレーション・実行ログを残す
+- 観測と記録: `ci_evidence.jsonl` に workflow_engine/manager_view イベント、Auto Gate の run/skip（event=auto_gate_decision, component=ui_gate/sbom/secret_scan/bandit/gitops_*）を残し、`data/logs/current/audit/` にマイグレーション・実行ログを残す
 - v1 スコープ: Workflow は Sequential＋TaskGroup 内の簡易並列に限定し、DAG/AsyncThink/LangGraph など高度並列は Phase 3 以降。CLI 実行は Windows/PS7＋ConPTY で親 CLI（`.\.venv\Scripts\python.exe src\orchestrator\cli.py`）から `subprocess.Popen` 経由で起動。初期サポート CLI は CodexCLI＋Claude Code CLI のみ（その他はプレースホルダ）。WSL+tmux/CAO はオプション扱いで v1 の対象外。
 
 ## 備考

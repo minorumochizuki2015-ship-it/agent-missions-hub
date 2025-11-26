@@ -223,6 +223,7 @@ Next.js + React で実装し、`apps/orchestrator-ui` (multi-agent) の資産を
 - Artifacts/Knowledge: 生成→sha/version 保存、promote→Knowledge、search でタグ/クエリ一致。
 - Manager UI (Playwright/RTL): Mission 一覧、TaskGroup タイムライン、Artifact タイル表示・リンク、self-heal 後ステータス更新。
 - 回帰: 既存 Inbox/Dashboard が壊れないこと（lint/Jest/Playwright/pytest baseline）。
+- Gate 前段: `auto_gate_decider` が `auto_gate_rules.yaml` に基づき UI Gate / SBOM / secret-scan / bandit / GitOps ゲートの run/skip を決定し、`ci_evidence.jsonl` に `event=auto_gate_decision`（component, decision, reason, base/head/pr など）を出力することを確認。
 
 ---
 
