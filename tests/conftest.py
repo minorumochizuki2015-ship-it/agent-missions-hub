@@ -19,7 +19,8 @@ os.environ.setdefault("TEMP", str(_PYTEST_BASE))
 tempfile.tempdir = str(_PYTEST_BASE)
 
 with contextlib.suppress(Exception):
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    if hasattr(asyncio, "WindowsSelectorEventLoopPolicy"):  # type: ignore[attr-defined]
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())  # pragma: no cover
 
 try:
     from mcp_agent_mail.config import clear_settings_cache  # type: ignore[import]
