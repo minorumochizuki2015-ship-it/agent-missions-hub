@@ -21,6 +21,8 @@ TRACE_DIR_DEFAULT = Path("data/logs/current/audit/workflow_runs")
 
 logger = logging.getLogger(__name__)
 
+SELF_HEAL_MAX_RECOVERY_TASKS = 1  # MVP: 1 回だけ自動リカバリを試行
+
 
 def _build_trace_path(trace_dir: Path | None, run_id: UUID) -> Path:
     """Trace ファイルのパスを準備し、親ディレクトリを確保する。"""
@@ -341,6 +343,17 @@ class SelfHealWorkflow(SequentialWorkflow):
 
             if failed_task:
                 logger.info(f"Attempting to heal failed task: {failed_task.title}")
+                _append_ci_evidence(
+                    "workflow_self_heal_attempt",
+                    {
+                        "mission_id": str(context.mission_id),
+                        "run_id": str(context.run_id),
+                        "failed_task_id": str(failed_task.id),
+                        "failed_task_title": failed_task.title,
+                        "error": failed_task.error,
+                        "recovery_budget": SELF_HEAL_MAX_RECOVERY_TASKS,
+                    },
+                )
 
                 # 2. Create recovery task
                 recovery_task = Task(
@@ -357,7 +370,12 @@ class SelfHealWorkflow(SequentialWorkflow):
                 await self.session.commit()
 
                 # 3. Execute recovery task
-                await self.execute_task(recovery_task, context)
+                attempts_left = SELF_HEAL_MAX_RECOVERY_TASKS
+                while attempts_left > 0:
+                    await self.execute_task(recovery_task, context)
+                    if recovery_task.status == "completed":
+                        break
+                    attempts_left -= 1
 
                 if recovery_task.status == "completed":
                     logger.info("Recovery successful! Resuming group...")
@@ -373,6 +391,17 @@ class SelfHealWorkflow(SequentialWorkflow):
                         task=failed_task,
                         summary=f"Recovered after {failed_task.title} -> {failed_task.error}",
                     )
+                    _append_ci_evidence(
+                        "workflow_self_heal_success",
+                        {
+                            "mission_id": str(context.mission_id),
+                            "run_id": str(context.run_id),
+                            "failed_task_id": str(failed_task.id),
+                            "recovery_task_id": str(recovery_task.id),
+                            "attempts_used": SELF_HEAL_MAX_RECOVERY_TASKS
+                            - attempts_left,
+                        },
+                    )
                     return  # Suppress the exception
                 else:
                     logger.error("Recovery failed.")
@@ -382,6 +411,17 @@ class SelfHealWorkflow(SequentialWorkflow):
                         task=failed_task,
                         summary=f"Recovery failed for {failed_task.title}: {failed_task.error}",
                         success=False,
+                    )
+                    _append_ci_evidence(
+                        "workflow_self_heal_failure",
+                        {
+                            "mission_id": str(context.mission_id),
+                            "run_id": str(context.run_id),
+                            "failed_task_id": str(failed_task.id),
+                            "recovery_task_id": str(recovery_task.id),
+                            "attempts_used": SELF_HEAL_MAX_RECOVERY_TASKS,
+                            "error": recovery_task.error,
+                        },
                     )
                     raise e  # Re-raise original exception
             else:
