@@ -248,3 +248,62 @@ async def test_self_heal_failure_records_artifact(db_session):
     ]
     assert related_knowledge
     assert related_knowledge[0].summary is not None
+
+
+@pytest.mark.asyncio
+async def test_self_heal_writes_ci_evidence(db_session, tmp_path: Path, monkeypatch):
+    """self-heal が ci_evidence に試行/成功イベントを残すことを検証する。"""
+    monkeypatch.chdir(tmp_path)
+    ci_evidence = tmp_path / "observability/policy/ci_evidence.jsonl"
+    ci_evidence.parent.mkdir(parents=True, exist_ok=True)
+    trace_dir = tmp_path / "workflow_runs"
+
+    project = Project(slug="heal-ci", human_key="Heal CI Project")
+    db_session.add(project)
+    await db_session.commit()
+
+    agent = Agent(project_id=project.id, name="HealAgent", program="test", model="test")
+    db_session.add(agent)
+    await db_session.commit()
+
+    mission = Mission(project_id=project.id, title="Heal Mission")
+    db_session.add(mission)
+    await db_session.commit()
+
+    group = TaskGroup(mission_id=mission.id, title="Group 1")
+    db_session.add(group)
+    await db_session.commit()
+
+    class MockFailOnce(SelfHealWorkflow):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.failed = False
+
+        async def execute_task(self, task, context):
+            if not self.failed and "Recovery" not in task.title:
+                self.failed = True
+                task.status = "failed"
+                task.error = "Simulated failure"
+                self.session.add(task)
+                await self.session.commit()
+            else:
+                await super().execute_task(task, context)
+
+    failing_task = Task(group_id=group.id, agent_id=agent.id, title="Failing Task")
+    db_session.add(failing_task)
+    await db_session.commit()
+
+    engine = MockFailOnce(db_session, trace_dir=trace_dir)
+    status = await engine.run(mission)
+
+    assert status == "completed"
+    assert ci_evidence.exists()
+    events = [
+        json.loads(line)
+        for line in ci_evidence.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+
+    assert any(ev["event"] == "workflow_self_heal_attempt" for ev in events)
+    assert any(ev["event"] == "workflow_self_heal_success" for ev in events)
+    assert any(ev["event"] == "workflow_run_completed" for ev in events)
