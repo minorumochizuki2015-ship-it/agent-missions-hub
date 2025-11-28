@@ -206,6 +206,132 @@
       "notes": "TEST_ALLOWLIST_APPEND=tests/test_storage_cov.py で coverage run 実行。diff-cover は origin/feature/mvp-ui-audit 比較で未被覆ゼロを確認。"
     },
     {
+      "id": "auto-gate-20251128",
+      "status": "completed",
+      "description": "auto_gate_decider.py を base=origin/feature/mvp-ui-audit, head=HEAD で実行し、auto_gate_decision（ui_gate=skip/no_ui_affecting_files, sbom=skip, secret_scan=run, bandit=skip, gitops_*=skip）を ci_evidence に記録した。",
+      "entries": [
+        "scripts/auto_gate_decider.py",
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "ts=2025-11-28T02:05:03Z, branch=feature/mvp-ui-audit（env未設定のため記録空欄）, UI差分なしのため UI Gate は未実行。"
+    },
+    {
+      "id": "shadow-audit-manifest-setup",
+      "status": "completed",
+      "description": "Shadow Audit Layer 導入の準備として manifest を Git 管理外にし、計画エントリを追加する。",
+      "entries": [
+        ".gitignore",
+        "observability/policy/shadow_audit/manifest*.jsonl"
+      ],
+      "evidence": [
+        "plans/plan_diff.json"
+      ],
+      "notes": "Batch1: manifest ignore 登録完了。ruff/pytest PASS。以降のバッチで emitter/CI 連携/署名を段階追加。"
+    },
+    {
+      "id": "shadow-audit-ci-verify",
+      "status": "completed",
+      "description": "AUDIT_rules に hash chain 検証を追加し、CI で shadow_audit を artifact 収集するステップを追加した。",
+      "entries": [
+        "rules/agent/AUDIT_rules.yaml",
+        ".github/workflows/ci.yml"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "cosign があれば署名検証、無い場合は signature=skip と明示。"
+    },
+    {
+      "id": "shadow-audit-signature-option",
+      "status": "completed",
+      "description": "Shadow Audit emitter/PS hook に署名オプションを追加（cosign 未在時は skip で落ちない）。",
+      "entries": [
+        "scripts/shadow_audit_emit.py",
+        "scripts/Invoke-WithShadowAudit.ps1",
+        "rules/agent/AUDIT_rules.yaml"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "署名実行は未。Apply時のみ sign、環境変数鍵参照。"
+    },
+    {
+      "id": "shadow-audit-emit-fix",
+      "status": "completed",
+      "description": "shadow_audit_emit で JSONDecodeError が発生する不具合を修正し、連続 emit が安全に動作することをテストで確認した。",
+      "entries": [
+        "scripts/shadow_audit_emit.py",
+        "tests/test_shadow_audit.py"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "validate_jsonl を manifest のみに限定し hash 書き込み時の失敗を解消。"
+    },
+    {
+      "id": "shadow-audit-chain-rebuild",
+      "status": "completed",
+      "description": "manifest.jsonl から hash chain を再計算し、verify_chain を通過させた。cosign は鍵欠如で skip。",
+      "entries": [
+        "scripts/shadow_audit_emit.py"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "cosign_found=true / sign_status=skip:key_missing。"
+    },
+    {
+      "id": "shadow-audit-sign-verify-attempt",
+      "status": "completed",
+      "description": "cosign が存在する環境で sign/verify を試行し、鍵未設定のため skip で処理した上で chain_ok を確認した。",
+      "entries": [
+        "observability/policy/shadow_audit/manifest.jsonl"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "sign_status=skip:key_missing, verify_status=skip:key_missing, chain_ok=true。"
+    },
+    {
+      "id": "shadow-audit-events-test-approvals-apply",
+      "status": "completed",
+      "description": "TEST/APPROVALS/APPLY イベントを emit し、署名は鍵欠如で skip だが chain_ok を確認した。",
+      "entries": [
+        "observability/policy/shadow_audit/manifest.jsonl"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "events=TEST,APPROVALS,APPLY / sign_status=skip:key_missing / verify_status=skip:key_missing / chain_ok=true。"
+    },
+    {
+      "id": "vs-ignore-cleanup",
+      "status": "completed",
+      "description": ".vs/ を .gitignore に追加し IDE 生成物を除外した。",
+      "entries": [
+        ".gitignore"
+      ],
+      "evidence": [
+        "git status --short"
+      ],
+      "notes": "コード影響なし。"
+    },
+    {
+      "id": "workflow-run-log-ignore",
+      "status": "completed",
+      "description": "workflow_run ログの誤コミットを防ぐため、data/logs/current/audit/workflow_runs/*.jsonl を .gitignore に追加した。",
+      "entries": [
+        ".gitignore"
+      ],
+      "evidence": [
+        "git status --short"
+      ],
+      "notes": "Shadow Audit 生成ログは Git 管理外とし、artifact/ci_evidence 側で管理。"
+    },
+    {
       "id": "council-poc-v1",
       "status": "planned",
       "description": "ChatGPT CLI プロファイル（creative/concise/code + fact_checker + chair）で正確性のみの Council PoC を構築し、匿名化・減点方式・ci_evidence 記録を実装する。",
@@ -234,6 +360,32 @@
         "observability/policy/ci_evidence.jsonl"
       ],
       "notes": "Linux/WSL ENABLE_FULL_SUITE=1 でフルスイート必須。対策案: lock wait 短縮、メッセージ件数削減、In-memory DB 化、marker slow 導入。"
+    },
+    {
+      "id": "shadow-audit-sign-verify-complete",
+      "status": "completed",
+      "description": "Shadow audit manifest signed and verified with cosign (tlog off, trusted root).",
+      "entries": [
+        "observability/policy/shadow_audit/manifest.jsonl"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "signature/bundle kept git-ignored; trusted_root verify OK"
+    },
+    {
+      "id": "black-batch-20251128-b",
+      "status": "completed",
+      "description": "Black/isort/ruff applied to scripts/ui_audit_run.py, scripts/auto_gate_decider.py, tests/test_ui_gate.py.",
+      "entries": [
+        "scripts/ui_audit_run.py",
+        "scripts/auto_gate_decider.py",
+        "tests/test_ui_gate.py"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "formatted within diff limit"
     }
   ]
 }

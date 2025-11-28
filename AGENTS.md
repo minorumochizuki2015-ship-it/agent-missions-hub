@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## プロジェクト構造とモジュール
-- ルート `C:\Users\User\Trae\Codex-CLImutipule-CMD` が全作業の基準であり、配下パスはこのディレクトリからの完全パスを使用します。
+- ルート `C:\Users\User\Trae\ORCH-Next\projects\agent-missions-hub-remote` が全作業の基準であり、配下パスはこのディレクトリからの完全パスを使用します。
 - `C:\Users\User\Trae\Codex-CLImutipule-CMD\src\mcp_agent_mail\` が FastMCP サーバー本体で、HTTP/CLI/UI レイヤーとメールボックス機能を提供します。
 - `C:\Users\User\Trae\Codex-CLImutipule-CMD\tests\` は transport・guard・UI など機能別に整理され、`...\tests\terminal_hub_api\` など領域単位で検証できます。
 - `C:\Users\User\Trae\Codex-CLImutipule-CMD\scripts\` には guard 導入や UI 監査の運用スクリプト、`...\plans\` と `...\reports\` には Plan-Test-Patch 証跡が集約されます。
