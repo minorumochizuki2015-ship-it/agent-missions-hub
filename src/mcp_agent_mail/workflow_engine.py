@@ -44,6 +44,17 @@ def _write_trace_entry(
         fh.write("\n")
 
 
+def _append_ci_evidence(event: str, payload: dict[str, Any]) -> None:
+    """observability/policy/ci_evidence.jsonl にワークフロー実行ログを追記する。"""
+    evidence_path = Path("observability/policy/ci_evidence.jsonl")
+    evidence_path.parent.mkdir(parents=True, exist_ok=True)
+    row = {"ts": datetime.now(timezone.utc).isoformat(), "event": event}
+    row.update(payload)
+    with evidence_path.open("a", encoding="utf-8") as fh:
+        json.dump(row, fh, ensure_ascii=False)
+        fh.write("\n")
+
+
 class WorkflowContext:
     """ワークフロー実行中にタスク間で共有するコンテキストを保持する。"""
 
@@ -124,6 +135,15 @@ class SequentialWorkflow(WorkflowEngine):
                 "run_id": str(run.run_id),
             },
         )
+        _append_ci_evidence(
+            "workflow_run_started",
+            {
+                "mission_id": str(mission.id),
+                "run_id": str(run.run_id),
+                "mode": run.mode,
+                "trace_uri": str(trace_path),
+            },
+        )
 
         last_task: Task | None = None
         try:
@@ -191,6 +211,15 @@ class SequentialWorkflow(WorkflowEngine):
                 "mission_id": str(mission.id),
                 "run_id": str(run.run_id),
                 "status": mission.status,
+            },
+        )
+        _append_ci_evidence(
+            "workflow_run_completed",
+            {
+                "mission_id": str(mission.id),
+                "run_id": str(run.run_id),
+                "status": mission.status,
+                "trace_uri": str(trace_path),
             },
         )
         await self.session.commit()
