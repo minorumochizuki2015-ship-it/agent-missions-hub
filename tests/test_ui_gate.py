@@ -19,13 +19,12 @@ from pathlib import Path
 
 import pytest
 import requests
+from mcp_agent_mail.config import get_settings
 
 playwright = pytest.importorskip(
     "playwright.async_api", reason="Playwright not installed in this environment"
 )
 async_playwright = playwright.async_playwright
-
-from mcp_agent_mail.config import get_settings
 
 # 環境変数設定
 HOST = os.environ.get("UI_AUDIT_HOST", "127.0.0.1")

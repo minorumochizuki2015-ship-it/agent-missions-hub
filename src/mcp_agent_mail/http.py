@@ -806,7 +806,10 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                                                 },
                                             )
                                     except Exception as exc:
-                                        log.warning("ack_escalation_record_failed", error=str(exc))
+                                        log.warning(
+                                            "ack_escalation_record_failed",
+                                            error=str(exc),
+                                        )
                 except Exception as exc:
                     log.warning("ack_ttl_scan_failed", error=str(exc))
                 await asyncio.sleep(settings.ack_ttl_scan_interval_seconds)

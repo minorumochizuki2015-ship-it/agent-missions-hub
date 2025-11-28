@@ -1,3 +1,4 @@
+# ruff: noqa: I001
 import asyncio
 import os
 import shutil
@@ -8,9 +9,8 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from sqlalchemy import text
-
 from mcp_agent_mail.db import ensure_schema, get_engine
+from sqlalchemy import text
 
 
 async def verify():
@@ -31,11 +31,19 @@ async def verify():
         engine = get_engine()
         async with engine.connect() as conn:
             # List tables
-            result = await conn.execute(text("SELECT name FROM sqlite_master WHERE type='table';"))
+            result = await conn.execute(
+                text("SELECT name FROM sqlite_master WHERE type='table';")
+            )
             tables = [row[0] for row in result.fetchall()]
             print("Tables found:", tables)
 
-            expected_tables = ["missions", "task_groups", "tasks", "artifacts", "knowledge"]
+            expected_tables = [
+                "missions",
+                "task_groups",
+                "tasks",
+                "artifacts",
+                "knowledge",
+            ]
             missing = [t for t in expected_tables if t not in tables]
 
             if missing:

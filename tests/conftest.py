@@ -20,7 +20,9 @@ tempfile.tempdir = str(_PYTEST_BASE)
 
 with contextlib.suppress(Exception):
     if hasattr(asyncio, "WindowsSelectorEventLoopPolicy"):  # type: ignore[attr-defined]
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())  # pragma: no cover
+        asyncio.set_event_loop_policy(
+            asyncio.WindowsSelectorEventLoopPolicy()
+        )  # pragma: no cover
 
 try:
     from mcp_agent_mail.config import clear_settings_cache  # type: ignore[import]
@@ -36,6 +38,7 @@ except ModuleNotFoundError:
 
     def reset_database_state() -> None:
         pass
+
 
 try:
     from mcp_agent_mail.storage import close_all_archives  # type: ignore[import]
@@ -98,7 +101,9 @@ def isolated_env(tmp_path, monkeypatch):
                     await anyio.sleep(min(0.05 * (1 + attempt // 5), 0.2))
             # 最終フォールバック: リネームでハンドル解放を誘発し、次回に削除
             with contextlib.suppress(Exception):
-                await asyncio.to_thread(target.rename, target.with_suffix(target.suffix + ".stale"))
+                await asyncio.to_thread(
+                    target.rename, target.with_suffix(target.suffix + ".stale")
+                )
 
         async def _cleanup() -> None:
             # DB ファイルの削除
@@ -111,6 +116,7 @@ def isolated_env(tmp_path, monkeypatch):
                     meta = lock_path.parent / f"{lock_path.name}.owner.json"
                     if meta.exists():
                         await _remove_with_retry(meta)
+
                 # rmtree は使用中ファイルで停止しがちなので onerror で継続しつつ、
                 # 失敗時は個別削除にフォールバック
                 def _onerror(func, path, exc_info):
@@ -119,11 +125,18 @@ def isolated_env(tmp_path, monkeypatch):
 
                 try:
                     await asyncio.to_thread(
-                        shutil.rmtree, storage_root, ignore_errors=False, onerror=_onerror
+                        shutil.rmtree,
+                        storage_root,
+                        ignore_errors=False,
+                        onerror=_onerror,
                     )
                 except Exception:
                     # 個別削除フォールバック
-                    for p in sorted(storage_root.rglob("*"), key=lambda x: len(x.parts), reverse=True):
+                    for p in sorted(
+                        storage_root.rglob("*"),
+                        key=lambda x: len(x.parts),
+                        reverse=True,
+                    ):
                         try:
                             if p.is_file():
                                 await _remove_with_retry(p)
@@ -177,7 +190,9 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
         close_all_archives()
 
 
-def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
     try:
         full = os.environ.get("ENABLE_FULL_SUITE", "0") == "1"
         if full:
@@ -186,7 +201,9 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
         def _split_env(value: str | None) -> tuple[str, ...]:
             if not value:
                 return ()
-            return tuple(part.strip().lower() for part in value.split(",") if part.strip())
+            return tuple(
+                part.strip().lower() for part in value.split(",") if part.strip()
+            )
 
         base_allow = (
             "tests/test_workflow_engine.py",
@@ -199,12 +216,17 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
             "tests/test_storage_write_unit_min.py",
             "tests/test_utils_unit_min.py",
         )
-        allow_env = os.environ.get("TEST_ALLOWLIST") or os.environ.get("WINDOWS_TEST_ALLOWLIST")
+        allow_env = os.environ.get("TEST_ALLOWLIST") or os.environ.get(
+            "WINDOWS_TEST_ALLOWLIST"
+        )
         allow_append = _split_env(
-            os.environ.get("TEST_ALLOWLIST_APPEND") or os.environ.get("WINDOWS_TEST_ALLOWLIST_APPEND")
+            os.environ.get("TEST_ALLOWLIST_APPEND")
+            or os.environ.get("WINDOWS_TEST_ALLOWLIST_APPEND")
         )
         if allow_env:
-            allow_targets = tuple(t.strip().lower() for t in allow_env.split(",") if t.strip())
+            allow_targets = tuple(
+                t.strip().lower() for t in allow_env.split(",") if t.strip()
+            )
         else:
             allow_targets = base_allow + allow_append
 
@@ -213,7 +235,7 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
             "ack-",
             "attachment",
             "macro",
-            "http_",  # http_* 系を丸ごと除外（通信・レート制限・認可で重い）
+            "http_",  # http_* 系を丸ごと除外(通信・レート制限・認可で重い)
             "safeops",
             "kpi_smoke",
             "resources_mailbox",
@@ -228,10 +250,16 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
             "storage_async_file_lock",
             "storage_lock",
         )
-        deny_targets = base_deny + _split_env(os.environ.get("TEST_DENYLIST") or os.environ.get("WINDOWS_TEST_DENYLIST"))
+        deny_targets = base_deny + _split_env(
+            os.environ.get("TEST_DENYLIST") or os.environ.get("WINDOWS_TEST_DENYLIST")
+        )
 
-        skip_default = pytest.mark.skip(reason="short suite 実行中のため allowlist 以外を skip")
-        skip_deny = pytest.mark.skip(reason="short suite denylist 対象（I/O lock 等不安定領域）")
+        skip_default = pytest.mark.skip(
+            reason="short suite 実行中のため allowlist 以外を skip"
+        )
+        skip_deny = pytest.mark.skip(
+            reason="short suite denylist 対象(IO lock 等不安定領域)"
+        )
 
         def _matches(targets: tuple[str, ...], node_id: str) -> bool:
             return any(target and target in node_id for target in targets)

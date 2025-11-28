@@ -1,8 +1,7 @@
 import asyncio
 import os
-import json
-from datetime import datetime, timezone
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -36,7 +35,7 @@ class DummyIndex:
     def add(self, paths) -> None:
         self.added.extend(paths)
 
-    def commit(self, message, author=None, committer=None) -> None:  # noqa: ARG002
+    def commit(self, message, author=None, committer=None) -> None:
         self.committed.append(message)
 
 
@@ -47,7 +46,7 @@ class DummyRepo:
         self._dirty = dirty
         self.working_tree_dir = str(root)
 
-    def is_dirty(self, index: bool = True, working_tree: bool = True) -> bool:  # noqa: ARG002
+    def is_dirty(self, index: bool = True, working_tree: bool = True) -> bool:
         return self._dirty
 
     # git.Repo.init replacement
@@ -58,20 +57,20 @@ class DummyRepo:
     # Config writer that raises to hit suppress block
     def config_writer(self):
         class _Cfg:
-            def __enter__(self):  # noqa: D401
+            def __enter__(self):
                 raise RuntimeError("cfg write fails")
 
-            def __exit__(self, exc_type, exc, tb):  # noqa: D401
+            def __exit__(self, exc_type, exc, tb):
                 return False
 
-            def set_value(self, section, key, value):  # noqa: ARG002
+            def set_value(self, section, key, value):
                 return None
 
         return _Cfg()
 
 
 class DummyAsyncLock:
-    def __init__(self, *args, **kwargs):  # noqa: D401, ARG002
+    def __init__(self, *args, **kwargs):
         pass
 
     async def __aenter__(self):
@@ -90,7 +89,9 @@ def immediate_to_thread(monkeypatch):
     return _immediate
 
 
-def test_ensure_repo_suppresses_config_error(tmp_path, monkeypatch, immediate_to_thread):
+def test_ensure_repo_suppresses_config_error(
+    tmp_path, monkeypatch, immediate_to_thread
+):
     settings = DummySettings()
     monkeypatch.setattr(storage, "Repo", DummyRepo)
     monkeypatch.setattr(storage, "_register_repo", lambda repo: repo)
@@ -123,7 +124,11 @@ def test_write_file_reservation_record_sha1(tmp_path, monkeypatch, immediate_to_
     asyncio.run(
         storage.write_file_reservation_record(
             archive,
-            {"path_pattern": "agents/alice/inbox/*.md", "agent": "alice", "reason": "test"},
+            {
+                "path_pattern": "agents/alice/inbox/*.md",
+                "agent": "alice",
+                "reason": "test",
+            },
         )
     )
     assert recorded["payload"]["path_pattern"] == "agents/alice/inbox/*.md"
@@ -152,7 +157,9 @@ def test_commit_trailers_suppress(monkeypatch, immediate_to_thread, tmp_path):
     monkeypatch.setattr(storage, "AsyncFileLock", DummyAsyncLock)
     repo = DummyRepo(tmp_path, dirty=True)
     settings = DummySettings()
-    asyncio.run(storage._commit(repo, settings, "file_reservation: agent1 something", ["a.txt"]))
+    asyncio.run(
+        storage._commit(repo, settings, "file_reservation: agent1 something", ["a.txt"])
+    )
     assert repo.index.committed  # commit executed
 
 
@@ -162,7 +169,7 @@ def test_agent_graph_suppress(monkeypatch, immediate_to_thread):
             self.message = msg
 
     class RepoGraph:
-        def iter_commits(self, paths=None, max_count=None):  # noqa: ARG002
+        def iter_commits(self, paths=None, max_count=None):
             return [Commit("mail: Alice -> Bob, Carol | Subject")]
 
     result = asyncio.run(storage.get_agent_communication_graph(RepoGraph(), "demo"))
@@ -181,7 +188,7 @@ def test_timeline_suppress(monkeypatch, immediate_to_thread):
             self.author = Author()
 
     class RepoTimeline:
-        def iter_commits(self, paths=None, max_count=None):  # noqa: ARG002
+        def iter_commits(self, paths=None, max_count=None):
             return [Commit("mail: Sender -> R1, R2 | Note")]
 
     timeline = asyncio.run(storage.get_timeline_commits(RepoTimeline(), "demo"))
@@ -233,19 +240,22 @@ def test_historical_snapshot_frontmatter_and_failure(monkeypatch, immediate_to_t
         def __init__(self, commit):
             self._commit = commit
 
-        def iter_commits(self, max_count=None):  # noqa: ARG002
+        def iter_commits(self, max_count=None):
             return [self._commit]
 
     good_blob = Blob(
         "2025-01-01__subject__id.md",
-        b"---json\n{\"from\":\"alice\",\"importance\":\"high\",\"subject\":\"hello\"}\n---\nbody",
+        b'---json\n{"from":"alice","importance":"high","subject":"hello"}\n---\nbody',
     )
     bad_blob = Blob("2025-01-02__broken__id.md", b"", fail=True)
     inbox_tree = Tree("inbox", [good_blob, bad_blob])
-    agent_tree = Tree("agent", [Tree("inbox", [inbox_tree])])  # nested to mimic traversal depth>1
+    agent_tree = Tree(
+        "agent", [Tree("inbox", [inbox_tree])]
+    )  # nested to mimic traversal depth>1
     agents_tree = Tree("agents", [agent_tree])
     proj_tree = Tree("projects", [Tree("demo", [agents_tree])])
     commit = Commit(proj_tree)
+
     # Provide structlog stub to cover exception logging path
     class _DummyLogger:
         def debug(self, *args, **kwargs):

@@ -1,9 +1,6 @@
 from __future__ import annotations
 
 import os
-import asyncio
-from pathlib import Path
-import contextlib
 from typing import Any
 
 import pytest
@@ -36,7 +33,9 @@ def _marker_reasons(markers: list[Any]) -> list[str]:
     return reasons
 
 
-def test_pytest_collection_modifyitems_allow_and_deny(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_pytest_collection_modifyitems_allow_and_deny(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """allowlist/denylist の適用で skip 理由が切り替わることを確認する。"""
 
     monkeypatch.delenv("ENABLE_FULL_SUITE", raising=False)
@@ -53,3 +52,4 @@ def test_pytest_collection_modifyitems_allow_and_deny(monkeypatch: pytest.Monkey
     reasons_allow_deny = _marker_reasons(allow_and_deny.markers)
     assert any("denylist" in reason for reason in reasons_allow_deny)
     reasons_denied_default = _marker_reasons(denied_default.markers)
+    assert reasons_denied_default

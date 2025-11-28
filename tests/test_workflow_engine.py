@@ -94,7 +94,11 @@ async def test_sequential_workflow_success(db_session, workflow_trace_dir: Path)
     artifact_rows = (await db_session.execute(select(Artifact))).scalars().all()
     assert artifact_rows
     artifact = next(
-        (row for row in artifact_rows if row.type is not None and row.type.startswith("self_heal")),
+        (
+            row
+            for row in artifact_rows
+            if row.type is not None and row.type.startswith("self_heal")
+        ),
         None,
     )
     assert artifact is not None
@@ -230,12 +234,16 @@ async def test_self_heal_failure_records_artifact(db_session):
     # recovery artifact/knowledge should be recorded as failure
     artifacts = (await db_session.execute(select(Artifact))).scalars().all()
     failure_artifacts = [
-        row for row in artifacts if row.type is not None and row.type == "self_heal_failure"
+        row
+        for row in artifacts
+        if row.type is not None and row.type == "self_heal_failure"
     ]
     assert failure_artifacts
     knowledge_rows = (await db_session.execute(select(Knowledge))).scalars().all()
     related_knowledge = [
-        row for row in knowledge_rows if row.artifact_id in {a.id for a in failure_artifacts}
+        row
+        for row in knowledge_rows
+        if row.artifact_id in {a.id for a in failure_artifacts}
     ]
     assert related_knowledge
     assert related_knowledge[0].summary is not None

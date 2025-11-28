@@ -82,8 +82,11 @@ class AsyncFileLock:
     async def __aenter__(self) -> None:
         # Attempt timed acquire; if timed out, check for stale lock and break it
         import structlog
+
         log = structlog.get_logger("debug")
-        log.info("AsyncFileLock.acquire_start", path=str(self._path), timeout=self._timeout)
+        log.info(
+            "AsyncFileLock.acquire_start", path=str(self._path), timeout=self._timeout
+        )
         try:
             await _to_thread(self._lock.acquire, timeout=self._timeout)
             log.info("AsyncFileLock.acquire_success", path=str(self._path))
@@ -104,6 +107,7 @@ class AsyncFileLock:
 
     async def __aexit__(self, exc_type, exc, tb) -> None:
         import structlog
+
         log = structlog.get_logger("debug")
         log.info("AsyncFileLock.release_start", path=str(self._path))
         if not self._held:
@@ -117,7 +121,6 @@ class AsyncFileLock:
             await _to_thread(self._path.unlink)
         self._held = False
         log.info("AsyncFileLock.release_done", path=str(self._path))
-
 
     def _write_metadata(self) -> None:
         payload = {
@@ -144,7 +147,10 @@ class AsyncFileLock:
                 if not self._pid_alive(pid):
                     return True
                 created_ts = float(payload.get("created_ts", 0.0))
-                if self._stale_timeout > 0 and (time.time() - created_ts) > self._stale_timeout:
+                if (
+                    self._stale_timeout > 0
+                    and (time.time() - created_ts) > self._stale_timeout
+                ):
                     return True
             # Fallback to filesystem mtime
             if self._stale_timeout > 0:
@@ -204,13 +210,17 @@ def collect_lock_status(settings: Settings) -> dict[str, Any]:
                 "metadata_path": str(metadata_path) if metadata_present else None,
                 "status": "held",
                 "metadata_present": metadata_present,
-                "category": "archive" if lock_path.name == ".archive.lock" else "custom",
+                "category": (
+                    "archive" if lock_path.name == ".archive.lock" else "custom"
+                ),
             }
 
             with contextlib.suppress(Exception):
                 stat = lock_path.stat()
                 info["size"] = stat.st_size
-                info["modified_ts"] = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()
+                info["modified_ts"] = datetime.fromtimestamp(
+                    stat.st_mtime, tz=timezone.utc
+                ).isoformat()
 
             metadata: dict[str, Any] = {}
             if metadata_present:
@@ -225,11 +235,17 @@ def collect_lock_status(settings: Settings) -> dict[str, Any]:
             with contextlib.suppress(Exception):
                 pid_int = int(pid_val)
             info["owner_pid"] = pid_int
-            info["owner_alive"] = AsyncFileLock._pid_alive(pid_int) if pid_int else False
+            info["owner_alive"] = (
+                AsyncFileLock._pid_alive(pid_int) if pid_int else False
+            )
 
-            created_ts = metadata.get("created_ts") if isinstance(metadata, dict) else None
+            created_ts = (
+                metadata.get("created_ts") if isinstance(metadata, dict) else None
+            )
             if isinstance(created_ts, (int, float)):
-                info["created_ts"] = datetime.fromtimestamp(created_ts, tz=timezone.utc).isoformat()
+                info["created_ts"] = datetime.fromtimestamp(
+                    created_ts, tz=timezone.utc
+                ).isoformat()
                 info["age_seconds"] = max(0.0, now - float(created_ts))
             else:
                 info["created_ts"] = None
@@ -238,7 +254,12 @@ def collect_lock_status(settings: Settings) -> dict[str, Any]:
             stale_threshold = AsyncFileLock(lock_path)._stale_timeout
             info["stale_timeout_seconds"] = stale_threshold
             age_val = info.get("age_seconds")
-            is_stale = bool(metadata) and not info["owner_alive"] and isinstance(age_val, (int, float)) and age_val >= stale_threshold
+            is_stale = (
+                bool(metadata)
+                and not info["owner_alive"]
+                and isinstance(age_val, (int, float))
+                and age_val >= stale_threshold
+            )
             info["stale_suspected"] = is_stale
 
             summary["total"] += 1
@@ -264,6 +285,7 @@ async def ensure_archive_root(settings: Settings) -> tuple[Path, Repo]:
 
 async def ensure_archive(settings: Settings, slug: str) -> ProjectArchive:
     import structlog
+
     log = structlog.get_logger("debug")
     log.info("ensure_archive.start", slug=slug)
     repo_root, repo = await ensure_archive_root(settings)
@@ -294,29 +316,40 @@ async def _ensure_repo(root: Path, settings: Settings) -> Repo:
     repo = _register_repo(repo)
     # Ensure deterministic, non-interactive commits (disable GPG signing)
     with contextlib.suppress(Exception):  # pragma: no cover - best-effort config
+
         def _configure_repo() -> None:
             with repo.config_writer() as cw:
                 cw.set_value("commit", "gpgsign", "false")
+
         await _to_thread(_configure_repo)
     attributes_path = root / ".gitattributes"
     if not attributes_path.exists():
         await _write_text(attributes_path, "*.json text\n*.md text\n")
     import structlog
+
     structlog.get_logger("debug").info("_ensure_repo.committing", root=str(root))
     await _commit(repo, settings, "chore: initialize archive", [".gitattributes"])
     structlog.get_logger("debug").info("_ensure_repo.committed", root=str(root))
     return repo
 
 
-async def write_agent_profile(archive: ProjectArchive, agent: dict[str, object]) -> None:
+async def write_agent_profile(
+    archive: ProjectArchive, agent: dict[str, object]
+) -> None:
     profile_path = archive.root / "agents" / agent["name"].__str__() / "profile.json"
     await _write_json(profile_path, agent)
     rel = profile_path.relative_to(archive.repo_root).as_posix()
-    await _commit(archive.repo, archive.settings, f"agent: profile {agent['name']}", [rel])
+    await _commit(
+        archive.repo, archive.settings, f"agent: profile {agent['name']}", [rel]
+    )
 
 
-async def write_file_reservation_record(archive: ProjectArchive, file_reservation: dict[str, object]) -> None:
-    path_pattern = str(file_reservation.get("path_pattern") or file_reservation.get("path") or "").strip()
+async def write_file_reservation_record(
+    archive: ProjectArchive, file_reservation: dict[str, object]
+) -> None:
+    path_pattern = str(
+        file_reservation.get("path_pattern") or file_reservation.get("path") or ""
+    ).strip()
     if not path_pattern:
         raise ValueError("File reservation record must include 'path_pattern'.")
     normalized_file_reservation = dict(file_reservation)
@@ -346,14 +379,20 @@ async def write_message_bundle(
     commit_text: str | None = None,
 ) -> None:
     timestamp_obj: Any = message.get("created") or message.get("created_ts")
-    timestamp_str = timestamp_obj if isinstance(timestamp_obj, str) else datetime.now(timezone.utc).isoformat()
+    timestamp_str = (
+        timestamp_obj
+        if isinstance(timestamp_obj, str)
+        else datetime.now(timezone.utc).isoformat()
+    )
     now = datetime.fromisoformat(timestamp_str)
     y_dir = now.strftime("%Y")
     m_dir = now.strftime("%m")
 
     canonical_dir = archive.root / "messages" / y_dir / m_dir
     outbox_dir = archive.root / "agents" / sender / "outbox" / y_dir / m_dir
-    inbox_dirs = [archive.root / "agents" / r / "inbox" / y_dir / m_dir for r in recipients]
+    inbox_dirs = [
+        archive.root / "agents" / r / "inbox" / y_dir / m_dir for r in recipients
+    ]
 
     rel_paths: list[str] = []
 
@@ -368,7 +407,10 @@ async def write_message_bundle(
     # Descriptive, ISO-prefixed filename: <ISO>__<subject-slug>__<id>.md
     created_iso = now.astimezone(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
     subject_value = str(message.get("subject", "")).strip() or "message"
-    subject_slug = re.sub(r"[^a-zA-Z0-9._-]+", "-", subject_value).strip("-_").lower()[:80] or "message"
+    subject_slug = (
+        re.sub(r"[^a-zA-Z0-9._-]+", "-", subject_value).strip("-_").lower()[:80]
+        or "message"
+    )
     id_suffix = str(message.get("id", ""))
     filename = (
         f"{created_iso}__{subject_slug}__{id_suffix}.md"
@@ -411,9 +453,13 @@ async def write_message_bundle(
         rel_paths.extend(extra_paths)
     thread_key = message.get("thread_id") or message.get("id")
     if commit_text:
-        commit_message = commit_text if commit_text.endswith("\n") else f"{commit_text}\n"
+        commit_message = (
+            commit_text if commit_text.endswith("\n") else f"{commit_text}\n"
+        )
     else:
-        commit_subject = f"mail: {sender} -> {', '.join(recipients)} | {message.get('subject', '')}"
+        commit_subject = (
+            f"mail: {sender} -> {', '.join(recipients)} | {message.get('subject', '')}"
+        )
         # Enriched commit body mirroring console logs
         commit_body_lines = [
             "TOOL: send_message",
@@ -452,9 +498,7 @@ async def _update_thread_digest(
         recipients_list = [to_value]
     else:
         recipients_list = []
-    header = (
-        f"## {meta.get('created', '')} — {meta.get('from', '')} → {', '.join(recipients_list)}\n\n"
-    )
+    header = f"## {meta.get('created', '')} — {meta.get('from', '')} → {', '.join(recipients_list)}\n\n"
     link_line = f"[View canonical]({canonical_rel_path})\n\n"
     subject = str(meta.get("subject", "")).strip()
     subject_line = f"### {subject}\n\n" if subject else ""
@@ -506,7 +550,9 @@ async def process_attachments(
                             mt = header[5:].split(";", 1)[0]
                             if mt:
                                 media_type = mt
-                        attachments_meta.append({"type": "inline", "media_type": media_type})
+                        attachments_meta.append(
+                            {"type": "inline", "media_type": media_type}
+                        )
                     except Exception:
                         attachments_meta.append({"type": "inline"})
     if attachment_paths:
@@ -548,10 +594,12 @@ async def _convert_markdown_images(
                     mt = header[5:].split(";", 1)[0]
                     if mt:
                         media_type = mt
-                meta.append({
-                    "type": "inline",
-                    "media_type": media_type,
-                })
+                meta.append(
+                    {
+                        "type": "inline",
+                        "media_type": media_type,
+                    }
+                )
             except Exception:
                 meta.append({"type": "inline"})
             result_parts.append(raw_path)
@@ -564,15 +612,21 @@ async def _convert_markdown_images(
             result_parts.append(raw_path)
             last_idx = path_end
             continue
-        attachment_meta, rel_path = await _store_image(archive, file_path, embed_policy=embed_policy)
+        attachment_meta, rel_path = await _store_image(
+            archive, file_path, embed_policy=embed_policy
+        )
         if attachment_meta["type"] == "inline":
-            replacement_value = f"data:image/webp;base64,{attachment_meta['data_base64']}"
+            replacement_value = (
+                f"data:image/webp;base64,{attachment_meta['data_base64']}"
+            )
         else:
             replacement_value = attachment_meta["path"]
         leading_ws_len = len(raw_path) - len(raw_path.lstrip())
         trailing_ws_len = len(raw_path) - len(raw_path.rstrip())
         leading_ws = raw_path[:leading_ws_len] if leading_ws_len else ""
-        trailing_ws = raw_path[len(raw_path) - trailing_ws_len :] if trailing_ws_len else ""
+        trailing_ws = (
+            raw_path[len(raw_path) - trailing_ws_len :] if trailing_ws_len else ""
+        )
         result_parts.append(f"{leading_ws}{replacement_value}{trailing_ws}")
         meta.append(attachment_meta)
         if rel_path:
@@ -582,14 +636,18 @@ async def _convert_markdown_images(
     return "".join(result_parts)
 
 
-async def _store_image(archive: ProjectArchive, path: Path, *, embed_policy: str = "auto") -> tuple[dict[str, object], str | None]:
+async def _store_image(
+    archive: ProjectArchive, path: Path, *, embed_policy: str = "auto"
+) -> tuple[dict[str, object], str | None]:
     data = await _to_thread(path.read_bytes)
     pil = await _to_thread(Image.open, path)
     img = pil.convert("RGBA" if pil.mode in ("LA", "RGBA") else "RGB")
     width, height = img.size
     buffer_path = archive.attachments_dir
     await _to_thread(buffer_path.mkdir, parents=True, exist_ok=True)
-    digest = hashlib.sha1(data, usedforsecurity=False).hexdigest()  # pragma: no cover - deterministic digest
+    digest = hashlib.sha1(
+        data, usedforsecurity=False
+    ).hexdigest()  # pragma: no cover - deterministic digest
     target_dir = buffer_path / digest[:2]
     await _to_thread(target_dir.mkdir, parents=True, exist_ok=True)
     target_path = target_dir / f"{digest}.webp"
@@ -643,7 +701,9 @@ async def _store_image(archive: ProjectArchive, path: Path, *, embed_policy: str
     elif embed_policy == "file":
         should_inline = False
     else:
-        should_inline = len(new_bytes) <= archive.settings.storage.inline_image_max_bytes
+        should_inline = (
+            len(new_bytes) <= archive.settings.storage.inline_image_max_bytes
+        )
     if should_inline:
         encoded = base64.b64encode(new_bytes).decode("ascii")
         return {
@@ -686,12 +746,16 @@ async def _write_json(path: Path, payload: dict[str, object]) -> None:
     await _write_text(path, content + "\n")
 
 
-async def _append_attachment_audit(archive: ProjectArchive, sha1: str, event: dict[str, object]) -> None:
+async def _append_attachment_audit(
+    archive: ProjectArchive, sha1: str, event: dict[str, object]
+) -> None:
     """Append a single JSON line audit record for an attachment digest.
 
     Creates attachments/_audit/<sha1>.log if missing. Best-effort; failures are ignored.
     """
-    with contextlib.suppress(Exception):  # pragma: no cover - audit logging is best-effort
+    with contextlib.suppress(
+        Exception
+    ):  # pragma: no cover - audit logging is best-effort
         audit_dir = archive.root / "attachments" / "_audit"
         await _to_thread(audit_dir.mkdir, parents=True, exist_ok=True)
         audit_path = audit_dir / f"{sha1}.log"
@@ -705,7 +769,9 @@ async def _append_attachment_audit(archive: ProjectArchive, sha1: str, event: di
         await _to_thread(_append_line)
 
 
-async def _commit(repo: Repo, settings: Settings, message: str, rel_paths: Sequence[str]) -> None:
+async def _commit(
+    repo: Repo, settings: Settings, message: str, rel_paths: Sequence[str]
+) -> None:
     if not rel_paths:
         return
     actor = Actor(settings.storage.git_author_name, settings.storage.git_author_email)
@@ -719,7 +785,9 @@ async def _commit(repo: Repo, settings: Settings, message: str, rel_paths: Seque
             # Expected message formats include:
             #   mail: <Agent> -> ... | <Subject>
             #   file_reservation: <Agent> ...
-            with contextlib.suppress(Exception):  # pragma: no cover - trailer extraction is heuristic
+            with contextlib.suppress(
+                Exception
+            ):  # pragma: no cover - trailer extraction is heuristic
                 # Avoid duplicating trailers if already embedded
                 lower_msg = message.lower()
                 have_agent_line = "\nagent:" in lower_msg
@@ -737,14 +805,24 @@ async def _commit(repo: Repo, settings: Settings, message: str, rel_paths: Seque
             if trailers:
                 final_message = message + "\n\n" + "\n".join(trailers) + "\n"
             repo.index.commit(final_message, author=actor, committer=actor)
+
     # Serialize commits across all projects sharing the same Git repo to avoid index races
     commit_lock_path = Path(repo.working_tree_dir).resolve() / ".commit.lock"
     import structlog
-    structlog.get_logger("debug").info("_commit.locking", lock_path=str(commit_lock_path))
-    async with AsyncFileLock(commit_lock_path, timeout_seconds=15.0, stale_timeout_seconds=30.0):
-        structlog.get_logger("debug").info("_commit.locked", lock_path=str(commit_lock_path))
+
+    structlog.get_logger("debug").info(
+        "_commit.locking", lock_path=str(commit_lock_path)
+    )
+    async with AsyncFileLock(
+        commit_lock_path, timeout_seconds=15.0, stale_timeout_seconds=30.0
+    ):
+        structlog.get_logger("debug").info(
+            "_commit.locked", lock_path=str(commit_lock_path)
+        )
         await _to_thread(_perform_commit)
-        structlog.get_logger("debug").info("_commit.performed", lock_path=str(commit_lock_path))
+        structlog.get_logger("debug").info(
+            "_commit.performed", lock_path=str(commit_lock_path)
+        )
 
 
 # ==================================================================================
@@ -771,6 +849,7 @@ async def get_recent_commits(
         List of commit dicts with keys: sha, short_sha, author, email, date,
         relative_date, subject, body, files_changed, insertions, deletions
     """
+
     def _get_commits() -> list[dict[str, Any]]:
         commits = []
         path_spec = None
@@ -810,19 +889,21 @@ async def get_recent_commits(
             else:
                 relative_date = "just now"
 
-            commits.append({
-                "sha": commit.hexsha,
-                "short_sha": commit.hexsha[:8],
-                "author": commit.author.name,
-                "email": commit.author.email,
-                "date": commit_time.isoformat(),
-                "relative_date": relative_date,
-                "subject": commit.message.split("\n")[0],
-                "body": commit.message,
-                "files_changed": files_changed,
-                "insertions": insertions,
-                "deletions": deletions,
-            })
+            commits.append(
+                {
+                    "sha": commit.hexsha,
+                    "short_sha": commit.hexsha[:8],
+                    "author": commit.author.name,
+                    "email": commit.author.email,
+                    "date": commit_time.isoformat(),
+                    "relative_date": relative_date,
+                    "subject": commit.message.split("\n")[0],
+                    "body": commit.message,
+                    "files_changed": files_changed,
+                    "insertions": insertions,
+                    "deletions": deletions,
+                }
+            )
 
         return commits
 
@@ -843,9 +924,14 @@ async def get_commit_detail(
     Returns:
         Dict with commit metadata and diff information.
     """
+
     def _get_detail() -> dict[str, Any]:
         # Validate SHA format (basic check)
-        if not sha or not (7 <= len(sha) <= 40) or not all(c in "0123456789abcdef" for c in sha.lower()):
+        if (
+            not sha
+            or not (7 <= len(sha) <= 40)
+            or not all(c in "0123456789abcdef" for c in sha.lower())
+        ):
             raise ValueError("Invalid commit SHA format")
 
         commit = repo.commit(sha)
@@ -877,12 +963,14 @@ async def get_commit_detail(
             else:
                 change_type = "modified"
 
-            changed_files.append({
-                "path": b_path if b_path != "/dev/null" else a_path,
-                "change_type": change_type,
-                "a_path": a_path,
-                "b_path": b_path,
-            })
+            changed_files.append(
+                {
+                    "path": b_path if b_path != "/dev/null" else a_path,
+                    "change_type": change_type,
+                    "a_path": a_path,
+                    "b_path": b_path,
+                }
+            )
 
             # Get diff text with size limit
             if diff.diff:
@@ -937,10 +1025,10 @@ async def get_commit_detail(
                         trailer_lines = []
                     else:
                         # Valid trailers with blank separator
-                        trailer_lines = rest_lines[trailer_start_idx:end_idx + 1]
+                        trailer_lines = rest_lines[trailer_start_idx : end_idx + 1]
                 else:
                     # Trailers start at beginning (no body) - this is valid
-                    trailer_lines = rest_lines[trailer_start_idx:end_idx + 1]
+                    trailer_lines = rest_lines[trailer_start_idx : end_idx + 1]
             else:
                 trailer_lines = []
 
@@ -980,7 +1068,9 @@ async def get_commit_detail(
     return await _to_thread(_get_detail)
 
 
-async def get_message_commit_sha(archive: ProjectArchive, message_id: int) -> str | None:
+async def get_message_commit_sha(
+    archive: ProjectArchive, message_id: int
+) -> str | None:
     """
     Find the commit SHA that created a specific message.
 
@@ -991,6 +1081,7 @@ async def get_message_commit_sha(archive: ProjectArchive, message_id: int) -> st
     Returns:
         Commit SHA string or None if not found
     """
+
     def _find_commit() -> str | None:
         # Find message file in archive
         messages_dir = archive.root / "messages"
@@ -1017,7 +1108,11 @@ async def get_message_commit_sha(archive: ProjectArchive, message_id: int) -> st
                             # Get FIRST commit that created this file (oldest, not most recent)
                             # iter_commits returns newest first, so we need to get all and take the last
                             # Limit to 1000 commits to prevent performance issues
-                            commits_list = list(archive.repo.iter_commits(paths=[str(rel_path)], max_count=1000))
+                            commits_list = list(
+                                archive.repo.iter_commits(
+                                    paths=[str(rel_path)], max_count=1000
+                                )
+                            )
                             if commits_list:
                                 # The last commit in the list is the oldest (first commit)
                                 return commits_list[-1].hexsha
@@ -1046,6 +1141,7 @@ async def get_archive_tree(
     Returns:
         List of tree entries with keys: name, path, type (file/dir), size, mode
     """
+
     def _get_tree() -> list[dict[str, Any]]:
         # Sanitize path to prevent directory traversal
         if path:
@@ -1067,7 +1163,9 @@ async def get_archive_tree(
         # Get commit (HEAD if not specified)
         if commit_sha:
             # Validate SHA format
-            if not (7 <= len(commit_sha) <= 40) or not all(c in "0123456789abcdef" for c in commit_sha.lower()):
+            if not (7 <= len(commit_sha) <= 40) or not all(
+                c in "0123456789abcdef" for c in commit_sha.lower()
+            ):
                 raise ValueError("Invalid commit SHA format")
             commit = archive.repo.commit(commit_sha)
         else:
@@ -1089,13 +1187,15 @@ async def get_archive_tree(
             entry_type = "dir" if item.type == "tree" else "file"
             size = item.size if hasattr(item, "size") else 0
 
-            entries.append({
-                "name": item.name,
-                "path": f"{path}/{item.name}" if path else item.name,
-                "type": entry_type,
-                "size": size,
-                "mode": item.mode,
-            })
+            entries.append(
+                {
+                    "name": item.name,
+                    "path": f"{path}/{item.name}" if path else item.name,
+                    "type": entry_type,
+                    "size": size,
+                    "mode": item.mode,
+                }
+            )
 
         # Sort: directories first, then files, both alphabetically
         entries.sort(key=lambda x: (x["type"] != "dir", x["name"].lower()))
@@ -1123,6 +1223,7 @@ async def get_file_content(
     Returns:
         File content as string, or None if not found
     """
+
     def _get_content() -> str | None:
         # Sanitize path to prevent directory traversal
         if path:
@@ -1143,7 +1244,9 @@ async def get_file_content(
 
         if commit_sha:
             # Validate SHA format
-            if not (7 <= len(commit_sha) <= 40) or not all(c in "0123456789abcdef" for c in commit_sha.lower()):
+            if not (7 <= len(commit_sha) <= 40) or not all(
+                c in "0123456789abcdef" for c in commit_sha.lower()
+            ):
                 raise ValueError("Invalid commit SHA format")
             commit = archive.repo.commit(commit_sha)
         else:
@@ -1158,7 +1261,9 @@ async def get_file_content(
                 raise ValueError("Path is a directory, not a file")
             # Check size before reading
             if obj.size > max_size_bytes:
-                raise ValueError(f"File too large: {obj.size} bytes (max {max_size_bytes})")
+                raise ValueError(
+                    f"File too large: {obj.size} bytes (max {max_size_bytes})"
+                )
             return obj.data_stream.read().decode("utf-8", errors="replace")
         except KeyError:
             return None
@@ -1182,6 +1287,7 @@ async def get_agent_communication_graph(
     Returns:
         Dict with keys: nodes (list of agent dicts), edges (list of connection dicts)
     """
+
     def _analyze_graph() -> dict[str, Any]:
         path_spec = f"projects/{project_slug}/messages"
 
@@ -1199,7 +1305,7 @@ async def get_agent_communication_graph(
 
             # Extract sender and recipients
             with contextlib.suppress(Exception):  # pragma: no cover - tolerant parsing
-                rest = subject[len("mail: "):]
+                rest = subject[len("mail: ") :]
                 sender_part, _ = rest.split(" | ", 1) if " | " in rest else (rest, "")
 
                 if " -> " not in sender_part:
@@ -1222,7 +1328,9 @@ async def get_agent_communication_graph(
                     recipient = str(recipient)
                     if recipient not in agent_stats:
                         agent_stats[recipient] = {"sent": 0, "received": 0}
-                    agent_stats[recipient]["received"] = agent_stats[recipient].get("received", 0) + 1
+                    agent_stats[recipient]["received"] = (
+                        agent_stats[recipient].get("received", 0) + 1
+                    )
 
                     # Track connection
                     conn_key: tuple[str, str] = (sender, recipient)
@@ -1232,22 +1340,26 @@ async def get_agent_communication_graph(
         nodes = []
         for agent_name, stats in agent_stats.items():
             total = stats["sent"] + stats["received"]
-            nodes.append({
-                "id": agent_name,
-                "label": agent_name,
-                "sent": stats["sent"],
-                "received": stats["received"],
-                "total": total,
-            })
+            nodes.append(
+                {
+                    "id": agent_name,
+                    "label": agent_name,
+                    "sent": stats["sent"],
+                    "received": stats["received"],
+                    "total": total,
+                }
+            )
 
         # Build edges list
         edges = []
         for (sender, recipient), count in connections.items():
-            edges.append({
-                "from": sender,
-                "to": recipient,
-                "count": count,
-            })
+            edges.append(
+                {
+                    "from": sender,
+                    "to": recipient,
+                    "count": count,
+                }
+            )
 
         return {
             "nodes": nodes,
@@ -1273,6 +1385,7 @@ async def get_timeline_commits(
     Returns:
         List of commit dicts with timeline-specific metadata
     """
+
     def _get_timeline() -> list[dict[str, Any]]:
         path_spec = f"projects/{project_slug}"
 
@@ -1289,9 +1402,13 @@ async def get_timeline_commits(
             if subject.startswith("mail: "):
                 commit_type = "message"
                 # Parse sender and recipients
-                with contextlib.suppress(Exception):  # pragma: no cover - tolerant parsing
-                    rest = subject[len("mail: "):]
-                    sender_part, _ = rest.split(" | ", 1) if " | " in rest else (rest, "")
+                with contextlib.suppress(
+                    Exception
+                ):  # pragma: no cover - tolerant parsing
+                    rest = subject[len("mail: ") :]
+                    sender_part, _ = (
+                        rest.split(" | ", 1) if " | " in rest else (rest, "")
+                    )
                     if " -> " in sender_part:
                         sender, recipients_str = sender_part.split(" -> ", 1)
                         sender = sender.strip()
@@ -1301,17 +1418,19 @@ async def get_timeline_commits(
             elif subject.startswith("chore: "):
                 commit_type = "chore"
 
-            timeline.append({
-                "sha": commit.hexsha,
-                "short_sha": commit.hexsha[:8],
-                "date": commit_time.isoformat(),
-                "timestamp": commit.authored_date,
-                "subject": subject,
-                "type": commit_type,
-                "sender": sender,
-                "recipients": recipients,
-                "author": commit.author.name,
-            })
+            timeline.append(
+                {
+                    "sha": commit.hexsha,
+                    "short_sha": commit.hexsha[:8],
+                    "date": commit_time.isoformat(),
+                    "timestamp": commit.authored_date,
+                    "subject": subject,
+                    "type": commit_type,
+                    "sender": sender,
+                    "recipients": recipients,
+                    "author": commit.author.name,
+                }
+            )
 
         # Sort by timestamp (oldest first for timeline)
         timeline.sort(key=lambda x: x["timestamp"])
@@ -1353,7 +1472,7 @@ async def get_historical_inbox_snapshot(
     def _get_snapshot() -> dict[str, Any]:
         try:
             # Parse timestamp - handle both with and without timezone
-            timestamp_clean = timestamp.replace('Z', '+00:00')
+            timestamp_clean = timestamp.replace("Z", "+00:00")
             target_time = datetime.fromisoformat(timestamp_clean)
 
             # If naive datetime (no timezone), assume UTC
@@ -1368,7 +1487,7 @@ async def get_historical_inbox_snapshot(
                 "snapshot_time": None,
                 "commit_sha": None,
                 "requested_time": timestamp,
-                "error": f"Invalid timestamp format: {e}"
+                "error": f"Invalid timestamp format: {e}",
             }
 
         # Find commit closest to (but not after) target timestamp
@@ -1385,7 +1504,7 @@ async def get_historical_inbox_snapshot(
                 "snapshot_time": None,
                 "commit_sha": None,
                 "requested_time": timestamp,
-                "note": "No commits found before this timestamp"
+                "note": "No commits found before this timestamp",
             }
 
         # Get agent inbox directory at that commit
@@ -1421,54 +1540,72 @@ async def get_historical_inbox_snapshot(
                                 msg_id = "unknown"
 
                             # Convert slug back to readable subject
-                            subject = subject_slug.replace("-", " ").replace("_", " ").title()
+                            subject = (
+                                subject_slug.replace("-", " ").replace("_", " ").title()
+                            )
 
                             # Read file content to get From field and other metadata
                             from_agent = "unknown"
                             importance = "normal"
 
                             try:
-                                blob_content = item.data_stream.read().decode('utf-8', errors='ignore')
+                                blob_content = item.data_stream.read().decode(
+                                    "utf-8", errors="ignore"
+                                )
 
                                 # Parse JSON frontmatter (format: ---json\n{...}\n---)
-                                if blob_content.startswith('---json\n') or blob_content.startswith('---json\r\n'):
+                                if blob_content.startswith(
+                                    "---json\n"
+                                ) or blob_content.startswith("---json\r\n"):
                                     # Find the closing --- delimiter
-                                    end_marker = blob_content.find('\n---\n', 8)
+                                    end_marker = blob_content.find("\n---\n", 8)
                                     if end_marker == -1:
-                                        end_marker = blob_content.find('\r\n---\r\n', 8)
+                                        end_marker = blob_content.find("\r\n---\r\n", 8)
 
                                     if end_marker > 0:
                                         # Extract JSON between markers
                                         # '---json\n' is 8 chars, '---json\r\n' is 9 chars
-                                        json_start = 8 if blob_content.startswith('---json\n') else 9
+                                        json_start = (
+                                            8
+                                            if blob_content.startswith("---json\n")
+                                            else 9
+                                        )
                                         json_str = blob_content[json_start:end_marker]
 
-                                        with contextlib.suppress(json.JSONDecodeError, KeyError, TypeError):  # pragma: no cover - tolerant metadata parse
+                                        with contextlib.suppress(
+                                            json.JSONDecodeError, KeyError, TypeError
+                                        ):  # pragma: no cover - tolerant metadata parse
                                             metadata = json.loads(json_str)
                                             # Extract sender from 'from' field
-                                            if 'from' in metadata:
-                                                from_agent = str(metadata['from'])
+                                            if "from" in metadata:
+                                                from_agent = str(metadata["from"])
                                             # Extract importance
-                                            if 'importance' in metadata:
-                                                importance = str(metadata['importance'])
+                                            if "importance" in metadata:
+                                                importance = str(metadata["importance"])
                                             # Extract actual subject
-                                            if 'subject' in metadata:
-                                                actual_subject = str(metadata['subject']).strip()
+                                            if "subject" in metadata:
+                                                actual_subject = str(
+                                                    metadata["subject"]
+                                                ).strip()
                                                 if actual_subject:
                                                     subject = actual_subject
 
-                            except Exception as exc:  # pragma: no cover - debug-only path
+                            except (
+                                Exception
+                            ) as exc:  # pragma: no cover - debug-only path
                                 structlog.get_logger("mail.timeline").debug(
                                     "message_parse_failed", error=str(exc)
                                 )
 
-                            messages.append({
-                                "id": msg_id,
-                                "subject": subject,
-                                "date": date_str,
-                                "from": from_agent,
-                                "importance": importance,
-                            })
+                            messages.append(
+                                {
+                                    "id": msg_id,
+                                    "subject": subject,
+                                    "date": date_str,
+                                    "from": from_agent,
+                                    "importance": importance,
+                                }
+                            )
 
                             if len(messages) >= limit:
                                 return  # Stop when we hit the limit

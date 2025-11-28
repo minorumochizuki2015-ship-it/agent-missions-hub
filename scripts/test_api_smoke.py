@@ -21,7 +21,9 @@ def _print_section(title: str) -> None:
 
 
 def main() -> None:
-    _print_section("STEP1_API_SMOKE: ensure_project → create_agent_identity → send_message")
+    _print_section(
+        "STEP1_API_SMOKE: ensure_project → create_agent_identity → send_message"
+    )
 
     env = os.environ.copy()
     env.setdefault("AMH_STORAGE_ROOT", "./data/run")
@@ -48,14 +50,18 @@ def main() -> None:
 
     print(f"[SETUP] Starting server on port {port} (logs suppressed)...")
     with Path("api_smoke_server.log").open("w", encoding="utf-8") as log_file:
-        server_proc = subprocess.Popen(server_cmd, env=env, stdout=log_file, stderr=subprocess.STDOUT)
+        server_proc = subprocess.Popen(
+            server_cmd, env=env, stdout=log_file, stderr=subprocess.STDOUT
+        )
 
         try:
             print("[SETUP] Waiting for server startup...")
             for i in range(10):
                 time.sleep(1)
                 try:
-                    health_probe = requests.get(f"http://127.0.0.1:{port}/health", timeout=1)
+                    health_probe = requests.get(
+                        f"http://127.0.0.1:{port}/health", timeout=1
+                    )
                     print(f"[SETUP] Probe {i+1}: {health_probe.status_code}")
                     if health_probe.status_code == 200:
                         break
@@ -79,7 +85,10 @@ def main() -> None:
                 "jsonrpc": "2.0",
                 "id": "test-1",
                 "method": "tools/call",
-                "params": {"name": "ensure_project", "arguments": {"human_key": "C:/tmp/amh-test"}},
+                "params": {
+                    "name": "ensure_project",
+                    "arguments": {"human_key": "C:/tmp/amh-test"},
+                },
             }
 
             payload2: dict[str, Any] = {
@@ -124,7 +133,11 @@ def main() -> None:
             resp1 = requests.post(base_url, json=payload1, headers=headers, timeout=10)
             elapsed1 = (time.time() - start) * 1000
             print(f"Status: {resp1.status_code}  Duration: {elapsed1:.0f}ms")
-            body1 = resp1.json() if resp1.headers.get("content-type","" ).startswith("application/json") else resp1.text
+            body1 = (
+                resp1.json()
+                if resp1.headers.get("content-type", "").startswith("application/json")
+                else resp1.text
+            )
             print(json.dumps(body1, ensure_ascii=False, indent=2))
 
             # patch project_key for following calls if available
@@ -134,7 +147,9 @@ def main() -> None:
                 if isinstance(result1, dict):
                     structured = result1.get("structuredContent") or {}
                     if isinstance(structured, dict):
-                        project_key = structured.get("slug") or structured.get("project_slug")
+                        project_key = structured.get("slug") or structured.get(
+                            "project_slug"
+                        )
                     if project_key is None:
                         project_key = result1.get("slug") or result1.get("project_slug")
 
@@ -147,7 +162,11 @@ def main() -> None:
             resp2 = requests.post(base_url, json=payload2, headers=headers, timeout=30)
             elapsed2 = (time.time() - start) * 1000
             print(f"Status: {resp2.status_code}  Duration: {elapsed2:.0f}ms")
-            body2 = resp2.json() if resp2.headers.get("content-type","" ).startswith("application/json") else resp2.text
+            body2 = (
+                resp2.json()
+                if resp2.headers.get("content-type", "").startswith("application/json")
+                else resp2.text
+            )
             print(json.dumps(body2, ensure_ascii=False, indent=2))
 
             agent_name = "CodexAssistant"
@@ -164,7 +183,11 @@ def main() -> None:
             resp3 = requests.post(base_url, json=payload3, headers=headers, timeout=30)
             elapsed3 = (time.time() - start) * 1000
             print(f"Status: {resp3.status_code}  Duration: {elapsed3:.0f}ms")
-            body3 = resp3.json() if resp3.headers.get("content-type","" ).startswith("application/json") else resp3.text
+            body3 = (
+                resp3.json()
+                if resp3.headers.get("content-type", "").startswith("application/json")
+                else resp3.text
+            )
             print(json.dumps(body3, ensure_ascii=False, indent=2))
 
             # Test 4 - REST mission CRUD
@@ -177,7 +200,9 @@ def main() -> None:
                 "status": "draft",
             }
             print("\n[TEST 4] REST missions")
-            resp4 = requests.post(f"{rest_base}/missions", json=mission_payload, timeout=10)
+            resp4 = requests.post(
+                f"{rest_base}/missions", json=mission_payload, timeout=10
+            )
             print(f"POST /missions Status: {resp4.status_code}")
             print(resp4.text)
             resp4_list = requests.get(f"{rest_base}/missions", timeout=10)

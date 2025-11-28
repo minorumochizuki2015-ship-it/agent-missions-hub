@@ -11,6 +11,7 @@ from typing import Optional
 from PIL import Image, ImageChops
 from playwright.sync_api import sync_playwright
 
+
 def parse_lang() -> str:
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--lang")
@@ -141,7 +142,11 @@ def compute_visual_diff(current: Path, baseline: Optional[Path]) -> dict[str, ob
         var_cur = sum((px - mean_cur) ** 2 for px in cur_pixels) / n
         var_base = sum((px - mean_base) ** 2 for px in base_pixels) / n
         covariance = (
-            sum((a - mean_cur) * (b - mean_base) for a, b in zip(cur_pixels, base_pixels, strict=True)) / n
+            sum(
+                (a - mean_cur) * (b - mean_base)
+                for a, b in zip(cur_pixels, base_pixels, strict=True)
+            )
+            / n
         )
         c1 = (0.01 * 255) ** 2
         c2 = (0.03 * 255) ** 2
@@ -165,10 +170,8 @@ def run_audit():
             viewport={"width": 1366, "height": 768, "device_scale_factor": 1},
             locale=LANG,
         )
-        try:
+        with suppress(Exception):
             context.set_extra_http_headers({"Accept-Language": ACCEPT_LANGUAGE_HEADER})
-        except Exception:
-            pass
         page = context.new_page()
         try:
             resp = page.goto(PRIMARY_URL, wait_until="domcontentloaded")
@@ -190,18 +193,24 @@ def run_audit():
                 summary = {"page": str(LITE_URL)}
             except Exception:
                 raise
-        # HTMLダンプ（閲覧ルートに応じてファイル名を分岐）
+        # HTMLダンプ(閲覧ルートに応じてファイル名を分岐)
         html_is_lite = str(page.url or "").endswith("unified-inbox-lite")
         with suppress(Exception):
-            (HTML_DIR / "route_unified_inbox.html").write_text(page.content(), encoding="utf-8")
+            (HTML_DIR / "route_unified_inbox.html").write_text(
+                page.content(), encoding="utf-8"
+            )
             if html_is_lite:
-                (HTML_DIR / "route_unified_inbox_lite.html").write_text(page.content(), encoding="utf-8")
+                (HTML_DIR / "route_unified_inbox_lite.html").write_text(
+                    page.content(), encoding="utf-8"
+                )
         # Proceed without waiting for specific landmarks to avoid false timeouts in CI
         # Removed strict selector wait that was causing CI timeouts
         # (e.g., page.wait_for_selector("#main-content"))
         # Inject axe-core
         try:
-            page.add_script_tag(url="https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.7.2/axe.min.js")
+            page.add_script_tag(
+                url="https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.7.2/axe.min.js"
+            )
             axe_results = page.evaluate(
                 "async () => { const r = await axe.run(document, { resultTypes: ['violations'] }); return r; }"
             )
@@ -213,7 +222,9 @@ def run_audit():
         )
         # Inject web-vitals and collect metrics (graceful on CDN block)
         try:
-            page.add_script_tag(url="https://unpkg.com/web-vitals@3/dist/web-vitals.umd.js")
+            page.add_script_tag(
+                url="https://unpkg.com/web-vitals@3/dist/web-vitals.umd.js"
+            )
             page.evaluate(
                 "() => { window.__vitals = {}; const onReport = (m) => { window.__vitals[m.name] = m.value; }; webVitals.getCLS(onReport); webVitals.getLCP(onReport); webVitals.getFID(onReport); }"
             )
@@ -221,7 +232,9 @@ def run_audit():
             page.wait_for_timeout(2500)
             vitals = page.evaluate("() => window.__vitals || {}")
             # Approximate TTI using Navigation Timing (domInteractive - navigationStart)
-            tti = page.evaluate("() => { try { const t = performance.timing; return (t.domInteractive - t.navigationStart) || null; } catch(e) { return null; } }")
+            tti = page.evaluate(
+                "() => { try { const t = performance.timing; return (t.domInteractive - t.navigationStart) || null; } catch(e) { return null; } }"
+            )
             if isinstance(tti, (int, float)):
                 vitals["TTI"] = tti / 1000.0  # seconds
         except Exception:
@@ -265,7 +278,9 @@ def run_audit():
                 pass
         # Screenshot
         screenshot_path = SCREENS_DIR / "unified_inbox.png"
-        baseline_for_diff = BASELINE_SCREENSHOT if BASELINE_SCREENSHOT.exists() else None
+        baseline_for_diff = (
+            BASELINE_SCREENSHOT if BASELINE_SCREENSHOT.exists() else None
+        )
         page.screenshot(path=str(screenshot_path), full_page=True)
         visual_metrics = compute_visual_diff(screenshot_path, baseline_for_diff)
         try:
@@ -280,7 +295,9 @@ def run_audit():
             vitals["FID"] = 0
         if vitals.get("CLS") is None:
             vitals["CLS"] = 0
-        vitals_missing = any(vitals.get(k) is None for k in ("CLS", "LCP", "FID", "TTI"))
+        vitals_missing = any(
+            vitals.get(k) is None for k in ("CLS", "LCP", "FID", "TTI")
+        )
         summary = {
             "page": str(PRIMARY_URL),
             "timestamp": time.strftime("%Y/%m/%d %H:%M:%S"),
@@ -290,7 +307,11 @@ def run_audit():
                 "violations": len(violations),
                 "serious": len(serious),
                 "by_rule": [
-                    {"id": v.get("id"), "impact": v.get("impact"), "nodes": len(v.get("nodes", []))}
+                    {
+                        "id": v.get("id"),
+                        "impact": v.get("impact"),
+                        "nodes": len(v.get("nodes", [])),
+                    }
                     for v in violations
                 ],
             },
@@ -319,7 +340,12 @@ def run_audit():
         vitals_ok = lcp_ok and cls_ok and fid_ok and tti_ok
         summary["gate"] = {
             "pass": (len(serious) == 0) and vitals_ok,
-            "budgets": {"LCP_ms<=2500": lcp_ok, "CLS<=0.1": cls_ok, "FID_ms<=100": fid_ok, "TTI_s<=5": tti_ok},
+            "budgets": {
+                "LCP_ms<=2500": lcp_ok,
+                "CLS<=0.1": cls_ok,
+                "FID_ms<=100": fid_ok,
+                "TTI_s<=5": tti_ok,
+            },
             "vitals_missing": vitals_missing,
         }
 
@@ -328,22 +354,42 @@ def run_audit():
             try:
                 page.goto(LITE_URL, wait_until="domcontentloaded")
                 page.wait_for_load_state("domcontentloaded")
-                page.add_script_tag(url="https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.7.2/axe.min.js")
-                axe_results = page.evaluate("async () => { const r = await axe.run(document, { resultTypes: ['violations'] }); return r; }")
+                page.add_script_tag(
+                    url="https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.7.2/axe.min.js"
+                )
+                axe_results = page.evaluate(
+                    "async () => { const r = await axe.run(document, { resultTypes: ['violations'] }); return r; }"
+                )
                 # web vitals retry (graceful)
                 try:
-                    page.add_script_tag(url="https://unpkg.com/web-vitals@3/dist/web-vitals.umd.js")
-                    page.evaluate("() => { window.__vitals = {}; const onReport = (m) => { window.__vitals[m.name] = m.value; }; webVitals.getCLS(onReport); webVitals.getLCP(onReport); webVitals.getFID(onReport); }")
+                    page.add_script_tag(
+                        url="https://unpkg.com/web-vitals@3/dist/web-vitals.umd.js"
+                    )
+                    page.evaluate(
+                        "() => { window.__vitals = {}; const onReport = (m) => { window.__vitals[m.name] = m.value; }; webVitals.getCLS(onReport); webVitals.getLCP(onReport); webVitals.getFID(onReport); }"
+                    )
                     page.mouse.click(10, 10)
                     page.wait_for_timeout(1500)
                     vitals = page.evaluate("() => window.__vitals || {}")
                 except Exception:
                     vitals = {}
-                serious_fb = [v for v in axe_results.get("violations", []) if v.get("impact") in {"serious", "critical"}]
-                lcp_ok_fb = (vitals.get("LCP") is not None) and (vitals.get("LCP") <= 2500)
-                cls_ok_fb = (vitals.get("CLS") is not None) and (vitals.get("CLS") <= 0.1)
-                fid_ok_fb = (vitals.get("FID") is not None) and (vitals.get("FID") <= 100)
-                tti_ok_fb = (vitals.get("TTI") is not None) and (vitals.get("TTI") <= 5.0)
+                serious_fb = [
+                    v
+                    for v in axe_results.get("violations", [])
+                    if v.get("impact") in {"serious", "critical"}
+                ]
+                lcp_ok_fb = (vitals.get("LCP") is not None) and (
+                    vitals.get("LCP") <= 2500
+                )
+                cls_ok_fb = (vitals.get("CLS") is not None) and (
+                    vitals.get("CLS") <= 0.1
+                )
+                fid_ok_fb = (vitals.get("FID") is not None) and (
+                    vitals.get("FID") <= 100
+                )
+                tti_ok_fb = (vitals.get("TTI") is not None) and (
+                    vitals.get("TTI") <= 5.0
+                )
                 vitals_ok_fb = lcp_ok_fb and cls_ok_fb and fid_ok_fb and tti_ok_fb
                 summary["page"] = str(LITE_URL)
                 summary["axe"]["violations"] = len(axe_results.get("violations", []))
@@ -356,8 +402,21 @@ def run_audit():
                 }
                 summary["gate"] = {
                     "pass": (len(serious_fb) == 0) and vitals_ok_fb,
-                    "budgets": {"LCP_ms<=2500": lcp_ok_fb, "CLS<=0.1": cls_ok_fb, "FID_ms<=100": fid_ok_fb, "TTI_s<=5": tti_ok_fb},
-                    "vitals_missing": any(v is None for v in [vitals.get("CLS"), vitals.get("LCP"), vitals.get("FID"), vitals.get("TTI")]),
+                    "budgets": {
+                        "LCP_ms<=2500": lcp_ok_fb,
+                        "CLS<=0.1": cls_ok_fb,
+                        "FID_ms<=100": fid_ok_fb,
+                        "TTI_s<=5": tti_ok_fb,
+                    },
+                    "vitals_missing": any(
+                        v is None
+                        for v in [
+                            vitals.get("CLS"),
+                            vitals.get("LCP"),
+                            vitals.get("FID"),
+                            vitals.get("TTI"),
+                        ]
+                    ),
                 }
             except Exception:
                 pass
@@ -367,26 +426,44 @@ def run_audit():
         write_json_atomic(SUMMARY_PATH, summary)
 
         files = [
-            {"path": str(SUMMARY_PATH).replace("\\", "/"), "sha256": sha256_file(SUMMARY_PATH)},
-            {"path": str(screenshot_path).replace("\\", "/"), "sha256": sha256_file(screenshot_path)},
+            {
+                "path": str(SUMMARY_PATH).replace("\\", "/"),
+                "sha256": sha256_file(SUMMARY_PATH),
+            },
+            {
+                "path": str(screenshot_path).replace("\\", "/"),
+                "sha256": sha256_file(screenshot_path),
+            },
         ]
         append_ci_evidence(
             "ui_audit_executed",
             files,
             note="Playwright+axe実行・WebVitals取得・UTF-8/LF",
-            metrics={"web_vitals": summary.get("web_vitals"), "visual_diff": summary.get("visual_diff")},
+            metrics={
+                "web_vitals": summary.get("web_vitals"),
+                "visual_diff": summary.get("visual_diff"),
+            },
         )
 
         html_path = Path("artifacts/ui_audit/html/route_unified_inbox.html")
         pass_files = list(files)
         if html_path.exists():
-            pass_files.append({"path": str(html_path).replace("\\", "/"), "sha256": sha256_file(html_path)})
+            pass_files.append(
+                {
+                    "path": str(html_path).replace("\\", "/"),
+                    "sha256": sha256_file(html_path),
+                }
+            )
         tag = f"ui_gate_pass_{'ja' if LANG.lower()=='ja' else ('en' if LANG.lower()=='en' else LANG)}"
         if summary["gate"]["pass"]:
             append_ci_evidence(
                 tag,
                 pass_files,
-                note=("日本語ビュー" if LANG.lower() == "ja" else ("英語ビュー" if LANG.lower() == "en" else LANG)),
+                note=(
+                    "日本語ビュー"
+                    if LANG.lower() == "ja"
+                    else ("英語ビュー" if LANG.lower() == "en" else LANG)
+                ),
                 status="pass",
                 metrics={
                     "gate": summary.get("gate"),

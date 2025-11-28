@@ -5,7 +5,6 @@ from httpx import AsyncClient
 from mcp_agent_mail.db import get_session
 from mcp_agent_mail.models import Artifact, Knowledge, Mission, Project
 from mcp_agent_mail.routers import missions
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel
 
@@ -93,7 +92,12 @@ async def test_create_artifact_and_knowledge(
 
 @pytest.mark.asyncio
 async def test_create_artifact_missing_mission(client: AsyncClient):
-    payload = {"type": "plan", "path": "missing", "version": "v1", "sha256": "dummy-sha256"}
+    payload = {
+        "type": "plan",
+        "path": "missing",
+        "version": "v1",
+        "sha256": "dummy-sha256",
+    }
     response = await client.post(
         "/missions/00000000-0000-0000-0000-000000000000/artifacts", json=payload
     )

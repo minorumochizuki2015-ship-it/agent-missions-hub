@@ -88,7 +88,9 @@ def retry_on_db_lock(
 
                     # Calculate exponential backoff with jitter using a secure RNG to satisfy bandit
                     delay = min(base_delay * (2**attempt), max_delay)
-                    jitter_ratio = (secrets.randbelow(2001) / 1000.0) - 1.0  # range [-1, 1]
+                    jitter_ratio = (
+                        secrets.randbelow(2001) / 1000.0
+                    ) - 1.0  # range [-1, 1]
                     total_delay = delay + (delay * 0.25 * jitter_ratio)
 
                     # Log the retry (if logging is available)

@@ -6,10 +6,10 @@ import argparse
 import json
 import os
 import subprocess
-from datetime import datetime
+from datetime import datetime, timezone
 from fnmatch import fnmatch
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Sequence
 
 import yaml
 
@@ -79,7 +79,13 @@ def is_tag_ref() -> bool:
     return ref.startswith("refs/tags/")
 
 
-def decide_ui_gate(rules: dict, files: Sequence[str], branch: str, num_files: int, global_max: int | None) -> tuple[str, str]:
+def decide_ui_gate(
+    rules: dict,
+    files: Sequence[str],
+    branch: str,
+    num_files: int,
+    global_max: int | None,
+) -> tuple[str, str]:
     """UI Gate の実行可否を決定する。"""
     component_max = rules.get("max_files_force_run")
     threshold = component_max or global_max
@@ -102,7 +108,13 @@ def decide_ui_gate(rules: dict, files: Sequence[str], branch: str, num_files: in
     return "skip", "no_ui_affecting_files"
 
 
-def decide_sbom(rules: dict, files: Sequence[str], branch: str, num_files: int, global_max: int | None) -> tuple[str, str]:
+def decide_sbom(
+    rules: dict,
+    files: Sequence[str],
+    branch: str,
+    num_files: int,
+    global_max: int | None,
+) -> tuple[str, str]:
     """SBOM の実行可否を決定する。"""
     threshold = global_max
     if threshold and num_files > threshold:
@@ -121,7 +133,9 @@ def decide_sbom(rules: dict, files: Sequence[str], branch: str, num_files: int, 
     return "skip", "no_dependency_change"
 
 
-def decide_secret_scan(rules: dict, files: Sequence[str], num_files: int, global_max: int | None) -> tuple[str, str]:
+def decide_secret_scan(
+    rules: dict, files: Sequence[str], num_files: int, global_max: int | None
+) -> tuple[str, str]:
     """secret-scan の実行可否を決定する。デフォルトは実行。"""
     threshold = global_max
     if threshold and num_files > threshold:
@@ -135,7 +149,9 @@ def decide_secret_scan(rules: dict, files: Sequence[str], num_files: int, global
     return "run", "default_full_scan"
 
 
-def decide_bandit(rules: dict, files: Sequence[str], num_files: int, global_max: int | None) -> tuple[str, str]:
+def decide_bandit(
+    rules: dict, files: Sequence[str], num_files: int, global_max: int | None
+) -> tuple[str, str]:
     """bandit の実行可否を決定する。"""
     threshold = global_max
     if threshold and num_files > threshold:
@@ -147,7 +163,13 @@ def decide_bandit(rules: dict, files: Sequence[str], num_files: int, global_max:
     return "skip", "no_python_change"
 
 
-def decide_gitops(rules: dict, files: Sequence[str], num_files: int, global_max: int | None, component: str) -> tuple[str, str]:
+def decide_gitops(
+    rules: dict,
+    files: Sequence[str],
+    num_files: int,
+    global_max: int | None,
+    component: str,
+) -> tuple[str, str]:
     """GitOps 系ファイル更新の必須判定。"""
     threshold = global_max
     if threshold and num_files > threshold:
@@ -160,11 +182,20 @@ def decide_gitops(rules: dict, files: Sequence[str], num_files: int, global_max:
     return "skip", "no_target_paths"
 
 
-def write_evidence(component: str, decision: str, reason: str, base: str, head: str) -> None:
+def write_evidence(
+    component: str, decision: str, reason: str, base: str, head: str
+) -> None:
     """auto_gate_decision イベントを evidence に追記する。"""
-    ts = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     pr_number = os.environ.get("PR_NUMBER")
-    branch = head_ref_name()
+    branch = head_ref_name() or os.environ.get("AUTO_GATE_BRANCH", "")
+    if not branch:
+        try:
+            branch = subprocess.check_output(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True
+            ).strip()
+        except Exception:
+            branch = ""
     event = {
         "ts": ts,
         "event": "auto_gate_decision",

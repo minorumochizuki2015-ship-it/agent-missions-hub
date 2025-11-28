@@ -113,13 +113,9 @@ async def list_artifacts(
     artifacts = (await session.execute(stmt)).scalars().all()
 
     artifact_ids = {a.id for a in artifacts}
-    knowledge_rows = await session.execute(
-        select(Knowledge.artifact_id, Knowledge.id)
-    )
+    knowledge_rows = await session.execute(select(Knowledge.artifact_id, Knowledge.id))
     knowledge_map = {
-        row[0]: row[1]
-        for row in knowledge_rows.all()
-        if row[0] in artifact_ids
+        row[0]: row[1] for row in knowledge_rows.all() if row[0] in artifact_ids
     }
 
     return [
