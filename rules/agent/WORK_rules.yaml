@@ -211,6 +211,9 @@ procedures:
       - "Embed minimal unified diff in PR description as fenced block (or in Agent MD if no PR)."
       - "If UI change: include preview URL and thumbnails from artifacts/<task_id>/ui/."
       - "Policy-bot comments: gate grid, coverage diff, license/vuln delta, UI badges."
+  - name: "Shadow audit hook"
+    steps:
+      - "After PLAN/TEST/PATCH/APPROVALS/APPLY, call scripts/Invoke-WithShadowAudit.ps1 (Dry-Run allowed) to emit shadow audit event."
 
   - name: "CI gate validation"
     steps:

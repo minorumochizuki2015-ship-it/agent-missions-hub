@@ -1,135 +1,180 @@
-ーーーーーーーーーーーーーーーーーーー
-【監査依頼】
+【監査レポート】
 
-対象：<プロジェクト名>（例：Agent Missions Hub）
-AIモデル：<使用モデル名>（例：GPT-5.1-Codex-Max）
+対象：<プロジェクト名>
+AIモデル：<使用モデル名>
 
-監査AI（AUDIT_rules.yaml）は、以下のルールを厳密に適用して監査・評価・指示作成を実施すること：
-- 監査・テスト方法.md
+監査AIは以下の規約に従い監査を実施した：
+- AUDIT_rules.yaml
 - codexcli_git_ops_policy.md
-- AUDIT_rules.yaml（本監査AIの行動規約）
+- 監査・テスト方法.md
+- Shadow Audit Layer（manifest/hash/signature/KPI 検証）
+- GitOps 制約（diff ≤3 files / ≤50 lines）
+- Plan→Test→Patch / SafeOps / LOCK / APPROVALS
 
-監査の目的：
-1. 要件定義・設計・MVP基準との整合性チェック
-2. 実装の品質保証（Correctness / Security / Performance / Maintainability）
-3. テスト結果の精査
-4. GitOps基準（push/PR可否）の判定
-5. 作業AI（WORK_rules.yaml）に渡す「修正指示プロンプト」の生成
-
-監査AIは、本テンプレートで提示される情報のみを前提に、
-「監査・テスト方法.md」に定義された監査レポート形式に準拠して回答すること。
-
-ーーーーーーーーーーーーーーーーーーー
+────────────────────────────
 【Git情報】
+Target Commit: <再掲>
+Branch: <再掲>
 
-Target Commit: <監査対象コミットSHA>
-Branch: <対象ブランチ名>
-
-ーーーーーーーーーーーーーーーーーーー
-【コンテキスト（任意）】
-
+────────────────────────────
+【コンテキスト】
 タスク概要：
-- <Issue/チケット概要やタスク目的を簡潔に記載>
+- <Issue / 今回のバッチの目的>
 
 関連ドキュメント：
-- 要件・設計：<docs/...> など（必要に応じて列挙）
-- チェックリスト：multi_agent_terminal_checklist_v2.md 等
-- マイルストン：multi_agent_terminal_milestones_v2.md 等
-- 設計書：agent_missions_hub_design_v2.md 等
+- <docs/...>
+- multi_agent_terminal_checklist_v2.md
+- multi_agent_terminal_milestones_v2.md
+- agent_missions_hub_design_v2.md
 
-※必要な場合のみ記入。不要なら丸ごと削除可。
+────────────────────────────
+【監査結果本文（CI / Test / Evidence の検証）】
 
-ーーーーーーーーーーーーーーーーーーー
-【監査結果本文】
-
-<ここに直近の CI ログ／pytest 実行結果／前回監査ログなどをそのまま貼る>
+<ここに WORK が提出した CI ログ・pytest 結果・黒化状況・変更内容を総合評価した内容を記述>
 
 例：
-- CI 失敗ログ
-- pytest コマンドとその出力
-- 既存の監査レポート抜粋 など
+- pytest: PASS (4 passed / 17 skipped / 0 warnings)
+- ruff/black/isort: PASS
+- UI Gate: 差分なし → スキップ理由を ci_evidence.jsonl に記録済み
+- Shadow Audit emitter のテスト：hash chain 2 append + tamper detection PASS
+- plan_diff.json status 更新：valid
 
-ーーーーーーーーーーーーーーーーーーー
-【作業結果】
+────────────────────────────
+【Shadow Audit Evidence の監査】
 
-<ここに実装AI（WORK）または人間が行った「今回の変更内容」を記載する>
+※ WORK の提出した “Evidence” を監査した結果を示す（改ざん耐性レイヤーの中核）
 
-推奨構造（例）：
+- manifest.jsonl 存在: OK / NG / N/A  
+- hash chain 整合性: OK / NG  
+- signature（cosign）: OK / NG / N/A（署名未実装時は N/A）  
+- explainability_rate: <0〜100%>  
+- unsigned_events: <n>  
+- rule_drift: <n>  
+- approval_mismatch: <n>  
 
-対応内容:
-- <行った対応を箇条書き>
-  - 例：Linux ネイティブ環境で uv sync / pytest 再実行
-  - 例：app.py にスタブ実装追加、router の引数順修正 など
+問題がある場合、Status は原則 Block または Proceed with fixes。
 
-再テスト結果:
-- <実行したコマンドと結果>
-  - 例：ENABLE_FULL_SUITE=1 ... uv run pytest ... → PASSED など
+────────────────────────────
+【監査レポート（義務形式）】
 
-監査指摘への回答:
-- <どの指摘にどう対応したかを簡潔に記載>
+1. Summary
+   - Target Commit: <再掲>
+   - Branch: <再掲>
+   - Status: Block / Proceed with fixes / Proceed
+   - Overall（1〜3行の要約）:
+     例）Shadow Audit Batch2 は emitter/hash chain を適切に実装しているが、
+         黒化未完 / .vs/ 未追跡 / Shadow Audit 後続バッチ未実装のため、
+         現時点では Proceed with fixes が妥当。
 
-更新ファイル:
-- <変更したファイルパスを列挙>
+2. Findings（分類必須）
+   - Blocking:
+     - Detail: <致命的な問題>  
+       Suggestion: <どう直すべきか>
+   - Major:
+     - Detail: <MVPを阻害する重大問題>  
+       Suggestion: <修正指示>
+   - Minor:
+     - Detail: <軽微な問題>  
+       Suggestion: <修正指示>
+   - Cosmetic:
+     - Detail: <形式・軽度の改善点>  
+       Suggestion: <修正指示>
 
-次の推奨ステップ（自己評価）:
-- <MVP 完了に向けて残タスクがあれば列挙>
+3. Tests
+   - pytest: <結果>
+   - ruff / isort / black: <結果>
+   - UI Gate: <結果 or スキップ理由>
+   - mypy（該当時）: <結果>
+   - SBOM（必要時）: <結果>
+   - coverage/diff-cover（必要時）: <結果>
 
-ーーーーーーーーーーーーーーーーーーー
-【出力要件（監査AIへの指示）】
+4. Notes
+   - Lock 状態 / APPROVALS の一貫性
+   - Shadow Audit Events の網羅性
+   - ci_evidence.jsonl の更新状況
+   - Auto Gate の最新性 など
 
-監査AIは、上記情報をもとに、以下の形式で出力すること：
+────────────────────────────
+【GitOps 判定（push/PR）】
 
-1. 監査レポート（Summary / Findings / Tests / Notes）
-   - Summary:
-     - Target Commit: <上記 Target Commit を再掲>
-     - Branch: <上記 Branch を再掲>
-     - Status: Block / Proceed with fixes / Proceed のいずれか
-     - Overall: 全体評価を1〜3行で要約
-   - Findings:
-     - Blocking / Major / Minor / Cosmetic に分類して列挙
-       - 各項目に「Detail」「Suggestion」を付与
+- push/PR: 許可 / 非許可
+- 理由:
+  - <テスト状況>
+  - <Shadow Audit Evidence の整合性>
+  - <黒化・未追跡ファイルの有無>
+  - <MVP に対する進捗>
+  - <リスク評価>
 
-2. GitOps（codexcli_git_ops_policy.md）に基づく push/PR 可否判定
-   - 現時点での push / PR が許可されるか
-   - 許可／不許可の理由（テスト状況・リスクなど）
+────────────────────────────
+【WORK に渡す修正指示プロンプト（完全版）】
 
-3. 作業AI（WORK_rules.yaml）へ渡す「修正指示プロンプト全文」
-   - 修正対象ファイル
-   - 修正方針（どこをどう直すべきか）
-   - テスト戦略（実行すべきコマンド・観点）
-   - MVP 完了までの具体的ステップ（優先度順）
+以下は WORK がそのまま Plan→Test→Patch として実行すべき指示である。
 
-4. 不明点や前提不足があれば、「不明点」として明示しつつ、
-   Status を conservative（Block または Proceed with fixes 寄り）に判定すること。
+【作業依頼】
+対象：<プロジェクト名>
+Branch：<作業ブランチ>
+Base：<必要なら>
+Goal：<今回サイクルの最小ゴール（例：Batch3 PS hook）>
 
-ーーーーーーーーーーーーーーーーーーー
-【WORKへの追加指示（MVPまでの実行タスク）】
-- フェーズ優先度:
-  1) Phase 2A: missions/task_groups/tasks/artifacts/knowledge の ER を確定し、Alembic マイグレーションを追加。
-     - 差分を plans/diff-plan.json に記録し、migration 実行ログを data/logs/current/audit/ に保存。
-     - pytest 最小セットでマイグレーション適用を検証。
-  2) Phase 2B: WorkflowEngine 本実装（workflow_runs 記録・self-heal ポリシー実装・ci_evidence 連携）。
-     - tests/test_workflow_engine.py を拡張し、トレース/アーティファクト/knowledge 記録を検証。
-  3) Phase 2C: Manager UI/Agent Mail 統合の実装開始。Playwright/Jest テスト追加・UI Gate 実行可否を判断。
-     - UI 変更が入る場合は `scripts/ui_audit_run.py`（JA/EN）を再実行し、`observability/policy/ci_evidence.jsonl` を更新。
-  4) Phase 2D: CLI Orchestrator（CodexCLI/Claude CLI PTY起動）を `src/orchestrator/cli.py`（新設想定）に実装。
-     - ミニ E2E デモを実行し、ci_evidence に run_id を記録。
+【修正対象ファイル】
+- <ファイルパス> … <目的/理由>
+- <ファイルパス> … <目的/理由>
 
-- テスト/証跡必須リスト:
-  - `uvx ty check`
-  - `.\.venv\Scripts\python.exe -m pytest -q`（少なくとも workflow_engine/HTTP liveness 系）
-  - 変更があれば coverage/diff-cover → reports/test/* へ保存し、必要に応じ ci_evidence に記録
-  - SBOM: `python -m cyclonedx_py ...`（既存フローに合わせて observability/policy/sbom*.json へ）
-  - UI Gate が不要な場合も「スキップ理由」を observability/policy/ci_evidence.jsonl に追記（例: “No UI changes in this diff”）
-  - APPROVALS 二者承認と SafeOps/LOCK を更新
+【修正指示（WORK が行うべき具体タスク）】
+- diff ≤3 files / ≤50 lines を厳守
+- Plan→Test→Patch を必ず plans/diff-plan.json に記録
+- SafeOps/LOCK を維持、APPROVALS 二者承認遵守
+- manifest* は Git 管理外（生成は tmp / artifacts のみ）
+- Shadow Audit:
+  - （Batch3）Invoke-WithShadowAudit.ps1 を追加（DryRun）
+  - WORK_rules.yaml に hook（PLAN/TEST/PATCH/APPLY 後の emit）追加
+  - tests/test_shadow_audit_pshook.py で chain 更新を検証
+- 黒化バッチを別途実施（3ファイルずつ）
+- .vs/ cleanup（削除 or .gitignore 追加）
+- Auto Gate が古い場合は再実行（必要時）
 
-- 修正対象ファイルの初期候補:
-  - データモデル/マイグレーション: `migrations/versions/*.py`, `src/mcp_agent_mail/models.py` ほか ER 変更に伴う設定
-  - WorkflowEngine: `src/mcp_agent_mail/workflow_engine.py`, `tests/test_workflow_engine.py`, `ci_evidence` 連携コード
-  - Manager UI/Agent Mail: 関連する templates/components, Playwright/Jest テスト追加
-  - CLI Orchestrator: `src/orchestrator/cli.py`（新規）, 設計に沿った config
+【テスト戦略】
+- ruff check scripts tests
+- isort --check-only scripts tests
+- black --check scripts tests
+- pytest -q tests/<今回の対象>
+- UI 差分なし → ci_evidence.jsonl に “UI Gate skipped (no diff)” を記録
+- SBOM（必要時）を observability/policy/sbom*.json に出力
 
-- 禁止/注意:
-  - Any 新規導入禁止、Optional は None 取り扱い明示
-  - Plan→Test→Patch の記録を残す（diff-plan.json 更新必須）
-  - UI Gate 実行の有無を必ず証跡化（スキップ時も理由を明記）
+【MVP までのステップ（優先度順）】
+1) Phase 2A: <データモデル/マイグレーション確定 + migration test>
+2) Phase 2B: <WorkflowEngine 実装・テスト・ci_evidence 連携>
+3) Phase 2C: <Manager UI / Agent Mail 統合・UI Gate・Playwright/Jest>
+4) Phase 2D: <CLI Orchestrator 実装・E2E・run_id 記録>
+
+────────────────────────────
+【Shadow Audit Events（WORK 生成ログの監査結果）】
+
+※ WORK が提出したイベントログの整合性を監査して記述する：
+
+例：
+
+- event: PLAN  
+  actor: WORK  
+  ts: <UTC>  
+  rule_ids: [...]  
+  policy_refs: [...]  
+  reasoning_digest: "<200–600 chars>"  
+  inputs_hash: sha256(...)  
+  outputs_hash: sha256(...)  
+  approval_state: none  
+  approvals_row_id: ""
+
+- event: TEST  
+  actor: WORK  
+  ts: <UTC>  
+  rule_ids: [...]  
+  policy_refs: [...]  
+  reasoning_digest: "<200–600 chars>"  
+  inputs_hash: sha256(...)  
+  outputs_hash: sha256(...)  
+  approval_state: none  
+  approvals_row_id: ""
+
+（PATCH / APPROVALS / APPLY イベントもあれば同様に追記）
+
