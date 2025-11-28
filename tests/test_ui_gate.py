@@ -19,6 +19,7 @@ from pathlib import Path
 
 import pytest
 import requests
+
 from mcp_agent_mail.config import get_settings
 
 playwright = pytest.importorskip(

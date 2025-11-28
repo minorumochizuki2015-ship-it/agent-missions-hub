@@ -6,6 +6,10 @@ from pathlib import Path
 
 import pytest
 import pytest_asyncio
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+from sqlmodel import SQLModel, select
+
 from mcp_agent_mail.models import (
     Agent,
     Artifact,
@@ -17,9 +21,6 @@ from mcp_agent_mail.models import (
     WorkflowRun,
 )
 from mcp_agent_mail.workflow_engine import SelfHealWorkflow, SequentialWorkflow
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
-from sqlmodel import SQLModel, select
 
 
 # Test setup

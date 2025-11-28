@@ -2,11 +2,12 @@ import pytest
 import pytest_asyncio
 from fastapi import FastAPI, status
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlmodel import SQLModel
+
 from mcp_agent_mail.db import get_session
 from mcp_agent_mail.models import Artifact, Knowledge, Mission, Project
 from mcp_agent_mail.routers import missions
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlmodel import SQLModel
 
 
 @pytest_asyncio.fixture

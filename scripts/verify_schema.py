@@ -1,4 +1,3 @@
-# ruff: noqa: I001
 import asyncio
 import os
 import shutil
@@ -9,8 +8,9 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from mcp_agent_mail.db import ensure_schema, get_engine
 from sqlalchemy import text
+
+from mcp_agent_mail.db import ensure_schema, get_engine
 
 
 async def verify():
