@@ -1,7 +1,7 @@
 {
-  "task_id": "PHASE2A-ER-MIGRATION",
+  "task_id": "PHASE2B-WORKFLOW",
   "holder": "WORK",
   "branch": "feature/mvp-ui-audit",
-  "ts_acquired": "2025-11-28T08:16:12Z",
-  "note": "Start Phase 2A ER/Alembic planning and migration work"
+  "ts_acquired": "2025-11-28T09:12:49Z",
+  "note": "Start Phase 2B WorkflowEngine/self-heal implementation"
 }
