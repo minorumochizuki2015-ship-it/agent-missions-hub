@@ -386,6 +386,22 @@
         "observability/policy/ci_evidence.jsonl"
       ],
       "notes": "formatted within diff limit"
+    },
+    {
+      "id": "phase2a-er-migration",
+      "status": "planned",
+      "description": "Phase 2A ER確定→Alembicマイグレーション→diff-plan記録→pytest最小＋auditログを残す",
+      "entries": [
+        "db/ERD",
+        "alembic/versions",
+        "plans/diff-plan.json",
+        "data/logs/current/audit/"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl",
+        "data/logs/current/audit/"
+      ],
+      "notes": "Auto Gate対象: sbom/secret_scan/bandit/gitops_*。Migration 実行時は ci_evidence に migration_run を追記。"
     }
   ]
 }

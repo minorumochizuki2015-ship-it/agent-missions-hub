@@ -8,6 +8,7 @@
   - 判定エラーや巨大 diff（閾値超過）、`main`/`release/*` へのマージ、`label: run-ui-gate` が付いた PR では強制実行（decision=run/force_run）。
   - 対象パス例: `apps/orchestrator-ui/**`, `src/**/templates/**`, `**/*.css|scss|ts|tsx`, `playwright.config*`, `scripts/ui_audit*.py`, `package*.json`。
   - UI Gate 実行時は従来どおり `npm run ui:audit:ci`（または `scripts/ui_audit_run.py`）を実行し、summary/screenshot/HTML の SHA を `ui_audit_executed` / `ui_gate_pass_*` として ci_evidence に追記。
+- 最新状況: 2025-11-28 時点で Auto Gate 判定は UI 差分なしのため `skip`。UI Gate 再実行は未実施（差分発生時に実行）。
 - ローカルでの手動実行が必要な場合は従来手順を踏むこと:
   1. `npm run lint && npm run test && npm run test:e2e --prefix apps/orchestrator-ui`
   2. `python scripts/ui_audit_run.py`（JA/EN 両方）

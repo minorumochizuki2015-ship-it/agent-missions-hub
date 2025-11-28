@@ -29,6 +29,7 @@
   - `auto_gate_rules.yaml` で UI Gate / SBOM / secret-scan / bandit / GitOps ゲートを判定し、CI で `auto_gate_decider.py` が run/skip/force_run を決定する。  
   - 判定結果を `event=auto_gate_decision` として `observability/policy/ci_evidence.jsonl` に記録する。判定失敗時は全て実行し、理由を記録する。  
   - `plans/diff-plan.json` と APPROVALS/SafeOps/LOCK はルールに該当する差分がある PR で必須とし、未更新なら CI fail とする。
+  - 2025-11-28 現在: auto_gate_decider で UI Gate は `skip`（no_ui_affecting_files）判定。UI Gate の再実行は保留中（差分なし）。
 - **Council PoC v1 (CLI/正確性のみ)**  
   - 生成プロファイル=creative/concise/code、fact_checker で正確性スコア（0–10）、議長が最高スコア回答を採用＋講評。  
   - 匿名化（プロファイル名/自己紹介/挨拶除去、ですます統一、順序シャッフル）、timeout=60s、再試行なし。  
