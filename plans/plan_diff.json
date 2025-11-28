@@ -425,6 +425,37 @@
         "tests/test_workflow_engine.py を拡張しトレース/リトライを検証",
         "ci_evidence と audit ログに workflow/self-heal 実行結果を記録し整合確認"
       ]
+    },
+    {
+      "id": "phase2c-manager-ui",
+      "status": "in_progress",
+      "description": "Phase 2C: Manager UI + Playwright/Jest + UI Gate再実行（必要時）",
+      "entries": [
+        "src/mcp_agent_mail/ui/manager",
+        "tests/ui",
+        "scripts/ui_audit_run.py",
+        "observability/policy/ci_evidence.jsonl",
+        "docs/multi_agent_terminal_checklist_v2.md",
+        "docs/multi_agent_terminal_milestones_v2.md"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "Auto GateでUI差分なしならskip。差分発生時は JA/EN で UI Gate 実行し ci_evidence/docs を同期。"
+    },
+    {
+      "id": "phase2d-cli-e2e",
+      "status": "planned",
+      "description": "Phase 2D: CLI連携（Codex/Claude）+ API連動 + 最小E2E",
+      "entries": [
+        "src/orchestrator/cli.py",
+        "tests/e2e",
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "CLI連携とE2E証跡を追加。実装時に LOCK 更新と ci_evidence 追記。"
     }
   ]
 }

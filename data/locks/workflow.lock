@@ -1,7 +1,7 @@
 {
-  "task_id": "PHASE2B-WORKFLOW",
+  "task_id": "PHASE2C-MANAGER-UI",
   "holder": "WORK",
   "branch": "feature/mvp-ui-audit",
-  "ts_acquired": "2025-11-28T09:12:49Z",
-  "note": "Start Phase 2B WorkflowEngine/self-heal implementation"
+  "ts_acquired": "2025-11-28T09:40:00Z",
+  "note": "Start Phase 2C Manager UI / Playwright / UI Gate sync"
 }
