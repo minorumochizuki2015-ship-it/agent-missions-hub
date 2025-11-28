@@ -24,8 +24,9 @@ LANG = parse_lang()
 HOST = os.environ.get("UI_AUDIT_HOST", "127.0.0.1")
 PORT = os.environ.get("UI_AUDIT_PORT", "8765")
 ACCEPT_LANGUAGE_HEADER = f"{LANG},en;q=0.9"
-# Primary route(言語指定); エラー時はホームへフォールバック
+# routes
 PRIMARY_URL = f"http://{HOST}:{PORT}/mail/unified-inbox?lang={LANG}"
+MANAGER_URL = f"http://{HOST}:{PORT}/mail/manager?lang={LANG}"
 HOME_URL = f"http://{HOST}:{PORT}/mail?lang={LANG}"
 LITE_URL = f"http://{HOST}:{PORT}/mail/unified-inbox-lite"
 ART_DIR = Path("artifacts/ui_audit")
@@ -99,6 +100,7 @@ def append_ci_evidence(
     note: str = "",
     status: str = "updated",
     metrics: Optional[dict[str, object]] = None,
+    page: Optional[str] = None,
 ):
     payload = {
         "ts": time.strftime("%Y/%m/%d %H:%M:%S"),
@@ -107,6 +109,8 @@ def append_ci_evidence(
         "status": status,
         "note": note,
     }
+    if page:
+        payload["page"] = page
     if metrics is not None:
         payload["metrics"] = metrics
     CI_EVIDENCE.parent.mkdir(parents=True, exist_ok=True)

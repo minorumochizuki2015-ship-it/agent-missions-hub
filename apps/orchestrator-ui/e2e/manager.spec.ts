@@ -1,22 +1,19 @@
-import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { expect, test } from '@playwright/test'
+import AxeBuilder from '@axe-core/playwright'
 
-test.describe('Manager UI Audit', () => {
-    test('Missions List Page', async ({ page }) => {
-        await page.goto('http://localhost:3000/missions');
+const managerPath = 'http://localhost:3000/mail/manager?lang=en'
 
-        // Wait for content
-        await expect(page.locator('h1')).toContainText('Missions');
+test.describe('Manager UI', () => {
+  test('renders manager layout and passes axe', async ({ page }) => {
+    await page.goto(managerPath)
+    await expect(page.getByTestId('manager-title')).toContainText(/Manager/i)
+    await expect(page.getByTestId('mission-row').first()).toBeVisible()
+    await expect(page.getByTestId('taskgroup-card').first()).toBeVisible()
+    await expect(page.getByTestId('artifact-card').first()).toBeVisible()
 
-        // Axe Audit
-        const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
-        expect(accessibilityScanResults.violations).toEqual([]);
+    const accessibilityScanResults = await new AxeBuilder({ page }).analyze()
+    expect(accessibilityScanResults.violations).toEqual([])
 
-        // Screenshot
-        await page.screenshot({ path: 'artifacts/ui_audit/screens/missions_list.png' });
-    });
-
-    // Note: We need a seeded mission to test the detail page. 
-    // For now, we'll skip the detail page test until we have a reliable way to seed data in the test environment.
-    // Or we could mock the API response.
-});
+    await page.screenshot({ path: 'artifacts/ui_audit/screens/manager_en.png' })
+  })
+})
