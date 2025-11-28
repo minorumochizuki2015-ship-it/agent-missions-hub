@@ -193,6 +193,12 @@ procedures:
       - "Set final Status: Block / Proceed with fixes / Proceed based on findings and gate results."
       - "Record target commit SHA, branch name, and Status into the audit report and machine-readable summary (e.g., JSON)."
       - "List prioritized TODOs for Worker when fixes are required, and specify any required human review or approvals."
+  - name: "Shadow audit verification"
+    steps:
+      - "Require observability/policy/shadow_audit/manifest.jsonl to exist when shadow audit is enabled."
+      - "Recompute hash chain from manifest.jsonl and compare with manifest.sha256; if mismatch or missing file, set Status=Block."
+      - "If signature exists: cosign verify-blob --key env(COSIGN_KEY_VERIFY) against manifest.jsonl and manifest.sig; on failure set Status=Block; if cosign or key missing, mark signature=skip."
+      - "If verification passes, note 'shadow audit chain: OK' and 'signature: OK/skip' in the audit report."
 
 constraints:
   language: "English only"

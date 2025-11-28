@@ -335,6 +335,12 @@ jobs:
           path: |
             coverage.xml
             htmlcov/
+      - name: Upload shadow audit artifacts
+        if: ${{ hashFiles('observability/policy/shadow_audit/manifest.jsonl') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: shadow-audit
+          path: observability/policy/shadow_audit/**
       - name: Append Phase 7 CI evidence (test matrix)
         if: ${{ success() && inputs.verify_run == '1' }}
         env:
