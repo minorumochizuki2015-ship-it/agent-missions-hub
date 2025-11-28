@@ -1,7 +1,7 @@
 {
-  "task_id": "STORAGE-COVERAGE",
+  "task_id": "PHASE2A-ER-MIGRATION",
   "holder": "WORK",
   "branch": "feature/mvp-ui-audit",
-  "ts_acquired": "2025-11-28T07:45:15Z",
-  "note": "Lock for storage diff-cover hardening and SBOM run"
+  "ts_acquired": "2025-11-28T08:16:12Z",
+  "note": "Start Phase 2A ER/Alembic planning and migration work"
 }
