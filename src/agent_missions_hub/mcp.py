@@ -119,3 +119,14 @@ def build_mcp_server(settings: Settings) -> FastMCP:
         return {"message_id": message.id, "status": "queued", "project_slug": slug}
 
     return server
+
+
+def get_http_adapter(server: FastMCP):
+    """FastMCP 0.3+ の http_app 互換呼び出しを取得する。存在しない場合は None。"""
+
+    if hasattr(server, "http_app"):
+        return server.http_app
+    if hasattr(server, "asgi_app"):
+        # asgi_app は引数を取らないため、そのまま返す
+        return lambda *_, **__: server.asgi_app
+    return None

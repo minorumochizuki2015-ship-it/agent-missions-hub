@@ -23,7 +23,7 @@ from .db import (
     get_session,
     init_db,
 )
-from .mcp import build_mcp_server
+from .mcp import build_mcp_server, get_http_adapter
 from .settings import Settings, get_settings
 
 
@@ -189,11 +189,16 @@ def build_app(settings: Settings | None = None) -> FastAPI:
     # FastMCP ネイティブマウント
     try:
         server = build_mcp_server(app_settings)
-    except ImportError:
+    except (ImportError, AttributeError):
         server = None
 
-    if server is not None and hasattr(server, 'http_app'):
-        mcp_app = server.http_app(
+    if server is not None:
+        http_adapter = get_http_adapter(server)
+    else:
+        http_adapter = None
+
+    if server is not None and http_adapter is not None:
+        mcp_app = http_adapter(
             path="/",
             stateless_http=app_settings.stateless_http,
             json_response=True,
