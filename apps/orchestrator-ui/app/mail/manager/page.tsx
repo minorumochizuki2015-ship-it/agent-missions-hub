@@ -166,6 +166,7 @@ export default function ManagerPage({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fromApi, setFromApi] = useState(false)
+  const [query, setQuery] = useState('')
   const [signals, setSignals] = useState<Signal[]>([])
 
   useEffect(() => {
@@ -243,6 +244,9 @@ export default function ManagerPage({
 
   const toggleLang = lang === 'en' ? 'ja' : 'en'
   const toggleHref = `/mail/manager?lang=${toggleLang}`
+  const filteredMissions = missions.filter((m) =>
+    m.title.toLowerCase().includes(query.toLowerCase())
+  )
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 lg:p-6">
@@ -290,8 +294,15 @@ export default function ManagerPage({
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-900">{t.missions}</h2>
           </div>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t.searchPlaceholder}
+            className="mb-3 w-full rounded border border-slate-200 px-3 py-2 text-sm"
+          />
           <ul className="divide-y divide-slate-200">
-            {missions.map((m) => (
+            {filteredMissions.map((m) => (
               <li key={m.id} className="py-2" data-testid="mission-row">
                 <div className="flex items-center justify-between">
                   <div>

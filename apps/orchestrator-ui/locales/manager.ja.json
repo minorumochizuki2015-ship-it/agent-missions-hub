@@ -23,6 +23,7 @@
   "liveMissionsEmpty": "ライブミッションなし",
   "liveMissionsUpdated": "最終更新",
   "langToggle": "言語",
+  "searchPlaceholder": "タイトルで絞り込み...",
   "kinds": {
     "sequential": "順次",
     "parallel": "並列",

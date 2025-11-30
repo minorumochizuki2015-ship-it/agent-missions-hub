@@ -23,6 +23,7 @@
   "liveMissionsEmpty": "No live missions",
   "liveMissionsUpdated": "Last update",
   "langToggle": "Language",
+  "searchPlaceholder": "Filter missions by title…",
   "kinds": {
     "sequential": "Sequential",
     "parallel": "Parallel",
