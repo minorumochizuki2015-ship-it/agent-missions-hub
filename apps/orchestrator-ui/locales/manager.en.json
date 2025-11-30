@@ -22,6 +22,8 @@
   "liveMissions": "Live missions (API)",
   "liveMissionsEmpty": "No live missions",
   "liveMissionsUpdated": "Last update",
+  "apiAlertTitle": "API unavailable or no data",
+  "apiAlertBody": "Backend API failed or returned no missions. Data shown may be stale/mock.",
   "langToggle": "Language",
   "searchPlaceholder": "Filter missions by title…",
   "kinds": {

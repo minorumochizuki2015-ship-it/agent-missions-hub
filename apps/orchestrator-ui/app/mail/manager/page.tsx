@@ -164,8 +164,9 @@ export default function ManagerPage({
 
   const [missions, setMissions] = useState<Mission[]>(MOCK_MISSIONS)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [apiError, setApiError] = useState<string | null>(null)
   const [fromApi, setFromApi] = useState(false)
+  const [fetched, setFetched] = useState(false)
   const [query, setQuery] = useState('')
   const [signals, setSignals] = useState<Signal[]>([])
 
@@ -174,7 +175,7 @@ export default function ManagerPage({
     const controller = new AbortController()
     const fetchMissions = async () => {
       setLoading(true)
-      setError(null)
+      setApiError(null)
       try {
         const resp = await fetch(`${base}/api/missions`, { signal: controller.signal })
         if (!resp.ok) throw new Error(`status ${resp.status}`)
@@ -189,10 +190,15 @@ export default function ManagerPage({
               updated_at: m.updated_at || new Date().toISOString()
             }))
           )
+        } else {
+          setFromApi(false)
+          setApiError('empty')
         }
       } catch (e) {
-        setError((e as Error).message)
+        setFromApi(false)
+        setApiError((e as Error).message)
       } finally {
+        setFetched(true)
         setLoading(false)
       }
     }
@@ -247,6 +253,8 @@ export default function ManagerPage({
   const filteredMissions = missions.filter((m) =>
     m.title.toLowerCase().includes(query.toLowerCase())
   )
+  const showApiAlert = fetched && (!fromApi || apiError !== null || missions.length === 0)
+  const alertDetail = apiError && apiError !== 'empty' ? ` (${apiError})` : ''
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 lg:p-6">
@@ -256,7 +264,11 @@ export default function ManagerPage({
             {t.pageTitle}
           </h1>
           <p className="text-xs text-slate-600">
-            {loading ? 'Loading…' : error ? `API error: ${error}` : `${missions.length} missions`}
+            {loading
+              ? 'Loading…'
+              : showApiAlert
+                ? `${t.apiAlertTitle}${alertDetail}`
+                : `${missions.length} missions`}
           </p>
         </div>
         <Link
@@ -267,6 +279,15 @@ export default function ManagerPage({
           {t.langToggle}: {toggleLang.toUpperCase()}
         </Link>
       </header>
+      {showApiAlert && (
+        <div className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900" role="alert">
+          <div className="font-semibold">{t.apiAlertTitle}</div>
+          <div>
+            {t.apiAlertBody}
+            {alertDetail}
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-4 xl:grid-cols-4">
         <section className="rounded-lg bg-white p-4 shadow-sm xl:col-span-1" aria-label={t.liveMissions}>
