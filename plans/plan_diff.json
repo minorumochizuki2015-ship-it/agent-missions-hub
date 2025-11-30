@@ -500,6 +500,19 @@
         "observability/policy/ci_evidence.jsonl"
       ],
       "notes": "uv run pytest -q tests/test_mail_client_smoke.py PASS。ci_evidence に P1 mail/lease integration smoke OK を追記。API経路を MailClient 統一済み。Signals API を別ステップで追加済み。"
+    },
+    {
+      "id": "signals-ui-panel",
+      "status": "planned",
+      "description": "Signals を Manager/Inbox UI のサイドパネルで表示する（dangerous_command/approval_required/failing_test/retry/timeout を一覧）。",
+      "entries": [
+        "apps/orchestrator-ui/",
+        "docs/multi_agent_terminal_checklist_v2.md"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "列: type/severity/status/created_at/message。project_id は既存 import の project 解決を使用。実装時に UI Gate 判定が必要。"
     }
   ]
 }
