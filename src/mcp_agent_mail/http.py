@@ -3237,6 +3237,42 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 }
             )
 
+        @fastapi_app.post("/api/signals/import/dangerous")
+        async def api_import_dangerous_signals(payload: dict) -> JSONResponse:
+            """Import dangerous_command log lines as signals."""
+            path = payload.get("path") or "data/logs/current/audit/dangerous_command_events.jsonl"
+            project_id = int(payload.get("project_id", 1))
+            max_rows = int(payload.get("max_rows", 200))
+            p = Path(path)
+            if not p.exists():
+                raise HTTPException(status_code=404, detail="log file not found")
+            rows = []
+            for line in p.read_text(encoding="utf-8").splitlines()[: max_rows if max_rows > 0 else None]:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    obj = json.loads(line)
+                except Exception:
+                    continue
+                if obj.get("event") != "dangerous_command":
+                    continue
+                rows.append(obj)
+            await ensure_schema()
+            async with get_session() as session:
+                for row in rows:
+                    signal = Signal(
+                        project_id=project_id,
+                        mission_id=None,
+                        type="dangerous_command",
+                        severity="warning",
+                        status="pending",
+                        message=row.get("command") or row.get("note"),
+                    )
+                    session.add(signal)
+                await session.commit()
+            return JSONResponse({"imported": len(rows)})
+
         @fastapi_app.post("/api/signals")
         async def api_signal_create(payload: dict) -> JSONResponse:
             """Create a signal entry."""

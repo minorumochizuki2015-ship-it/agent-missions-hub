@@ -35,3 +35,27 @@ def test_signal_create_and_list() -> None:
     assert res.status_code == 200
     ids = [s["id"] for s in res.json()["signals"]]
     assert signal_id in ids
+
+
+def test_signal_import_dangerous(tmp_path) -> None:
+    pid = asyncio.run(_setup_project())
+    log = tmp_path / "dangerous_command_events.jsonl"
+    log.write_text(
+        "\n".join(
+            [
+                '{"event":"dangerous_command","command":"rm -rf /tmp"}',
+                '{"event":"other"}',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    app = build_http_app(get_settings())
+    client = TestClient(app)
+    res = client.post(
+        "/api/signals/import/dangerous",
+        json={"path": str(log), "project_id": pid, "max_rows": 10},
+    )
+    assert res.status_code == 200
+    assert res.json()["imported"] == 1
+    listed = client.get("/api/signals").json()["signals"]
+    assert any(s["type"] == "dangerous_command" for s in listed)
