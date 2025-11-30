@@ -3237,6 +3237,30 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 }
             )
 
+        @fastapi_app.post("/api/signals")
+        async def api_signal_create(payload: dict) -> JSONResponse:
+            """Create a signal entry."""
+            project_id = payload.get("project_id")
+            mission_id = payload.get("mission_id")
+            sig_type = (payload.get("type") or "").strip()
+            message = (payload.get("message") or "").strip() or None
+            severity = (payload.get("severity") or "info").strip()
+            if not project_id or not sig_type:
+                raise HTTPException(status_code=400, detail="project_id and type are required")
+            await ensure_schema()
+            async with get_session() as session:
+                signal = Signal(
+                    project_id=int(project_id),
+                    mission_id=mission_id,
+                    type=sig_type,
+                    severity=severity,
+                    message=message,
+                )
+                session.add(signal)
+                await session.commit()
+                await session.refresh(signal)
+            return JSONResponse({"id": signal.id, "created_at": signal.created_at.isoformat()})
+
         @fastapi_app.post("/api/mail/send")
         async def api_mail_send(payload: dict) -> JSONResponse:
             project = payload.get("project")

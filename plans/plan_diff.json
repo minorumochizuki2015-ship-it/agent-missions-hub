@@ -499,7 +499,7 @@
       "evidence": [
         "observability/policy/ci_evidence.jsonl"
       ],
-      "notes": "uv run pytest -q tests/test_mail_client_smoke.py PASS。ci_evidence に P1 mail/lease integration smoke OK を追記。API経路を MailClient 統一済み。"
+      "notes": "uv run pytest -q tests/test_mail_client_smoke.py PASS。ci_evidence に P1 mail/lease integration smoke OK を追記。API経路を MailClient 統一済み。Signals API を別ステップで追加済み。"
     }
   ]
 }
