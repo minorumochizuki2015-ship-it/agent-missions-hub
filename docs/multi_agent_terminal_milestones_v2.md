@@ -6,6 +6,11 @@
 - UI Gate: PASS（preview_dir=artifacts/preview/, UI-Audit=ui-audit-v2, EN=2025/11/20 11:02:09, JA=2025/11/20 11:01:37）
 - 備考: Web Vitals が取得できない場合（vitals_missing=true）は警告として許容し、axe=0 なら Gate=PASS と扱う。取得できた場合は LCP<=2.5s / CLS<=0.10 / FID<=100ms の予算で判定する。
 - CLI: `/api/missions` を CLI (serve+call) から叩く E2E を実施し、ci_evidence に `cli_call` / `cli_e2e_run` を記録。
+
+## Phase 3（UI ダッシュボード刷新）※計画
+- 旧 `/mail` ダッシュボード要素（Smoke Test / メッセージ / プロジェクトカード等）を統合し、実データ（MISSIONS_HUB_API_BASE + `/api/missions`）を表示する新レイアウトを実装する。
+- i18n (EN/JA) を維持しつつ axe=0 を目標。Web Vitals は取得を試み、未取得の場合は vitals_missing 許容を継続。
+- Playwright/Jest/UI Audit EN/JA を再実行し PASS、ci_evidence に最新の `ui_audit_executed` / `ui_gate_pass_*` を記録。
 - エビデンス:
   - 英語ビュー `ui_gate_pass_en`（summary SHA=40233969C1BE9A6585B74D3EF3E0B5EAE395B64CB937F220401180DE8B7889C0、screenshot SHA=4CFF8863068629E431823861FF3BD5078AAB990D89A4BEE7B9BBC31036515DDD、LCP=428ms / TTI=0.030s、baseline SSIM=1.0、HTML SHA=0B10909A08A3E99F3765C7C83770B97BAE5FA31821279BD5092A81A75CF5DB69）
   - 日本語ビュー `ui_gate_pass_ja`（summary SHA=241C2B14C896C18DCC86AE40FFE47072D8B3209DE5C22E8E4544441506629715、screenshot SHA=4CFF8863068629E431823861FF3BD5078AAB990D89A4BEE7B9BBC31036515DDD、LCP=448ms / TTI=0.052s、baseline SSIM=1.0、HTML 同一 SHA）

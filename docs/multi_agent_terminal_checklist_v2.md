@@ -21,7 +21,13 @@
 2. `./.venv/Scripts/python.exe scripts/ui_audit_run.py` で axe + WebVitals + screenshot を再取得（JA/EN 両方を実行）。
 3. `artifacts/ui_audit/summary.json`・`artifacts/ui_audit/screens/unified_inbox.png`・`artifacts/ui_audit/report.html` の SHA を `observability/policy/ci_evidence.jsonl` に追記。
  4. Gate=PASS を再確認後、`docs/multi_agent_terminal_milestones_v2.md` と `docs/operations/handover_recovery_checklist.md` を同期更新。
-  5. CLI 経由で `/api/missions` を叩く E2E (serve+call) を実行し、ci_evidence に `cli_call` / `cli_e2e_run` を記録。
+ 5. CLI 経由で `/api/missions` を叩く E2E (serve+call) を実行し、ci_evidence に `cli_call` / `cli_e2e_run` を記録。
+
+## Phase3（UI ダッシュボード刷新）完了条件（案B'）
+- MISSIONS_HUB_API_BASE + `/api/missions` など実データを表示（モック撤廃）。
+- 旧 `/mail` ダッシュボード要素（Smoke Test / メッセージ / プロジェクトカードなど）を統合した新レイアウト。
+- i18n (EN/JA) 維持、axe=0、Web Vitals は取得できれば予算判定。未取得時は vitals_missing 許容を継続。
+- Playwright/Jest/UI Audit EN/JA を再実行し PASS、ci_evidence に `ui_audit_executed` / `ui_gate_pass_*` を追記。
 
 ## 記録状況
 - ci_evidence.jsonl: 2025/11/20 11:01:37（`ui_audit_executed` / `ui_gate_pass_ja`）と 11:02:09（`ui_audit_executed` / `ui_gate_pass_en`）を最新として追記。旧 08:03/10:24:57/10:52:01 実行は superseded で履歴参照のみ。

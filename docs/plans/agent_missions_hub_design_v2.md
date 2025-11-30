@@ -86,6 +86,11 @@
 - CLI ログ ID・`workflow_runs` ID・`ci_evidence` を相互参照できるキー設計。  
 **完了条件:** CodexCLI 起動→複数エージェント CLI 起動→Missions Hub 登録→Agent Mail/Manager View で追跡できるデモ完走。
 
+### 6.5 実装結果（2025-11-30 更新）
+- Typer ベースで親 CLI を実装し、`serve` で uvicorn（`agent_missions_hub.http:build_app`, factory）を起動、`call` で MISSIONS_HUB_API_BASE（デフォルト http://127.0.0.1:8000）配下のエンドポイントを GET/POST できるようにした。
+- E2E: pytest `tests/test_cli_e2e.py` で uvicorn をサブプロセス起動→`cli call --endpoint /api/missions`→200/JSON 配列を検証し PASS。ci_evidence に `cli_call` / `cli_e2e_run` を記録。
+- 制限: PTY 起動・複数エージェント同時制御・Message Bus 連携は未実装（Phase3以降で対応）。
+
 ### 6.4 実装タスク粒度
 - 親オーケストレータ入口: `src/orchestrator/cli.py`（新設想定）に CodexCLI/multi-agent terminal の起動を実装し、Missions Hub API を呼び出す。Windows/PS7 からは常に `.\.venv\Scripts\python.exe src\orchestrator\cli.py` で起動することを前提とする。
 - PTY: v1 では **Windows ConPTY ベース**で各エージェント CLI を分離し、親が `subprocess.Popen`＋擬似端末ラッパ経由で入出力を制御する。`tmux` を利用する WSL/Linux 構成は Phase 3 以降の PoC に限定し、本設計書の v1 実装範囲には含めない。

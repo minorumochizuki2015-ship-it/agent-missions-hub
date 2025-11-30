@@ -34,6 +34,11 @@
 4. Agent Mail 連携: CI/PTY ログ要約を投稿し、Human Overseer の指示を親が取り込み再計画。
 5. 段階的 E2E テスト: 単独ループ → 並列 2 エージェント → フル役割編成で回し、証跡を `ci_evidence` に追加。
 
+### 実装状況（2025-11-30 更新）
+- 最小版 Typer CLI を追加し、`serve` で uvicorn factory（`agent_missions_hub.http:build_app`）を起動、`call` で MISSIONS_HUB_API_BASE（既定 http://127.0.0.1:8000）のエンドポイントを GET/POST 可能にした。
+- pytest `tests/test_cli_e2e.py` で uvicorn サブプロセス起動→`cli call --endpoint /api/missions` の E2E を PASS。ci_evidence に `cli_call` / `cli_e2e_run` を記録。
+- 未実装/制限: PTY 多段起動、ロール別エージェント管理、Message Bus 連携は未対応（Phase3 以降）。
+
 ## 依存・前提
 - Windows 環境（PowerShell/WSL）での PTY サポート（ConPTY/winpty）を前提にする。Unix/macOS では pty/tmux に置換。
 - 各 CLI は TTY 前提で動くため、非 TTY パイプではなく必ず PTY 経由で起動する。
