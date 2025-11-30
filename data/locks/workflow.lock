@@ -1,7 +1,7 @@
 {
-  "task_id": "PHASE2D-CLI-E2E",
+  "task_id": "P1-mail-lease-SSOT",
   "holder": "WORK",
   "branch": "feature/mvp-ui-audit",
-  "ts_acquired": "2025-11-30T10:10:00Z",
-  "note": "Start Phase 2D CLI integration / API連携 / E2E evidence"
+  "ts_acquired": "2025-11-30T06:45:59Z",
+  "note": "Mail/lease integration as SSOT for P1"
 }
