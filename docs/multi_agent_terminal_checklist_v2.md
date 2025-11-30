@@ -20,7 +20,8 @@
 1. `artifacts/preview/` を更新して差分を記録（Plan→Test→Patch の範囲内）。
 2. `./.venv/Scripts/python.exe scripts/ui_audit_run.py` で axe + WebVitals + screenshot を再取得（JA/EN 両方を実行）。
 3. `artifacts/ui_audit/summary.json`・`artifacts/ui_audit/screens/unified_inbox.png`・`artifacts/ui_audit/report.html` の SHA を `observability/policy/ci_evidence.jsonl` に追記。
-4. Gate=PASS を再確認後、`docs/multi_agent_terminal_milestones_v2.md` と `docs/operations/handover_recovery_checklist.md` を同期更新。
+ 4. Gate=PASS を再確認後、`docs/multi_agent_terminal_milestones_v2.md` と `docs/operations/handover_recovery_checklist.md` を同期更新。
+  5. CLI 経由で `/api/missions` を叩く E2E (serve+call) を実行し、ci_evidence に `cli_call` / `cli_e2e_run` を記録。
 
 ## 記録状況
 - ci_evidence.jsonl: 2025/11/20 11:01:37（`ui_audit_executed` / `ui_gate_pass_ja`）と 11:02:09（`ui_audit_executed` / `ui_gate_pass_en`）を最新として追記。旧 08:03/10:24:57/10:52:01 実行は superseded で履歴参照のみ。

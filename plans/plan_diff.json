@@ -445,7 +445,7 @@
     },
     {
       "id": "phase2d-cli-e2e",
-      "status": "planned",
+      "status": "completed",
       "description": "Phase 2D: CLI連携（Codex/Claude）+ API連動 + 最小E2E",
       "entries": [
         "src/orchestrator/cli.py",
@@ -455,7 +455,7 @@
       "evidence": [
         "observability/policy/ci_evidence.jsonl"
       ],
-      "notes": "CLI連携とE2E証跡を追加。実装時に LOCK 更新と ci_evidence 追記。"
+      "notes": "CLI serve/call を Typer で実装し、/api/missions への call を E2E で検証。ci_evidence に cli_call / cli_e2e_run を記録し、LOCK を PHASE2D-CLI-E2E へ更新。"
     }
   ]
 }
