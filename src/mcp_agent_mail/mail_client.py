@@ -3,6 +3,8 @@
 # isort: skip_file
 from __future__ import annotations
 from datetime import datetime, timedelta, timezone
+from typing import Any
+
 from sqlalchemy import desc
 from sqlmodel import select
 from .db import ensure_schema, get_session
@@ -29,7 +31,8 @@ class MailClient:
     async def list_messages(self, project_key: str) -> list[Message]:
         """プロジェクト内のメッセージを新しい順に返す。""" ; pid, _ = await self._ids(project_key)
         async with get_session() as s:
-            res = await s.exec(select(Message).where(Message.project_id == pid).order_by(desc(Message.created_ts))); return list(res.all())
+            created_col: Any = Message.created_ts
+            res = await s.exec(select(Message).where(Message.project_id == pid).order_by(desc(created_col))); return list(res.all())
 
     async def create_lease(self, project_key: str, agent_name: str, path_pattern: str) -> FileReservation:
         """1時間TTLのファイル予約を作成する。""" ; await ensure_schema(); pid, aid = await self._ids(project_key, agent_name); now = datetime.now(timezone.utc)
