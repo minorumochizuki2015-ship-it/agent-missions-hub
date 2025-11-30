@@ -131,6 +131,15 @@ type Message = {
   ts: string
 }
 
+type Signal = {
+  id: string
+  type: string
+  severity: string
+  status: string
+  created_at: string
+  message?: string
+}
+
 function useI18n(lang: Lang) {
   const dict = lang === 'ja' ? managerJa : managerEn
   return dict
@@ -156,6 +165,7 @@ export default function ManagerPage({
   const [missions, setMissions] = useState<Mission[]>(MOCK_MISSIONS)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [signals, setSignals] = useState<Signal[]>([])
 
   useEffect(() => {
     const base = process.env.NEXT_PUBLIC_MISSIONS_API_BASE || 'http://127.0.0.1:8000'
@@ -184,6 +194,17 @@ export default function ManagerPage({
       }
     }
     fetchMissions()
+    const fetchSignals = async () => {
+      try {
+        const resp = await fetch(`${base}/api/signals?limit=20`, { signal: controller.signal })
+        if (!resp.ok) return
+        const data = (await resp.json()) as { signals?: Signal[] }
+        if (data.signals) setSignals(data.signals)
+      } catch (e) {
+        /* noop */
+      }
+    }
+    fetchSignals()
     return () => controller.abort()
   }, [])
 
@@ -372,6 +393,27 @@ export default function ManagerPage({
                 <p className="text-sm text-slate-700">{msg.body}</p>
               </article>
             ))}
+          </div>
+        </section>
+
+        <section className="rounded-lg bg-white p-4 shadow-sm xl:col-span-1" aria-label="Signals">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-900">Signals</h2>
+            <span className="text-[11px] text-slate-600">{signals.length} latest</span>
+          </div>
+          <div className="space-y-2">
+            {signals.map((s) => (
+              <article key={s.id} className="rounded border border-slate-200 p-3" data-testid="signal-card">
+                <div className="flex items-center justify-between text-sm font-medium text-slate-900">
+                  <span>{s.type}</span>
+                  <span className="text-xs uppercase text-slate-600">{s.severity}</span>
+                </div>
+                <p className="text-xs text-slate-600">{formatIso(s.created_at)}</p>
+                <p className="text-sm text-slate-700">{s.message || '—'}</p>
+                <p className="text-[11px] text-slate-600">status: {s.status}</p>
+              </article>
+            ))}
+            {signals.length === 0 && <p className="text-sm text-slate-600">No signals yet</p>}
           </div>
         </section>
       </div>
