@@ -19,6 +19,9 @@
   "sha": "SHA",
   "tags": "タグ",
   "messages": "メッセージ",
+  "liveMissions": "ライブミッション（API）",
+  "liveMissionsEmpty": "ライブミッションなし",
+  "liveMissionsUpdated": "最終更新",
   "langToggle": "言語",
   "kinds": {
     "sequential": "順次",

@@ -19,6 +19,9 @@
   "sha": "SHA",
   "tags": "Tags",
   "messages": "Messages",
+  "liveMissions": "Live missions (API)",
+  "liveMissionsEmpty": "No live missions",
+  "liveMissionsUpdated": "Last update",
   "langToggle": "Language",
   "kinds": {
     "sequential": "Sequential",

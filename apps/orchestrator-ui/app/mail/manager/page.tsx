@@ -165,6 +165,7 @@ export default function ManagerPage({
   const [missions, setMissions] = useState<Mission[]>(MOCK_MISSIONS)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fromApi, setFromApi] = useState(false)
   const [signals, setSignals] = useState<Signal[]>([])
 
   useEffect(() => {
@@ -178,6 +179,7 @@ export default function ManagerPage({
         if (!resp.ok) throw new Error(`status ${resp.status}`)
         const data = (await resp.json()) as Mission[]
         if (Array.isArray(data) && data.length > 0) {
+          setFromApi(true)
           setMissions(
             data.map((m) => ({
               ...m,
@@ -263,6 +265,27 @@ export default function ManagerPage({
       </header>
 
       <div className="grid gap-4 xl:grid-cols-4">
+        <section className="rounded-lg bg-white p-4 shadow-sm xl:col-span-1" aria-label={t.liveMissions}>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-900">{t.liveMissions}</h2>
+            <span className="text-[11px] text-slate-600">{fromApi ? 'API' : 'mock'}</span>
+          </div>
+          <div className="space-y-2">
+            {missions.length === 0 && <p className="text-sm text-slate-600">{t.liveMissionsEmpty}</p>}
+            {missions.slice(0, 5).map((m) => (
+              <article key={m.id} className="rounded border border-slate-200 p-3" data-testid="live-mission-card">
+                <p className="font-medium text-slate-900">{m.title}</p>
+                <p className="text-xs text-slate-600">
+                  {t.status}: {t.statuses[m.status]} · {t.owner}: {m.owner}
+                </p>
+                <p className="text-[11px] text-slate-600">
+                  {t.liveMissionsUpdated}: {formatIso(m.updated_at)}
+                </p>
+              </article>
+            ))}
+          </div>
+        </section>
+
         <section className="rounded-lg bg-white p-4 shadow-sm xl:col-span-1" aria-label={t.missions}>
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-900">{t.missions}</h2>
