@@ -486,6 +486,20 @@
         "observability/policy/ci_evidence.jsonl"
       ],
       "notes": "サブステップ: (1) 要件整理/ワイヤー（必須=ミッション一覧+Smoke Test, 任意=メッセージ/プロジェクトカード/検索）(2) API 実データ化（MISSIONS_HUB_API_BASE + /api/missions を第一段階。Smoke/Messages はモックを段階追加）(3) レイアウト刷新＋i18n/axe=0 維持、Web Vitals 取得を試行（未取得時は vitals_missing 許容）(4) Playwright/Jest/UI Audit EN/JA 実行→ci_evidence 更新 (5) checklist/milestones 更新"
+    },
+    {
+      "id": "mail-lease-ssot",
+      "status": "in_progress",
+      "description": "MailClient ラッパ追加と test 環境の send/list/lease 配線開始。次フェーズで UI 経路と evidence を更新する。",
+      "entries": [
+        "src/mcp_agent_mail/mail_client.py",
+        "src/mcp_agent_mail/http.py",
+        "tests/test_mail_client_smoke.py"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "pytest 短縮スモーク通過（MailClient 経由）。ci_evidence / checklist 更新は次バッチ。"
     }
   ]
 }

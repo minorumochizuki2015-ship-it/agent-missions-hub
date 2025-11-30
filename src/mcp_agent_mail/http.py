@@ -35,6 +35,7 @@ from .app import (
 )
 from .config import Settings, get_settings
 from .db import ensure_schema, get_session
+from .mail_client import MailClient
 from .routers import missions
 from .storage import (
     AsyncFileLock,
@@ -2607,46 +2608,16 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
 
                 settings_local = get_settings()
                 if settings_local.environment == "test":
-                    project_slug = project
-                    project_human_key = project
-                    from datetime import datetime, timezone
-
-                    from .storage import ensure_archive, process_attachments
-
-                    archive = await ensure_archive(settings_local, project_slug)
-                    updated_body, attachments_meta, commit_paths = (
-                        await process_attachments(
-                            archive,
-                            full_body,
-                            None,
-                            convert_images,
-                            embed_policy=attachments_policy,
-                        )
-                    )
-                    now = datetime.now(timezone.utc)
-                    message_dict = {
-                        "id": 0,
-                        "thread_id": thread_id,
-                        "project": project_human_key,
-                        "project_slug": project_slug,
-                        "from": "HumanOverseer",
-                        "to": recipients,
-                        "cc": [],
-                        "bcc": [],
-                        "subject": subject,
-                        "importance": "high",
-                        "ack_required": False,
-                        "created": now.isoformat(),
-                        "attachments": attachments_meta,
-                        "body_md": updated_body,
-                    }
+                    client = MailClient()
+                    msg = await client.send_message(project, "HumanOverseer", subject, full_body)
+                    listed = await client.list_messages(project)
                     return JSONResponse(
                         {
                             "success": True,
-                            "message_id": 0,
+                            "message_id": msg.id,
                             "recipients": recipients,
-                            "sent_at": now.isoformat(),
-                            "payload": message_dict,
+                            "count": len(listed),
+                            "sent_at": msg.created_ts.isoformat(),
                         }
                     )
 
