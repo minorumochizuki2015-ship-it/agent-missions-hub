@@ -247,7 +247,11 @@ class SequentialWorkflow(WorkflowEngine):
             # If TaskGroup kind is 'sequential', we run tasks one by one.
             # If 'parallel', we could run them concurrently (not implemented in v1).
 
-            stmt = select(Task).where(Task.group_id == group.id).order_by(Task.order)
+            stmt = (
+                select(Task)
+                .where(Task.group_id == group.id)
+                .order_by(Task.__table__.c.order)  # type: ignore[arg-type]
+            )
             result = await self.session.execute(stmt)
             tasks = result.scalars().all()
 
