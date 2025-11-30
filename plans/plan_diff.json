@@ -405,7 +405,7 @@
     },
     {
       "id": "phase2b-workflow-selfheal",
-      "status": "in_progress",
+      "status": "completed",
       "description": "Phase 2B: implement WorkflowEngine self-heal + workflow_runs persistence + ci_evidence traces",
       "entries": [
         "src/mcp_agent_mail/workflow_engine.py",
@@ -418,7 +418,7 @@
         "observability/policy/ci_evidence.jsonl",
         "data/logs/current/audit/"
       ],
-      "notes": "lock PHASE2B-WORKFLOW acquired 2025-11-28T09:12:49Z; begin workflow_runs persistence & self-heal plan",
+      "notes": "lock PHASE2B-WORKFLOW acquired 2025-11-28T09:12:49Z; workflow_runs 永続化・self-heal・pytest/ci_evidence 実行を完了（axe重複main修正後 Playwright 13/13 PASS）。",
       "substeps": [
         "workflow_runs 永続化とトレース設計（models/workflow_engine を更新）",
         "self-heal ポリシー実装（リトライ/フォールバックを定義）",
@@ -428,7 +428,7 @@
     },
     {
       "id": "phase2c-manager-ui",
-      "status": "in_progress",
+      "status": "completed",
       "description": "Phase 2C: Manager UI + Playwright/Jest + UI Gate再実行（必要時）",
       "entries": [
         "src/mcp_agent_mail/ui/manager",
@@ -441,7 +441,7 @@
       "evidence": [
         "observability/policy/ci_evidence.jsonl"
       ],
-      "notes": "Auto GateでUI差分なしならskip。差分発生時は JA/EN で UI Gate 実行し ci_evidence/docs を同期。"
+      "notes": "Manager UIを実装し i18n/Jest/Playwright/axe=0 まで改善。UI Audit EN/JA で vitals_missing=true を警告許容とし、checklist/milestones に方針追記。ci_evidence に ui_audit_executed/ui_gate_pass_* (page=manager/unified_inbox) を記録。"
     },
     {
       "id": "phase2d-cli-e2e",

@@ -1,7 +1,7 @@
 {
-  "task_id": "PHASE2C-MANAGER-UI",
+  "task_id": "PHASE2D-CLI-E2E",
   "holder": "WORK",
   "branch": "feature/mvp-ui-audit",
-  "ts_acquired": "2025-11-28T09:40:00Z",
-  "note": "Start Phase 2C Manager UI / Playwright / UI Gate sync"
+  "ts_acquired": "2025-11-30T10:10:00Z",
+  "note": "Start Phase 2D CLI integration / API連携 / E2E evidence"
 }
