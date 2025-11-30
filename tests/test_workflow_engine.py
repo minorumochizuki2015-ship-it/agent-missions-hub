@@ -16,6 +16,7 @@ from mcp_agent_mail.models import (
     Knowledge,
     Mission,
     Project,
+    Signal,
     Task,
     TaskGroup,
     WorkflowRun,
@@ -240,6 +241,8 @@ async def test_self_heal_failure_records_artifact(db_session):
         if row.type is not None and row.type == "self_heal_failure"
     ]
     assert failure_artifacts
+    signals = (await db_session.execute(select(Signal))).scalars().all()
+    assert any(sig.type == "self_heal_failed" for sig in signals)
     knowledge_rows = (await db_session.execute(select(Knowledge))).scalars().all()
     related_knowledge = [
         row

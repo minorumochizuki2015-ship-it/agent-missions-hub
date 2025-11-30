@@ -15,7 +15,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from .models import Artifact, Knowledge, Mission, Task, TaskGroup, WorkflowRun
+from .models import Artifact, Knowledge, Mission, Signal, Task, TaskGroup, WorkflowRun
 
 TRACE_DIR_DEFAULT = Path("data/logs/current/audit/workflow_runs")
 
@@ -430,6 +430,17 @@ class SelfHealWorkflow(SequentialWorkflow):
                             "error": recovery_task.error,
                         },
                     )
+                    mission = await self.session.get(Mission, context.mission_id)
+                    project_id = mission.project_id if mission else None
+                    if project_id is not None:
+                        await _emit_signal(
+                            session=self.session,
+                            project_id=project_id,
+                            mission_id=context.mission_id,
+                            sig_type="self_heal_failed",
+                            severity="warning",
+                            message=f"Recovery failed for {failed_task.title}: {failed_task.error}",
+                        )
                     raise e  # Re-raise original exception
             else:
                 raise e
@@ -479,3 +490,25 @@ async def _record_self_heal_artifact(
     await session.commit()
     await session.refresh(knowledge)
     return artifact, knowledge
+
+
+async def _emit_signal(
+    session: AsyncSession,
+    project_id: int,
+    mission_id: UUID | None,
+    sig_type: str,
+    severity: str = "info",
+    message: str | None = None,
+) -> Signal:
+    signal = Signal(
+        project_id=project_id,
+        mission_id=mission_id,
+        type=sig_type,
+        severity=severity,
+        status="pending",
+        message=message,
+    )
+    session.add(signal)
+    await session.commit()
+    await session.refresh(signal)
+    return signal
