@@ -31,7 +31,7 @@ class MailClient:
             res = await s.exec(select(Message).where(Message.project_id == pid).order_by(Message.created_ts.desc())); return list(res.all())
 
     async def create_lease(self, project_key: str, agent_name: str, path_pattern: str) -> FileReservation:
-        """1時間TTLのファイル予約を作成する。""" ; pid, aid = await self._ids(project_key, agent_name); now = datetime.now(timezone.utc)
+        """1時間TTLのファイル予約を作成する。""" ; await ensure_schema(); pid, aid = await self._ids(project_key, agent_name); now = datetime.now(timezone.utc)
         lease = FileReservation(project_id=pid, agent_id=aid, path_pattern=path_pattern, exclusive=True, reason="mail-client", created_ts=now, expires_ts=now + timedelta(hours=1))
         async with get_session() as s:
             s.add(lease); await s.commit(); await s.refresh(lease); return lease
