@@ -68,16 +68,18 @@ async def list_missions(
     missions = (await session.execute(stmt)).scalars().all()
 
     tg_counts = await session.execute(
-        select(TaskGroup.mission_id, func.count(TaskGroup.id)).group_by(
-            TaskGroup.__table__.c.mission_id  # type: ignore[arg-type]
-        )
+        select(  # type: ignore[call-overload]
+            TaskGroup.__table__.c.mission_id,  # type: ignore[arg-type]
+            func.count(TaskGroup.__table__.c.id),  # type: ignore[arg-type]
+        ).group_by(TaskGroup.__table__.c.mission_id)  # type: ignore[arg-type]
     )
     tg_map = {row[0]: row[1] for row in tg_counts}
 
     artifact_counts = await session.execute(
-        select(Artifact.mission_id, func.count(Artifact.id)).group_by(
-            Artifact.__table__.c.mission_id  # type: ignore[arg-type]
-        )
+        select(  # type: ignore[call-overload]
+            Artifact.__table__.c.mission_id,  # type: ignore[arg-type]
+            func.count(Artifact.__table__.c.id),  # type: ignore[arg-type]
+        ).group_by(Artifact.__table__.c.mission_id)  # type: ignore[arg-type]
     )
     artifact_map = {row[0]: row[1] for row in artifact_counts}
 
@@ -237,7 +239,7 @@ async def run_mission(
     # pick latest workflow_run for this mission
     run_row = await session.execute(
         select(WorkflowRun)
-        .where(WorkflowRun.mission_id == mission_id)
+        .where(WorkflowRun.__table__.c.mission_id == mission_id)  # type: ignore[arg-type]
         .order_by(desc(WorkflowRun.__table__.c.started_at))  # type: ignore[arg-type]
     )
     run = run_row.scalars().first()
