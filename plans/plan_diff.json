@@ -503,16 +503,30 @@
     },
     {
       "id": "signals-ui-panel",
-      "status": "planned",
+      "status": "completed",
       "description": "Signals を Manager/Inbox UI のサイドパネルで表示する（dangerous_command/approval_required/failing_test/retry/timeout を一覧）。",
       "entries": [
-        "apps/orchestrator-ui/",
+        "apps/orchestrator-ui/app/mail/manager/page.tsx",
         "docs/multi_agent_terminal_checklist_v2.md"
       ],
       "evidence": [
         "observability/policy/ci_evidence.jsonl"
       ],
-      "notes": "列: type/severity/status/created_at/message。project_id は既存 import の project 解決を使用。実装時に UI Gate 判定が必要。"
+      "notes": "列: type/severity/status/created_at/message。project_id は既存 import の project 解決を使用。2025-11-30 ui_audit_run (EN/JA) で Gate=PASS (vitals_missing 許容)。"
+    },
+    {
+      "id": "phase3-dashboard-integration",
+      "status": "planned",
+      "description": "Phase3開始: /api/missions の実データを Manager ダッシュボードに反映し、Smoke Testカード・検索/フィルタを実データベースで復元。i18n と axe=0 を維持。",
+      "entries": [
+        "apps/orchestrator-ui/app/mail/manager/page.tsx",
+        "apps/orchestrator-ui/app/api/missions",
+        "docs/multi_agent_terminal_milestones_v2.md"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "初手は 3ファイル/50行以内で実データカードを追加し、npm test --runInBand と必要なら UI Gate を実施。"
     }
   ]
 }

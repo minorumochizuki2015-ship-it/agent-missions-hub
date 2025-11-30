@@ -1,6 +1,6 @@
 # マルチエージェント端末 チェックリスト v2
 
-更新日時: 2025-11-20T11:02:09Z (UTC換算)
+更新日時: 2025-11-30T18:52:00Z (UTC換算)
 
 ## UI Gate 状況
 - Auto Gate v1 を導入する。`auto_gate_rules.yaml` を参照し、`auto_gate_decider.py`（CI）で UI Gate の run/skip を判定する。
@@ -8,7 +8,7 @@
   - 判定エラーや巨大 diff（閾値超過）、`main`/`release/*` へのマージ、`label: run-ui-gate` が付いた PR では強制実行（decision=run/force_run）。
   - 対象パス例: `apps/orchestrator-ui/**`, `src/**/templates/**`, `**/*.css|scss|ts|tsx`, `playwright.config*`, `scripts/ui_audit*.py`, `package*.json`。
   - UI Gate 実行時は従来どおり `npm run ui:audit:ci`（または `scripts/ui_audit_run.py`）を実行し、summary/screenshot/HTML の SHA を `ui_audit_executed` / `ui_gate_pass_*` として ci_evidence に追記。
-- 最新状況: 2025-11-28 時点で Auto Gate 判定は UI 差分なしのため `skip`。UI Gate 再実行は未実施（差分発生時に実行）。
+- 最新状況: 2025-11-30 に `/mail` `/mail/manager` を EN/JA で ui_audit_run.py 実行し Gate=PASS（vitals_missing 許容）。Auto Gate 判定は引き続き no-ui-change=skip だが手動で実施済み。
 - Web Vitals が取得できない場合（vitals_missing=true）は警告扱いで許容し、axe=0 であれば Gate=PASS と見なす。取得できた場合は LCP<=2.5s / CLS<=0.10 / FID<=100ms の予算で判定する。
 - ローカルでの手動実行が必要な場合は従来手順を踏むこと:
   1. `npm run lint && npm run test && npm run test:e2e --prefix apps/orchestrator-ui`
@@ -37,7 +37,7 @@
 - P4 Mission/Task/Artifact/Knowledge: 中期スキーマを追加し、Manager/Graph/Knowledge の基盤を整備。
 
 ## 記録状況
-- ci_evidence.jsonl: 2025/11/20 11:01:37（`ui_audit_executed` / `ui_gate_pass_ja`）と 11:02:09（`ui_audit_executed` / `ui_gate_pass_en`）を最新として追記。旧 08:03/10:24:57/10:52:01 実行は superseded で履歴参照のみ。
+- ci_evidence.jsonl: 2025/11/30 18:49–18:51 に `ui_audit_executed` / `ui_gate_pass_en|ja`（unified_inbox / manager）を追記。旧 11/20 分は履歴参照のみ。
 - pytest: `.\\.venv\\Scripts\\python.exe -m pytest -q tests/test_workflow_engine.py tests/test_http_liveness_min.py` → 2 passed / 1 skipped（11/20 実行）。
 - ui_audit: `artifacts/ui_audit/summary.json`（SHA256: 40233969...89C0, LCP=428ms / TTI=0.030s）・`summary_ja.json`（SHA256: 241C2B14...9715, LCP=448ms / TTI=0.052s）と `screens/unified_inbox.png` / `screens/unified_inbox_ja.png`（4CFF8863...5DDD）。`axe_result.json`/`report.html` に加え HTML ダンプ `artifacts/ui_audit/html/route_unified_inbox.html` を再生成。HTML レポートは `artifacts/ui_audit_report/20251120-0930` を参照。
 - JS tests: `npm run lint --prefix apps/orchestrator-ui` / `CI=1 npm run test --prefix apps/orchestrator-ui` / `npm run test:e2e --prefix apps/orchestrator-ui` を 11/20 09:25–09:30 に実行し、いずれも PASS（Jest は Dashboard ヘッダ期待値更新後、Playwright 13/13）。
@@ -52,6 +52,7 @@
 - 観測と記録: `ci_evidence.jsonl` に workflow_engine/manager_view イベント、Auto Gate の run/skip（event=auto_gate_decision, component=ui_gate/sbom/secret_scan/bandit/gitops_*）を残し、`data/logs/current/audit/` にマイグレーション・実行ログを残す
 - v1 スコープ: Workflow は Sequential＋TaskGroup 内の簡易並列に限定し、DAG/AsyncThink/LangGraph など高度並列は Phase 3 以降。CLI 実行は Windows/PS7＋ConPTY で親 CLI（`.\.venv\Scripts\python.exe src\orchestrator\cli.py`）から `subprocess.Popen` 経由で起動。初期サポート CLI は CodexCLI＋Claude Code CLI のみ（その他はプレースホルダ）。WSL+tmux/CAO はオプション扱いで v1 の対象外。
 - Mail/Lease SSOT: MailClient API（/api/mail send/list, /api/leases create/release）で統一済み。ci_evidence に smoke OK (2025-11-30) を記録。
+- Signals UI: Manager 右カラムに Signals パネル実装済み。2025/11/30 UI Gate（EN/JA）で表示確認済み。
 
 ## 備考
 - Nightly の `nightly_preview_diff` は 08:10:20 のスナップショット時刻を基準として記録（UI Gate の最新は 17:10:xx）。運用上は UI Gate を“最新”基準とし、nightlyは差分検知用途に限定。
