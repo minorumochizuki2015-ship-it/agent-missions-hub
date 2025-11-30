@@ -72,8 +72,41 @@ def call(
     except Exception:
         typer.echo(resp.text)
 
+    # Log CLI call to ci_evidence for observability
+    _log_cli_call_evidence(url, endpoint, method_norm, resp.status_code, duration)
+
     if resp.status_code >= 400:
         raise typer.Exit(code=1)
+
+
+def _log_cli_call_evidence(
+    url: str, endpoint: str, method: str, status_code: int, duration_ms: int
+) -> None:
+    """Log CLI call event to observability/policy/ci_evidence.jsonl."""
+    import hashlib
+    from datetime import datetime, timezone
+    from pathlib import Path
+
+    evidence_path = Path("observability/policy/ci_evidence.jsonl")
+    if not evidence_path.exists():
+        return  # Skip if evidence file doesn't exist
+
+    event = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "event": "cli_call",
+        "endpoint": endpoint,
+        "method": method,
+        "status_code": status_code,
+        "duration_ms": duration_ms,
+        "url_hash": hashlib.sha256(url.encode()).hexdigest()[:16],
+    }
+    
+    try:
+        with evidence_path.open("a", encoding="utf-8") as f:
+            json.dump(event, f, ensure_ascii=False)
+            f.write("\n")
+    except Exception:  # pragma: no cover - IO failures
+        pass  # Best-effort logging, don't crash CLI on evidence write failure
 
 
 def main() -> None:  # pragma: no cover
