@@ -18,6 +18,7 @@
   "version": "バージョン",
   "sha": "SHA",
   "tags": "タグ",
+  "messages": "メッセージ",
   "langToggle": "言語",
   "kinds": {
     "sequential": "順次",

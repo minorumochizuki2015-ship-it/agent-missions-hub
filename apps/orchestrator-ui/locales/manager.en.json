@@ -18,6 +18,7 @@
   "version": "Version",
   "sha": "SHA",
   "tags": "Tags",
+  "messages": "Messages",
   "langToggle": "Language",
   "kinds": {
     "sequential": "Sequential",

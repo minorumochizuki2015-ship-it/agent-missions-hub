@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import managerEn from '@/locales/manager.en.json'
 import managerJa from '@/locales/manager.ja.json'
@@ -124,6 +124,13 @@ const MOCK_ARTIFACTS: Artifact[] = [
   }
 ]
 
+type Message = {
+  id: string
+  title: string
+  body: string
+  ts: string
+}
+
 function useI18n(lang: Lang) {
   const dict = lang === 'ja' ? managerJa : managerEn
   return dict
@@ -146,7 +153,40 @@ export default function ManagerPage({
   const t = useI18n(lang)
   const featureOn = (process.env.NEXT_PUBLIC_FEATURE_MANAGER_UI || 'true').toLowerCase() === 'true'
 
-  const missions = MOCK_MISSIONS
+  const [missions, setMissions] = useState<Mission[]>(MOCK_MISSIONS)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const base = process.env.NEXT_PUBLIC_MISSIONS_API_BASE || 'http://127.0.0.1:8000'
+    const controller = new AbortController()
+    const fetchMissions = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const resp = await fetch(`${base}/api/missions`, { signal: controller.signal })
+        if (!resp.ok) throw new Error(`status ${resp.status}`)
+        const data = (await resp.json()) as Mission[]
+        if (Array.isArray(data) && data.length > 0) {
+          setMissions(
+            data.map((m) => ({
+              ...m,
+              owner: (m as any).owner || 'n/a',
+              run_mode: (m as any).run_mode || 'sequential',
+              updated_at: m.updated_at || new Date().toISOString()
+            }))
+          )
+        }
+      } catch (e) {
+        setError((e as Error).message)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchMissions()
+    return () => controller.abort()
+  }, [])
+
   const [selectedMission] = missions
   const groups = useMemo(
     () => MOCK_GROUPS.filter((g) => g.mission_id === selectedMission.id).sort((a, b) => a.order - b.order),
@@ -154,6 +194,13 @@ export default function ManagerPage({
   )
   const tasks = MOCK_TASKS.filter((t) => groups.some((g) => g.id === t.group_id))
   const artifacts = MOCK_ARTIFACTS.filter((a) => tasks.some((t) => t.id === a.task_id))
+
+  const messages: Message[] = missions.slice(0, 3).map((m, i) => ({
+    id: `msg-${m.id}-${i}`,
+    title: `${m.title} - update`,
+    body: `${t.statuses[m.status]} @ ${formatIso(m.updated_at)}`,
+    ts: m.updated_at
+  }))
 
   if (!featureOn) {
     return (
@@ -176,10 +223,15 @@ export default function ManagerPage({
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 lg:p-6">
-      <header className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-slate-900" data-testid="manager-title">
-          {t.pageTitle}
-        </h1>
+      <header className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900" data-testid="manager-title">
+            {t.pageTitle}
+          </h1>
+          <p className="text-xs text-slate-600">
+            {loading ? 'Loading…' : error ? `API error: ${error}` : `${missions.length} missions`}
+          </p>
+        </div>
         <Link
           href={toggleHref}
           className="text-sm text-blue-700 underline"
@@ -189,9 +241,11 @@ export default function ManagerPage({
         </Link>
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <section className="rounded-lg bg-white p-4 shadow-sm" aria-label={t.missions}>
-          <h2 className="mb-2 text-lg font-semibold text-slate-900">{t.missions}</h2>
+      <div className="grid gap-4 xl:grid-cols-4">
+        <section className="rounded-lg bg-white p-4 shadow-sm xl:col-span-1" aria-label={t.missions}>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-900">{t.missions}</h2>
+          </div>
           <ul className="divide-y divide-slate-200">
             {missions.map((m) => (
               <li key={m.id} className="py-2" data-testid="mission-row">
@@ -214,70 +268,108 @@ export default function ManagerPage({
           </ul>
         </section>
 
-        <section className="rounded-lg bg-white p-4 shadow-sm" aria-label={t.taskGroups}>
-          <h2 className="mb-2 text-lg font-semibold text-slate-900">{t.taskGroups}</h2>
-          <div className="space-y-2">
-            {groups.map((g) => (
-              <article
-                key={g.id}
-                className="rounded border border-slate-200 p-3"
-                data-testid="taskgroup-card"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-slate-900">{g.title}</p>
-                    <p className="text-xs text-slate-800">
-                      {t.kind}: {t.kinds[g.kind]} · {t.status}: {t.statuses[g.status]}
+        <section className="rounded-lg bg-white p-4 shadow-sm xl:col-span-2" aria-label={t.taskGroups}>
+          <div className="mb-4 grid gap-3 lg:grid-cols-2">
+            <div className="rounded border border-slate-200 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-slate-900">{t.taskGroups}</h2>
+                <span className="text-[11px] text-slate-600">{groups.length} items</span>
+              </div>
+              <div className="space-y-2">
+                {groups.map((g) => (
+                  <article
+                    key={g.id}
+                    className="rounded border border-slate-200 p-3"
+                    data-testid="taskgroup-card"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-slate-900">{g.title}</p>
+                        <p className="text-xs text-slate-800">
+                          {t.kind}: {t.kinds[g.kind]} · {t.status}: {t.statuses[g.status]}
+                        </p>
+                      </div>
+                      <span className="rounded bg-indigo-50 px-2 py-1 text-[11px] text-indigo-800">
+                        {t.runModes[g.kind] || g.kind}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-700">
+                      {t.startedAt}: {formatIso(g.started_at)} / {t.finishedAt}: {formatIso(g.finished_at)}
                     </p>
-                  </div>
-                  <span className="rounded bg-indigo-50 px-2 py-1 text-[11px] text-indigo-800">
-                    {t.runModes[g.kind] || g.kind}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-700">
-                  {t.startedAt}: {formatIso(g.started_at)} / {t.finishedAt}: {formatIso(g.finished_at)}
-                </p>
-              </article>
-            ))}
+                  </article>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded border border-slate-200 p-3 space-y-2" data-testid="smoke-card">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-slate-900">Smoke Test</h3>
+                <span className="rounded bg-emerald-50 px-2 py-1 text-[11px] text-emerald-800">beta</span>
+              </div>
+              <p className="text-sm text-slate-900">
+                Latest runs derive from missions; replace with real smoke-test API when available.
+              </p>
+              <div className="text-sm text-slate-800">
+                <div>Running: {missions.filter((m) => m.status === 'running').length}</div>
+                <div>Pending: {missions.filter((m) => m.status === 'pending').length}</div>
+                <div>Completed: {missions.filter((m) => m.status === 'completed').length}</div>
+              </div>
+            </div>
           </div>
+
+          <section className="rounded border border-slate-200 p-3" aria-label={t.tasksArtifacts}>
+            <h2 className="mb-2 text-lg font-semibold text-slate-900">{t.tasksArtifacts}</h2>
+            <div className="grid gap-2 md:grid-cols-2">
+              {tasks.map((task) => (
+                <article
+                  key={task.id}
+                  className="rounded border border-slate-200 p-3"
+                  data-testid="task-card"
+                >
+                  <p className="font-medium text-slate-900">{task.title}</p>
+                  <p className="text-xs text-slate-700">
+                    {t.status}: {t.statuses[task.status]} · Agent: {task.agent}
+                  </p>
+
+                  <div className="mt-2 space-y-1">
+                    {artifacts
+                      .filter((a) => a.task_id === task.id)
+                      .map((a) => (
+                        <div
+                          key={a.id}
+                          className="rounded bg-slate-50 px-2 py-1 text-xs text-slate-700"
+                          data-testid="artifact-card"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>{t.artifactTypes[a.type]}</span>
+                            <span className="text-[10px] uppercase text-slate-700">{a.scope}</span>
+                          </div>
+                          <div className="text-[11px] text-slate-700">
+                            {t.version}: {a.version} · {t.sha}: {a.sha}
+                          </div>
+                          <div className="text-[11px] text-slate-700">
+                            {t.tags}: {a.tags.join(', ')}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
         </section>
 
-        <section className="rounded-lg bg-white p-4 shadow-sm" aria-label={t.tasksArtifacts}>
-          <h2 className="mb-2 text-lg font-semibold text-slate-900">{t.tasksArtifacts}</h2>
+        <section className="rounded-lg bg-white p-4 shadow-sm xl:col-span-1" aria-label="Messages">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-900">Messages</h2>
+            <span className="text-[11px] text-slate-600">{messages.length} latest</span>
+          </div>
           <div className="space-y-2">
-            {tasks.map((task) => (
-              <article
-                key={task.id}
-                className="rounded border border-slate-200 p-3"
-                data-testid="task-card"
-              >
-                <p className="font-medium text-slate-900">{task.title}</p>
-                <p className="text-xs text-slate-700">
-                  {t.status}: {t.statuses[task.status]} · Agent: {task.agent}
-                </p>
-
-                <div className="mt-2 space-y-1">
-                  {artifacts
-                    .filter((a) => a.task_id === task.id)
-                    .map((a) => (
-                      <div
-                        key={a.id}
-                        className="rounded bg-slate-50 px-2 py-1 text-xs text-slate-700"
-                        data-testid="artifact-card"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span>{t.artifactTypes[a.type]}</span>
-                          <span className="text-[10px] uppercase text-slate-700">{a.scope}</span>
-                        </div>
-                        <div className="text-[11px] text-slate-700">
-                          {t.version}: {a.version} · {t.sha}: {a.sha}
-                        </div>
-                        <div className="text-[11px] text-slate-700">
-                          {t.tags}: {a.tags.join(', ')}
-                        </div>
-                      </div>
-                    ))}
-                </div>
+            {messages.map((msg) => (
+              <article key={msg.id} className="rounded border border-slate-200 p-3" data-testid="message-card">
+                <p className="font-medium text-slate-900">{msg.title}</p>
+                <p className="text-xs text-slate-600">{formatIso(msg.ts)}</p>
+                <p className="text-sm text-slate-700">{msg.body}</p>
               </article>
             ))}
           </div>
