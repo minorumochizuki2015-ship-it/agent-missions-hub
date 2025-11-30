@@ -192,7 +192,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
     except ImportError:
         server = None
 
-    if server is not None:
+    if server is not None and hasattr(server, 'http_app'):
         mcp_app = server.http_app(
             path="/",
             stateless_http=app_settings.stateless_http,

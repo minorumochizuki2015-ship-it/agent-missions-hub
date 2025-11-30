@@ -14,8 +14,8 @@
 - **P3 Dashboard/Inbox 拡充**: 旧 `/mail` の Smoke Test/メッセージ/プロジェクトカード/検索・フィルタを実データで復元し、UI Gate/テスト/UI Audit を再実行。
 - **P4 Mission/Task/Artifact/Knowledge**: 中期スキーマを追加し、Manager/Graph/Knowledge の基盤を整備。
 
-## Phase 3（UI ダッシュボード刷新）※計画
-- 旧 `/mail` ダッシュボード要素（Smoke Test / メッセージ / プロジェクトカード等）を統合し、実データ（MISSIONS_HUB_API_BASE + `/api/missions`）を表示する新レイアウトを実装する。
+-## Phase 3（UI ダッシュボード刷新）※計画
+- 旧 `/mail` ダッシュボード要素（Smoke Test / メッセージ / プロジェクトカード等）を統合し、実データ（MISSIONS_HUB_API_BASE + `/api/missions`）を表示する新レイアウトを実装する。UI Gate/Playwright 実行時は FastAPI 起動中（/health 200）かつ `/api/missions` 非空を必須条件とし、未起動・空レスポンスは Gate=FAIL とする。
 - i18n (EN/JA) を維持しつつ axe=0 を目標。Web Vitals は取得を試み、未取得の場合は vitals_missing 許容を継続。
 - Playwright/Jest/UI Audit EN/JA を再実行し PASS、ci_evidence に最新の `ui_audit_executed` / `ui_gate_pass_*` を記録。
 - エビデンス:

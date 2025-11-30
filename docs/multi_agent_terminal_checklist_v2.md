@@ -3,6 +3,7 @@
 更新日時: 2025-11-30T18:52:00Z (UTC換算)
 
 ## UI Gate 状況
+- 前提条件（必須）: FastAPI を起動し `/health` が 200。`/api/missions` が空でない（シード済み）状態で UI Gate / Playwright / Jest を実行する。未起動・空レスポンス時は Gate=FAIL とし、ci_evidence に原因を記録。
 - Auto Gate v1 を導入する。`auto_gate_rules.yaml` を参照し、`auto_gate_decider.py`（CI）で UI Gate の run/skip を判定する。
   - 判定結果は `event=auto_gate_decision` として `observability/policy/ci_evidence.jsonl` に記録する（component=ui_gate, decision=run/skip/force_run, reason を必須）。
   - 判定エラーや巨大 diff（閾値超過）、`main`/`release/*` へのマージ、`label: run-ui-gate` が付いた PR では強制実行（decision=run/force_run）。
@@ -22,6 +23,7 @@
 3. `artifacts/ui_audit/summary.json`・`artifacts/ui_audit/screens/unified_inbox.png`・`artifacts/ui_audit/report.html` の SHA を `observability/policy/ci_evidence.jsonl` に追記。
  4. Gate=PASS を再確認後、`docs/multi_agent_terminal_milestones_v2.md` と `docs/operations/handover_recovery_checklist.md` を同期更新。
  5. CLI 経由で `/api/missions` を叩く E2E (serve+call) を実行し、ci_evidence に `cli_call` / `cli_e2e_run` を記録。
+ 6. `/health` 200 と `/api/missions` 非空を毎回確認し、未起動・空の場合は UI Gate/Playwright を実行せず Blocker として扱う。
 
 ## Phase3（UI ダッシュボード刷新）完了条件（案B'）
 - MISSIONS_HUB_API_BASE + `/api/missions` など実データを表示（モック撤廃）。

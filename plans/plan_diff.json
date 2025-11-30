@@ -132,7 +132,7 @@
         "observability/policy/ci_evidence.jsonl",
         "TRAE SOLO Builder Report.txt"
       ],
-      "notes": "runner 経由で `npm run lint && npm run test && npm run test:e2e` を実行し、FastAPI 側の `/api/health/ui` を含む最小エンドポイントを追加したうえで SafeOps KPI パネルと連携する。UI Gate (EN/JA, 2025/11/30 18:48–18:52, vitals_missing=true) も PASS し ci_evidence に追記済み。Jest ダッシュボード再実行 (2025/11/20 14:47:37, 15:10:30 dashboard.test.tsx) PASS、Playwright 15:12 PASS、lint 15:10 PASS、pytest 15:13 PASS。"
+      "notes": "runner 経由で `npm run lint && npm run test && npm run test:e2e` を実行し、FastAPI 側の `/api/health/ui` を含む最小エンドポイントを追加したうえで SafeOps KPI パネルと連携する。UI Gate (EN/JA, 2025/11/30 18:48–18:52, vitals_missing=true) も PASS し ci_evidence に追記済み。Jest ダッシュボード再実行 (2025/11/20 14:47:37, 15:10:30 dashboard.test.tsx) PASS、Playwright 15:12 PASS、lint 15:10 PASS、pytest 15:13 PASS。今後は UI Gate/Playwright 実行前に FastAPI 起動確認（/health 200）と `/api/missions` 非空シードを必須とし、未起動・空のときは Blocker とする。"
     },
     {
       "id": "workflow-engine-phase2a",
