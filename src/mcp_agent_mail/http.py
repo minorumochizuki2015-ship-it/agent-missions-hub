@@ -23,6 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import NoResultFound
+from sqlmodel import select
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.staticfiles import StaticFiles
 
@@ -37,6 +38,7 @@ from .app import (
 from .config import Settings, get_settings
 from .db import ensure_schema, get_session
 from .mail_client import MailClient
+from .models import Signal
 from .routers import missions
 from .storage import (
     AsyncFileLock,
@@ -3204,6 +3206,36 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 agents = [r[0] for r in agents_result.fetchall()]
 
             return JSONResponse({"agents": agents})
+
+        @fastapi_app.get("/api/signals")
+        async def api_signals(limit: int = 100) -> JSONResponse:
+            capped = min(max(limit, 1), 500)
+            await ensure_schema()
+            async with get_session() as session:
+                items = (
+                    await session.exec(
+                        select(Signal)
+                        .order_by(Signal.created_at.desc())
+                        .limit(capped)
+                    )
+                ).all()
+            return JSONResponse(
+                {
+                    "signals": [
+                        {
+                            "id": s.id,
+                            "type": s.type,
+                            "severity": s.severity,
+                            "status": s.status,
+                            "project_id": s.project_id,
+                            "mission_id": str(s.mission_id) if s.mission_id else None,
+                            "created_at": s.created_at.isoformat(),
+                            "message": s.message,
+                        }
+                        for s in items
+                    ]
+                }
+            )
 
         @fastapi_app.post("/api/mail/send")
         async def api_mail_send(payload: dict) -> JSONResponse:

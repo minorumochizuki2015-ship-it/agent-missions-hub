@@ -228,6 +228,21 @@ class Knowledge(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class Signal(SQLModel, table=True):
+    """安全イベントや通知を記録するシグナル。"""
+
+    __tablename__ = "signals"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    project_id: int = Field(foreign_key="projects.id", index=True)
+    mission_id: Optional[UUID] = Field(default=None, foreign_key="missions.id", index=True)
+    type: str = Field(max_length=64)  # dangerous_command|approval_required|retry|timeout|info
+    severity: str = Field(default="info", max_length=16)  # info|warning|critical
+    status: str = Field(default="pending", max_length=16)  # pending|acknowledged|resolved
+    message: Optional[str] = Field(default=None, max_length=1024)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 class WorkflowRun(SQLModel, table=True):
     __tablename__ = "workflow_runs"
 
