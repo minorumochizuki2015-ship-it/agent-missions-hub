@@ -1,11 +1,11 @@
 # マルチエージェント端末 マイルストーン v2
 
-更新日時: 2025-11-20T11:02:09Z (UTC換算)
+更新日時: 2025-11-30T18:52:00Z (UTC換算)
 
 ## 現在の状況
-- UI Gate: PASS（preview_dir=artifacts/preview/, UI-Audit=ui-audit-v2, EN=2025/11/20 11:02:09, JA=2025/11/20 11:01:37）
+- UI Gate: PASS（preview_dir=artifacts/preview/, UI-Audit=ui-audit-v2, EN/JA=2025/11/30 18:48–18:52, vitals_missing=true 許容）
 - 備考: Web Vitals が取得できない場合（vitals_missing=true）は警告として許容し、axe=0 なら Gate=PASS と扱う。取得できた場合は LCP<=2.5s / CLS<=0.10 / FID<=100ms の予算で判定する。
-- CLI: `/api/missions` を CLI (serve+call) から叩く E2E を実施し、ci_evidence に `cli_call` / `cli_e2e_run` を記録。
+- CLI: `/api/missions` を CLI (serve+call) から叩く E2E を実施し、ci_evidence に `cli_call` / `cli_e2e_run` を記録。Mail/Lease smoke OK (2025-11-30 07:35:00Z) を ci_evidence に追記。
 
 ## ロードマップ（P0〜P4：Phase3 以降を含む）
 - **P0 設計同期**: v1 スコープ（Sequential＋Windows/PS7＋ConPTY、CodexCLI+Claudeのみ、CodeMachineは外部扱い）、mcp_agent_mail 中核化、役割プリセット・Signals 方針を設計・checklist・plan_diff に反映。

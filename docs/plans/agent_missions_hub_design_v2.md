@@ -23,16 +23,16 @@
 - **P3 Dashboard/Inbox 拡充**: 旧 UI の Smoke Test / メッセージ / プロジェクトカード / 検索・フィルタを実データで復元し、UI Gate/テスト/UI Audit を再実行。
 - **P4 Mission/Task/Artifact/Knowledge**: 中期スキーマを追加し、Manager/Graph の基盤を整備。
 
-## 1. 現状サマリ（2025-11-20 時点）
+## 1. 現状サマリ（2025-11-30 時点）
 1. UI / テスト状況  
-   - Unified Inbox UI Gate: EN/JA 両方 PASS。LCP/TTI も性能基準クリア。エビデンスは `observability/policy/ci_evidence.jsonl` に記録済み。  
-   - `tests/test_workflow_engine.py` と HTTP Liveness 最小テストが `.venv` 上で PASS。  
-   - orchestrator-ui の lint/unit/e2e テストも 2025-11-20 実行で PASS 済（※現リポには未移植。移植後に再実行して証跡更新が必要）。
+   - Unified Inbox / Manager UI Gate: EN/JA 両方で 2025-11-30 18:48–18:52 UTC に再実行し PASS。Web Vitals 未取得（vitals_missing=true 許容）、axe serious=0、ci_evidence に `ui_audit_executed` / `ui_gate_pass_*` を追記。  
+   - workflow_engine self-heal 系 pytest（`tests/test_workflow_engine.py` 等）が 2025-11-30 06:29–07:06 UTC に PASS（一部 failure シナリオ含む）し、`workflow_run_*` イベントを ci_evidence に記録。HTTP Liveness 最小テストは前回同様 PASS。  
+   - Mail/Lease smoke OK を 2025-11-30 07:35:00Z に実施し ci_evidence 記録済み。orchestrator-ui の lint/unit/e2e は 11/20 実行結果が最新で再実行待ち。
 2. ドメイン／Workflow 拡張の状態  
-   - `missions/task_groups/tasks/artifacts/knowledge` を導入する計画とチェック項目は定義済みだが、ER/マイグレーションの本実装はこれから。  
-   - WorkflowEngine（Sequential＋self-heal）はスケルトン＋テスト雛形あり。完全実装は未。  
+   - `missions/task_groups/tasks/artifacts/knowledge` 追加とマイグレーション方針は docs/plan_diff に反映済み。次フェーズで実装・適用を進行中。  
+   - WorkflowEngine（Sequential＋self-heal）は雛形に加え self-heal 失敗/成功イベントを含むテストが実行済み。残課題は追加異常系と allowlist での full suite。
 3. 移植状況  
-   - 旧リポ `Codex-CLImutipule-CMD` → 新リポ `agent-missions-hub` への移植チェックリストが整理済み。Category 1〜4（コアアプリ・テスト・UI Audit・ドキュメント）を最優先。  
+   - 旧リポ `Codex-CLImutipule-CMD` → 本リポへの移植チェックリストは完了済み。Category 1〜4 優先の方針は維持し、UI Gate と workflow 証跡を新リポ側 SSOT に同期中。  
 - 必須ファイルチェック用 PowerShell スクリプト・初期セットアップ手順も記載済み。  
 4. アーキテクチャコンセプト  
    - 低レイヤ: CodexCLI + PTY による multi-agent terminal（実行エンジン）。  
