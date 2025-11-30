@@ -24,5 +24,6 @@ async def test_mail_client_smoke() -> None:
     assert listed and listed[0].subject == "hello"
 
     lease = await client.create_lease("proj1", "HumanOverseer", "docs/*")
-    released = await client.release_lease(int(lease.id))
+    assert lease.id is not None
+    released = await client.release_lease(lease.id)
     assert released.released_ts is not None
