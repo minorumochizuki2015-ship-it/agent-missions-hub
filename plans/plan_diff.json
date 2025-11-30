@@ -458,6 +458,21 @@
       "notes": "CLI serve/call を Typer で実装し、/api/missions への call を E2E で検証。ci_evidence に cli_call / cli_e2e_run を記録し、LOCK を PHASE2D-CLI-E2E へ更新。"
     },
     {
+      "id": "phase3-p0-design-sync",
+      "status": "completed",
+      "description": "Phase 3 P0: 完全版設計を docs/checklist/milestones に反映し、mcp_agent_mail 中核化と P0〜P4 ロードマップを明記",
+      "entries": [
+        "docs/plans/agent_missions_hub_design_v2.md",
+        "docs/plans/cli_orchestrator_design.md",
+        "docs/multi_agent_terminal_milestones_v2.md",
+        "docs/multi_agent_terminal_checklist_v2.md"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "v1 スコープ（Sequential＋Windows/PS7＋ConPTY、CodexCLI+Claudeのみ、CodeMachine外部扱い）と mcp_agent_mail 中核化、役割プリセット/Signals 方針、P0〜P4 ロードマップを文書に反映。"
+    },
+    {
       "id": "phase3-ui-dashboard-refresh",
       "status": "in_progress",
       "description": "Phase 3: Manager UI を実データ化しダッシュボードを刷新（旧 /mail ダッシュボード要素を統合）",

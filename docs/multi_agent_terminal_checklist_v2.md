@@ -29,6 +29,13 @@
 - i18n (EN/JA) 維持、axe=0、Web Vitals は取得できれば予算判定。未取得時は vitals_missing 許容を継続。
 - Playwright/Jest/UI Audit EN/JA を再実行し PASS、ci_evidence に `ui_audit_executed` / `ui_gate_pass_*` を追記。
 
+## ロードマップ（P0〜P4：Phase3 以降を含む）
+- P0 設計同期: v1 スコープ（Sequential＋Windows/PS7＋ConPTY、CodexCLI+Claudeのみ、CodeMachine外部扱い）と mcp_agent_mail 中核化、役割プリセット/Signals 方針を設計・checklist・plan_diff に反映。
+- P1 Mail/Lease 統合: mcp_agent_mail をマウントし Inbox/Outbox/予約 API を UI/CLI で統一、ci_evidence に mail/lease イベントを追記。
+- P2 Orchestration UI + Signals: planner/executor/reviewer/overseer（ターミナル上限3〜4）で多エージェント起動し、ログから Dangerous/Approvals/Signals を検知して UI 表示。
+- P3 Dashboard/Inbox 拡充: Smoke Test/メッセージ/プロジェクトカード/検索・フィルタを実データで復元し、UI Gate/テスト/UI Audit を再実行。
+- P4 Mission/Task/Artifact/Knowledge: 中期スキーマを追加し、Manager/Graph/Knowledge の基盤を整備。
+
 ## 記録状況
 - ci_evidence.jsonl: 2025/11/20 11:01:37（`ui_audit_executed` / `ui_gate_pass_ja`）と 11:02:09（`ui_audit_executed` / `ui_gate_pass_en`）を最新として追記。旧 08:03/10:24:57/10:52:01 実行は superseded で履歴参照のみ。
 - pytest: `.\\.venv\\Scripts\\python.exe -m pytest -q tests/test_workflow_engine.py tests/test_http_liveness_min.py` → 2 passed / 1 skipped（11/20 実行）。

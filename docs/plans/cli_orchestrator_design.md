@@ -5,6 +5,12 @@
 - 課金・認証はユーザー自身の定額プラン/CLI ログインを利用し、オーケストレータ側は API キーやトークンを保持しない。
 - UI/Agent Mail（FastAPI+Jinja）は協調・履歴表示の上位レイヤとして活用し、実行は CLI 側で完結させる。
 
+### v1 スコープと方針
+- 実行制御は **SequentialWorkflow＋TaskGroup 内の簡易並列** に限定（DAG/AsyncThink/LangGraph は Phase3 以降）。
+- OS/CLI 前提は **Windows + PowerShell 7**、親 CLI は `./.venv/Scripts/python.exe src/orchestrator/cli.py` のみを正とし、子 CLI は **ConPTY 付き subprocess.Popen** で起動。
+- 初期サポート CLI は **CodexCLI + Claude Code CLI** の 2 種（Gemini/Q などはプレースホルダ）。CodeMachine は v1 では外部コマンド扱い。
+- メッセージ/ファイル予約の SSOT は **mcp_agent_mail を再利用** し、親 CLI からの send/lease も同 API 経由で統一する。
+
 ## アーキテクチャ概要
 - Orchestrator (親 CLI): セッション/エージェント ID 管理、PTY 生成、ロール別プロンプト適用、ログ集約、Plan→Test→Patch ループ制御。
 - Agent CLI Workers: 各 CLI をロール別（Planner/Coder/Tester/Reviewer/Security など）に起動し、許可コマンドをマッピングしてサンドボックス化。

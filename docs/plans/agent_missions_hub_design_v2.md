@@ -5,6 +5,24 @@
 - これらを Agent Missions Hub（データ・WorkflowEngine・UI・Observability）と統合し、Plan→Test→Patch の開発フローを直列＋並列で安全に自動化できる基盤にする。
 - 既存 UI Gate / UI Audit・テスト・observability を壊さず、Phase 2A〜2D のロードマップで順次完成させる。
 
+### 0.1 v1 スコープ（確定事項）
+- 実行エンジンは **SequentialWorkflow＋TaskGroup 内の簡易並列** に限定する（DAG/AsyncThink/LangGraph は Phase 3 以降）。
+- OS/CLI 前提は **Windows + PowerShell 7**、親 CLI は `.\.venv\Scripts\python.exe src\orchestrator\cli.py` のみを正とし、子 CLI は **ConPTY 付き subprocess.Popen** で起動する。
+- 初期サポート CLI は **CodexCLI + Claude Code CLI** の 2 種。Gemini/Q/その他は `config/engines.yaml` にプレースホルダのみ。
+- CodeMachine は v1 では「外部コマンド」として扱い、内部のマルチエージェント機構には依存しない。
+
+### 0.2 バックエンドの正（SSOT）
+- メッセージ（Inbox/Outbox）とファイル予約（lease）は **mcp_agent_mail を中核** とする。現行 FastAPI へ再実装せず、マウント＋薄いラッパーで統合する方針。
+- DB の SSOT: projects / agents / messages / leases（将来追加: missions / tasks / artifacts / knowledge）。
+- ci_evidence.jsonl と workflow_runs を observability の正とし、CLI/E2E/Signals をここに記録する。
+
+### 0.3 ロードマップ（P0〜P4）
+- **P0 設計同期**: 本設計に v1 スコープ・mcp_agent_mail 中核化・役割プリセット・Signals 方針を明記し、checklist/milestones/plan_diff に反映する。
+- **P1 Mail/Lease 統合**: mcp_agent_mail をマウントし、Inbox/Outbox/予約 API を UI と CLI 双方で利用。ci_evidence に mail/lease イベントを記録。
+- **P2 Orchestration UI + Signals**: planner/executor/reviewer/overseer をプリセット（ターミナル上限3〜4）。ログストリームから Dangerous Commands / Approvals / Signals を検知し UI に表示。
+- **P3 Dashboard/Inbox 拡充**: 旧 UI の Smoke Test / メッセージ / プロジェクトカード / 検索・フィルタを実データで復元し、UI Gate/テスト/UI Audit を再実行。
+- **P4 Mission/Task/Artifact/Knowledge**: 中期スキーマを追加し、Manager/Graph の基盤を整備。
+
 ## 1. 現状サマリ（2025-11-20 時点）
 1. UI / テスト状況  
    - Unified Inbox UI Gate: EN/JA 両方 PASS。LCP/TTI も性能基準クリア。エビデンスは `observability/policy/ci_evidence.jsonl` に記録済み。  
@@ -15,7 +33,7 @@
    - WorkflowEngine（Sequential＋self-heal）はスケルトン＋テスト雛形あり。完全実装は未。  
 3. 移植状況  
    - 旧リポ `Codex-CLImutipule-CMD` → 新リポ `agent-missions-hub` への移植チェックリストが整理済み。Category 1〜4（コアアプリ・テスト・UI Audit・ドキュメント）を最優先。  
-   - 必須ファイルチェック用 PowerShell スクリプト・初期セットアップ手順も記載済み。  
+- 必須ファイルチェック用 PowerShell スクリプト・初期セットアップ手順も記載済み。  
 4. アーキテクチャコンセプト  
    - 低レイヤ: CodexCLI + PTY による multi-agent terminal（実行エンジン）。  
    - 高レイヤ: Agent Mail（メールボックス UI）＋ Manager View（Mission/TaskGroup/Artifact UI）。  
@@ -25,6 +43,7 @@
    - Phase 2B: WorkflowEngine＋self-heal  
    - Phase 2C: UI 統合（Agent Mail / Manager View）  
    - Phase 2D: CLI / Multi-Agent Terminal 接続  
+   - Phase 3 以降: 本書の P0〜P4 ロードマップ（Mail/Lease 統合、Orchestration+Signals、Dashboard 拡充、Mission/Artifact 拡張）に基づき拡張。  
    - 追加: Breadcrumb/i18n 拡張、observability の運用タスク。旧マイルストーン v2 と整合。
 
 ## 2. 全体アーキテクチャ
@@ -34,6 +53,11 @@
 - UI: Unified Inbox（現行 UI Gate PASS）、Manager View（Mission/TaskGroup/Artifact）、Agent Mail（協調 UI）。  
 - CLI / Multi-Agent Terminal: 親 CodexCLI が Workflow API を叩き、各エージェント CLI を PTY 経由で起動。役割ごとにセッション分離。
 
+### Overseer ロール（Human-in-the-Loop）
+- Overseer は v1 では人間が担当する監督/承認ロールとし、Dangerous Commands / Approvals Required / Signals の最終承認者となる。
+- Overseer は CLI を直接操作せず、Dashboard/Signals パネルで承認/拒否を行う。
+- 将来的に必要な場合は AI Overseer をロールとして追加し、自動承認/差し戻しを行う **AI Overseer Mode** を Phase3+ で検討する。
+
 ## 3. データモデル設計（Phase 2A）
 ### 3.1 テーブル概要
 - missions: ゴール（ステータス/優先度/owner/timestamps）。  
@@ -41,6 +65,15 @@
 - tasks: 実作業単位（planned→in_progress→testing→done/failed）。  
 - artifacts: diff/log/test-result/design-doc 等。`sha/version/tags/mission_id/task_id`。  
 - knowledge: artifacts から promote した長期知識。`promote` API で昇格。
+
+### Signals（安全/異常イベント）
+- id (UUID), project_id (FK projects), mission_id (FK missions, v1はNULL可), agent_id (FK agents, systemイベントはNULL可)
+- type: dangerous_command / approval_required / failing_test / retry / timeout / rate_limit / council_dispute
+- severity: info / warning / critical
+- status: pending / acknowledged / resolved
+- created_at: DATETIME
+- metadata: JSONB（コマンド文字列、ログ断片、ファイルパス等）
+- 推奨Index: (project_id, created_at), (mission_id, created_at), (status)
 ### 3.2 マイグレーション方針
 1. 既存 DB に新テーブルを追加するマイグレーションを作成。  
 2. `plans/diff-plan.json` に ER 差分（旧→新）を記録。  
@@ -70,6 +103,22 @@
 ### 5.3 i18n / Breadcrumb
 - Breadcrumb を Manager/View/Inbox/Compose 全体に適用。`?lang` 伝搬と `aria-current="page"` を UI Gate で検証。  
 **完了条件:** `scripts/ui_audit_run.py` で Inbox＋Manager ルート PASS、Agent Mail 経由で優先度変更が一通り動作。
+
+### 5.4 Dashboard / Inbox の UI 項目
+#### プロジェクトカード（ProjectCard）
+- name / status（active/paused/completed）
+- owners / updated_at / repo_link / tags（frontend/backend/infra/doc など）
+- open_missions_count / last_mission_summary
+
+#### スモークテストカード（SmokeTestCard）
+- test_name / result（pass/fail） / last_run / duration
+- link（ログ/Artifact） / re-run ボタン（Orchestrator でテストのみ実行）
+
+#### Inbox（メールスレッド）
+- sender（Agent/Human） / timestamp / content（GFM）
+- attachments（Artifacts: plan/diff/test-report/screenshot）
+- signals（該当メッセージに紐づく警告/危険イベント）
+- thread_id = mission_id（v2以降）
 
 ## 6. CLI / Multi-Agent Terminal 設計（Phase 2D）
 ### 6.1 実行エンジン（低レイヤ）
@@ -117,3 +166,31 @@
 3. マイルストーン v2 記載の Phase 2A〜2D の完了条件が `ci_evidence.jsonl` で確認できる。  
 4. `kakunin.txt` の二段構成（CodexCLI+PTY / Agent Mail）と本設計書のロードマップが一致している。  
 5. orchestrator-ui の lint/unit/e2e は移植後に再実行し、最新日付で証跡を更新する。
+
+# X. AI Council（自動レビュー・評価・パラメータ調整）
+AI Council は複数の LLM エージェント（Critic/Verifier/Scorer）による“AI が AI をレビューする”レイヤであり、安全性/品質を強化する上位機能である。v1 では optional、Phase3+ で段階的に導入する。
+
+## 役割（Council Agents）
+- Plan-Critic: Planner の計画を検証し、漏れや危険点を指摘。
+- Code-Critic: Executor の diff/修正案の品質・安全性・一貫性を評価。
+- Test-Verifier: テストログ/CIログから pass/fail/flaky を分類。
+- Safety-Critic: Dangerous Commands / Approvals を追加検証（ルール＋AI の二重チェック）。
+- Parameter-Tuner: エージェント設定（temperature/model/skills）を最適化。
+
+## 出力（Council Results）
+- correctness / safety / style の 3 軸スコア
+- 改善提案（actionable suggestions）
+- 重大問題（blocking issues）
+- Settings update（推奨モデル/temperature/skills の変更）
+
+## WorkflowEngine との統合
+- Council の評価は Task 実行後に Hook として呼び、artifacts（結果レポート）、signals（重大問題 → critical）、mission.status（NeedsReview/Failed への遷移）、agent_settings（推奨パラメータ）に反映する。
+
+## Overseer との統合
+- Council の評価は Overseer に通知され、人間が「承認/却下」を行える。
+- 希望すれば auto-approve モード（AI Overseer）も導入可能。
+
+## 対象フェーズ
+- v1: 設計のみ
+- Phase3: Code-Critic / Safety-Critic / Verifier を導入
+- Phase4+: 自動 self-heal（Council → Planner → Executor まで自律）、Council feedback に基づく Adaptive Workflow（DAG re-plan）

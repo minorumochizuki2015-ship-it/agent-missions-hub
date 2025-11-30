@@ -7,6 +7,13 @@
 - 備考: Web Vitals が取得できない場合（vitals_missing=true）は警告として許容し、axe=0 なら Gate=PASS と扱う。取得できた場合は LCP<=2.5s / CLS<=0.10 / FID<=100ms の予算で判定する。
 - CLI: `/api/missions` を CLI (serve+call) から叩く E2E を実施し、ci_evidence に `cli_call` / `cli_e2e_run` を記録。
 
+## ロードマップ（P0〜P4：Phase3 以降を含む）
+- **P0 設計同期**: v1 スコープ（Sequential＋Windows/PS7＋ConPTY、CodexCLI+Claudeのみ、CodeMachineは外部扱い）、mcp_agent_mail 中核化、役割プリセット・Signals 方針を設計・checklist・plan_diff に反映。
+- **P1 Mail/Lease 統合**: mcp_agent_mail をマウントし Inbox/Outbox/予約 API を UI/CLI で利用、ci_evidence に mail/lease イベントを追記。
+- **P2 Orchestration UI + Signals**: planner/executor/reviewer/overseer をプリセット（ターミナル上限3〜4）、ログストリームから Dangerous Commands/Approvals/Signals を検知し UI 表示。
+- **P3 Dashboard/Inbox 拡充**: 旧 `/mail` の Smoke Test/メッセージ/プロジェクトカード/検索・フィルタを実データで復元し、UI Gate/テスト/UI Audit を再実行。
+- **P4 Mission/Task/Artifact/Knowledge**: 中期スキーマを追加し、Manager/Graph/Knowledge の基盤を整備。
+
 ## Phase 3（UI ダッシュボード刷新）※計画
 - 旧 `/mail` ダッシュボード要素（Smoke Test / メッセージ / プロジェクトカード等）を統合し、実データ（MISSIONS_HUB_API_BASE + `/api/missions`）を表示する新レイアウトを実装する。
 - i18n (EN/JA) を維持しつつ axe=0 を目標。Web Vitals は取得を試み、未取得の場合は vitals_missing 許容を継続。
