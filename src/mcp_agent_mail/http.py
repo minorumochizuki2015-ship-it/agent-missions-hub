@@ -1,4 +1,5 @@
 """HTTP transport helpers wrapping FastMCP with FastAPI."""
+# ruff: noqa: I001
 
 from __future__ import annotations
 
@@ -53,6 +54,8 @@ from .storage import (
     write_file_reservation_record,
 )
 
+
+mail_client = MailClient()
 
 async def _project_slug_from_id(pid: int | None) -> str | None:
     if pid is None:
@@ -3201,6 +3204,44 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 agents = [r[0] for r in agents_result.fetchall()]
 
             return JSONResponse({"agents": agents})
+
+        @fastapi_app.post("/api/mail/send")
+        async def api_mail_send(payload: dict) -> JSONResponse:
+            project = payload.get("project")
+            agent = payload.get("agent")
+            subject = payload.get("subject", "").strip()
+            body_md = payload.get("body_md", "").strip()
+            if not project or not agent or not subject:
+                raise HTTPException(status_code=400, detail="project/agent/subject required")
+            msg = await mail_client.send_message(project, agent, subject, body_md)
+            return JSONResponse({"message_id": msg.id, "created_ts": msg.created_ts.isoformat()})
+
+        @fastapi_app.get("/api/mail/messages")
+        async def api_mail_messages(project: str) -> JSONResponse:
+            items = await mail_client.list_messages(project)
+            return JSONResponse(
+                {
+                    "messages": [
+                        {"id": m.id, "subject": m.subject, "created_ts": m.created_ts.isoformat()}
+                        for m in items
+                    ]
+                }
+            )
+
+        @fastapi_app.post("/api/leases")
+        async def api_create_lease(payload: dict) -> JSONResponse:
+            project = payload.get("project")
+            agent = payload.get("agent")
+            path = payload.get("path_pattern")
+            if not project or not agent or not path:
+                raise HTTPException(status_code=400, detail="project/agent/path_pattern required")
+            lease = await mail_client.create_lease(project, agent, path)
+            return JSONResponse({"lease_id": lease.id, "expires_ts": lease.expires_ts.isoformat()})
+
+        @fastapi_app.post("/api/leases/{lease_id}/release")
+        async def api_release_lease(lease_id: int) -> JSONResponse:
+            lease = await mail_client.release_lease(lease_id)
+            return JSONResponse({"released_ts": lease.released_ts.isoformat()})
 
         @fastapi_app.get("/mail/archive/time-travel", response_class=HTMLResponse)
         async def archive_time_travel() -> HTMLResponse:

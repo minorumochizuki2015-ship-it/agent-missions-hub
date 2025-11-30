@@ -489,8 +489,8 @@
     },
     {
       "id": "mail-lease-ssot",
-      "status": "in_progress",
-      "description": "MailClient ラッパ追加と test 環境の send/list/lease 配線開始。次フェーズで UI 経路と evidence を更新する。",
+      "status": "completed",
+      "description": "MailClient ラッパを追加し、API (/api/mail send/list, /api/leases create/release) へ統合。スモークと evidence を記録。",
       "entries": [
         "src/mcp_agent_mail/mail_client.py",
         "src/mcp_agent_mail/http.py",
@@ -499,7 +499,7 @@
       "evidence": [
         "observability/policy/ci_evidence.jsonl"
       ],
-      "notes": "pytest 短縮スモーク通過（MailClient 経由）。ci_evidence / checklist 更新は次バッチ。"
+      "notes": "uv run pytest -q tests/test_mail_client_smoke.py PASS。ci_evidence に P1 mail/lease integration smoke OK を追記。API経路を MailClient 統一済み。"
     }
   ]
 }
