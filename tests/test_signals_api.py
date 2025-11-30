@@ -41,7 +41,7 @@ def test_signal_create_and_list() -> None:
 
 
 def test_signal_import_dangerous(tmp_path) -> None:
-    pid = asyncio.run(_setup_project())
+    asyncio.run(_setup_project())
     log = tmp_path / "dangerous_command_events.jsonl"
     log.write_text(
         "\n".join(
@@ -56,7 +56,7 @@ def test_signal_import_dangerous(tmp_path) -> None:
     client = TestClient(app)
     res = client.post(
         "/api/signals/import/dangerous",
-        json={"path": str(log), "project_id": pid, "max_rows": 10},
+        json={"path": str(log), "project": "p-signals", "max_rows": 10},
     )
     assert res.status_code == 200
     assert res.json()["imported"] == 2

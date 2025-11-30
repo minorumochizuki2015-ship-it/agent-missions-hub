@@ -3241,7 +3241,24 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
         async def api_import_dangerous_signals(payload: dict) -> JSONResponse:
             """Import dangerous_command / approval_required log lines as signals."""
             path = payload.get("path") or "data/logs/current/audit/dangerous_command_events.jsonl"
-            project_id = int(payload.get("project_id", 1))
+            project_key = payload.get("project")
+            project_id_raw = payload.get("project_id")
+            if project_id_raw is None and not project_key:
+                raise HTTPException(status_code=400, detail="project or project_id required")
+            resolved_project_id = None
+            if project_id_raw is not None:
+                resolved_project_id = int(project_id_raw)
+            elif project_key:
+                async with get_session() as session:
+                    row = (
+                        await session.execute(
+                            text("SELECT id FROM projects WHERE slug = :k OR human_key = :k"),
+                            {"k": project_key},
+                        )
+                    ).fetchone()
+                    if row is None:
+                        raise HTTPException(status_code=404, detail="project not found")
+                    resolved_project_id = int(row[0])
             max_rows = int(payload.get("max_rows", 200))
             p = Path(path)
             if not p.exists():
@@ -3264,7 +3281,7 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     sig_type = (row.get("event") or "dangerous_command").strip()
                     severity = "warning" if sig_type == "dangerous_command" else "info"
                     signal = Signal(
-                        project_id=project_id,
+                        project_id=resolved_project_id,
                         mission_id=None,
                         type=sig_type,
                         severity=severity,
