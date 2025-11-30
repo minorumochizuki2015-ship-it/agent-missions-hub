@@ -109,8 +109,8 @@ async def list_artifacts(
 
     stmt = (
         select(Artifact)
-        .where(Artifact.mission_id == mission_id)
-        .order_by(Artifact.path)
+        .where(Artifact.__table__.c.mission_id == mission_id)  # type: ignore[arg-type]
+        .order_by(Artifact.__table__.c.path)  # type: ignore[arg-type]
     )
     artifacts = (await session.execute(stmt)).scalars().all()
 
