@@ -459,7 +459,7 @@
     },
     {
       "id": "phase3-ui-dashboard-refresh",
-      "status": "planned",
+      "status": "in_progress",
       "description": "Phase 3: Manager UI を実データ化しダッシュボードを刷新（旧 /mail ダッシュボード要素を統合）",
       "entries": [
         "apps/orchestrator-ui/app/mail/manager/page.tsx",
@@ -470,7 +470,7 @@
       "evidence": [
         "observability/policy/ci_evidence.jsonl"
       ],
-      "notes": "サブステップ: (1) 要件整理/ワイヤー（Smoke Test, メッセージ, プロジェクトカード等の優先度決定）(2) API 実データ化（MISSIONS_HUB_API_BASE + /api/missions 他、モック撤廃）(3) レイアウト刷新＋i18n/axe=0 維持、Web Vitals 取得を試行（未取得時は vitals_missing 許容）(4) Playwright/Jest/UI Audit EN/JA 実行→ci_evidence 更新 (5) checklist/milestones 更新"
+      "notes": "サブステップ: (1) 要件整理/ワイヤー（必須=ミッション一覧+Smoke Test, 任意=メッセージ/プロジェクトカード/検索）(2) API 実データ化（MISSIONS_HUB_API_BASE + /api/missions を第一段階。Smoke/Messages はモックを段階追加）(3) レイアウト刷新＋i18n/axe=0 維持、Web Vitals 取得を試行（未取得時は vitals_missing 許容）(4) Playwright/Jest/UI Audit EN/JA 実行→ci_evidence 更新 (5) checklist/milestones 更新"
     }
   ]
 }
