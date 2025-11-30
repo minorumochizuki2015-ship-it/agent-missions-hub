@@ -48,6 +48,7 @@ def test_signal_import_dangerous(tmp_path) -> None:
             [
                 '{"event":"dangerous_command","command":"rm -rf /tmp"}',
                 '{"event":"approval_required","command":"rm -rf /var"}',
+                '{"event":"failing_test","command":"pytest failing"}',
             ]
         ),
         encoding="utf-8",
@@ -59,8 +60,9 @@ def test_signal_import_dangerous(tmp_path) -> None:
         json={"path": str(log), "project": "p-signals", "max_rows": 10},
     )
     assert res.status_code == 200
-    assert res.json()["imported"] == 2
+    assert res.json()["imported"] == 3
     listed = client.get("/api/signals").json()["signals"]
     types = {s["type"] for s in listed}
     assert "dangerous_command" in types
     assert "approval_required" in types
+    assert "failing_test" in types

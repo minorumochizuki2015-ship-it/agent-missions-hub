@@ -3239,7 +3239,7 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
 
         @fastapi_app.post("/api/signals/import/dangerous")
         async def api_import_dangerous_signals(payload: dict) -> JSONResponse:
-            """Import dangerous_command / approval_required log lines as signals."""
+            """Import dangerous_command / approval_required / failing_test / retry / timeout log lines as signals."""
             path = payload.get("path") or "data/logs/current/audit/dangerous_command_events.jsonl"
             project_key = payload.get("project")
             project_id_raw = payload.get("project_id")
@@ -3247,6 +3247,14 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             p = Path(path)
             if not p.exists():
                 raise HTTPException(status_code=404, detail="log file not found")
+            allowed_events = {"dangerous_command", "approval_required", "failing_test", "retry", "timeout"}
+            severity_map = {
+                "dangerous_command": "warning",
+                "approval_required": "info",
+                "failing_test": "warning",
+                "retry": "info",
+                "timeout": "warning",
+            }
             rows = []
             for line in p.read_text(encoding="utf-8").splitlines()[: max_rows if max_rows > 0 else None]:
                 line = line.strip()
@@ -3256,7 +3264,7 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     obj = json.loads(line)
                 except Exception:
                     continue
-                if obj.get("event") not in {"dangerous_command", "approval_required"}:
+                if obj.get("event") not in allowed_events:
                     continue
                 rows.append(obj)
             await ensure_schema()
@@ -3280,7 +3288,7 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
 
                 for row in rows:
                     sig_type = (row.get("event") or "dangerous_command").strip()
-                    severity = "warning" if sig_type == "dangerous_command" else "info"
+                    severity = severity_map.get(sig_type, "info")
                     pid = await _resolve_project_id(row)
                     if pid is None:
                         skipped += 1
