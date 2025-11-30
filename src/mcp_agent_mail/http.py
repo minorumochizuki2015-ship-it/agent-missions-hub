@@ -3239,7 +3239,7 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
 
         @fastapi_app.post("/api/signals/import/dangerous")
         async def api_import_dangerous_signals(payload: dict) -> JSONResponse:
-            """Import dangerous_command log lines as signals."""
+            """Import dangerous_command / approval_required log lines as signals."""
             path = payload.get("path") or "data/logs/current/audit/dangerous_command_events.jsonl"
             project_id = int(payload.get("project_id", 1))
             max_rows = int(payload.get("max_rows", 200))
@@ -3255,17 +3255,19 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     obj = json.loads(line)
                 except Exception:
                     continue
-                if obj.get("event") != "dangerous_command":
+                if obj.get("event") not in {"dangerous_command", "approval_required"}:
                     continue
                 rows.append(obj)
             await ensure_schema()
             async with get_session() as session:
                 for row in rows:
+                    sig_type = (row.get("event") or "dangerous_command").strip()
+                    severity = "warning" if sig_type == "dangerous_command" else "info"
                     signal = Signal(
                         project_id=project_id,
                         mission_id=None,
-                        type="dangerous_command",
-                        severity="warning",
+                        type=sig_type,
+                        severity=severity,
                         status="pending",
                         message=row.get("command") or row.get("note"),
                     )
