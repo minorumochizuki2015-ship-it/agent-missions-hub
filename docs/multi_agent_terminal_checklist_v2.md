@@ -9,6 +9,7 @@
   - 対象パス例: `apps/orchestrator-ui/**`, `src/**/templates/**`, `**/*.css|scss|ts|tsx`, `playwright.config*`, `scripts/ui_audit*.py`, `package*.json`。
   - UI Gate 実行時は従来どおり `npm run ui:audit:ci`（または `scripts/ui_audit_run.py`）を実行し、summary/screenshot/HTML の SHA を `ui_audit_executed` / `ui_gate_pass_*` として ci_evidence に追記。
 - 最新状況: 2025-11-28 時点で Auto Gate 判定は UI 差分なしのため `skip`。UI Gate 再実行は未実施（差分発生時に実行）。
+- Web Vitals が取得できない場合（vitals_missing=true）は警告扱いで許容し、axe=0 であれば Gate=PASS と見なす。取得できた場合は LCP<=2.5s / CLS<=0.10 / FID<=100ms の予算で判定する。
 - ローカルでの手動実行が必要な場合は従来手順を踏むこと:
   1. `npm run lint && npm run test && npm run test:e2e --prefix apps/orchestrator-ui`
   2. `python scripts/ui_audit_run.py`（JA/EN 両方）
