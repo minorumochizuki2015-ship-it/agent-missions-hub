@@ -16,7 +16,10 @@ async def _setup_project() -> int:
         session.add(proj)
         await session.commit()
         await session.refresh(proj)
-        return int(proj.id)
+        proj_id = proj.id
+        if proj_id is None:
+            raise RuntimeError("project id was not persisted")
+        return int(proj_id)
 
 
 def test_signal_create_and_list() -> None:
