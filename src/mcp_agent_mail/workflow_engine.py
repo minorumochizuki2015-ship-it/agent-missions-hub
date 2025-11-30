@@ -153,7 +153,7 @@ class SequentialWorkflow(WorkflowEngine):
             stmt = (
                 select(TaskGroup)
                 .where(TaskGroup.mission_id == mission.id)
-                .order_by(TaskGroup.order)
+                .order_by(TaskGroup.order.asc())
             )
             result = await self.session.execute(stmt)
             task_groups = result.scalars().all()
@@ -167,7 +167,9 @@ class SequentialWorkflow(WorkflowEngine):
                     break
                 # keep reference to last executed task for summary artifact
                 stmt_tasks = (
-                    select(Task).where(Task.group_id == group.id).order_by(Task.order)
+                    select(Task)
+                    .where(Task.group_id == group.id)
+                    .order_by(Task.order.asc())
                 )
                 result_tasks = await self.session.execute(stmt_tasks)
                 tasks_in_group = result_tasks.scalars().all()
