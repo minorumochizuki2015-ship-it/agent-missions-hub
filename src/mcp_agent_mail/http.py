@@ -3243,22 +3243,6 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             path = payload.get("path") or "data/logs/current/audit/dangerous_command_events.jsonl"
             project_key = payload.get("project")
             project_id_raw = payload.get("project_id")
-            if project_id_raw is None and not project_key:
-                raise HTTPException(status_code=400, detail="project or project_id required")
-            resolved_project_id = None
-            if project_id_raw is not None:
-                resolved_project_id = int(project_id_raw)
-            elif project_key:
-                async with get_session() as session:
-                    row = (
-                        await session.execute(
-                            text("SELECT id FROM projects WHERE slug = :k OR human_key = :k"),
-                            {"k": project_key},
-                        )
-                    ).fetchone()
-                    if row is None:
-                        raise HTTPException(status_code=404, detail="project not found")
-                    resolved_project_id = int(row[0])
             max_rows = int(payload.get("max_rows", 200))
             p = Path(path)
             if not p.exists():
@@ -3276,12 +3260,33 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     continue
                 rows.append(obj)
             await ensure_schema()
+            imported = 0
+            skipped = 0
             async with get_session() as session:
+                async def _resolve_project_id(row: dict) -> int | None:
+                    pid = row.get("project_id") or project_id_raw
+                    if pid is not None:
+                        return int(pid)
+                    key = row.get("project") or row.get("project_slug") or row.get("project_key") or project_key
+                    if not key:
+                        return None
+                    res = (
+                        await session.execute(
+                            text("SELECT id FROM projects WHERE slug = :k OR human_key = :k"),
+                            {"k": key},
+                        )
+                    ).fetchone()
+                    return int(res[0]) if res else None
+
                 for row in rows:
                     sig_type = (row.get("event") or "dangerous_command").strip()
                     severity = "warning" if sig_type == "dangerous_command" else "info"
+                    pid = await _resolve_project_id(row)
+                    if pid is None:
+                        skipped += 1
+                        continue
                     signal = Signal(
-                        project_id=resolved_project_id,
+                        project_id=pid,
                         mission_id=None,
                         type=sig_type,
                         severity=severity,
@@ -3289,8 +3294,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                         message=row.get("command") or row.get("note"),
                     )
                     session.add(signal)
+                    imported += 1
                 await session.commit()
-            return JSONResponse({"imported": len(rows)})
+            return JSONResponse({"imported": imported, "skipped": skipped})
 
         @fastapi_app.post("/api/signals")
         async def api_signal_create(payload: dict) -> JSONResponse:
