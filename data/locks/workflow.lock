@@ -1,7 +1,7 @@
 {
-  "task_id": "P1-mail-lease-SSOT",
+  "task_id": "P2-Orchestration-UI-Signals",
   "holder": "WORK",
   "branch": "feature/mvp-ui-audit",
-  "ts_acquired": "2025-11-30T06:45:59Z",
-  "note": "Mail/lease integration as SSOT for P1"
+  "ts_acquired": "2025-11-30T07:34:04Z",
+  "note": "Start P2 orchestration UI + Signals"
 }
