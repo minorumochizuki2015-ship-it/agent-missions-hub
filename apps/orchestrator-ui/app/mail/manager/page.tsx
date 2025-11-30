@@ -132,7 +132,8 @@ function useI18n(lang: Lang) {
 function formatIso(iso: string) {
   if (!iso) return '—'
   const d = new Date(iso)
-  return d.toLocaleString()
+  // Render deterministically regardless of server/client locale.
+  return d.toISOString().replace('T', ' ').replace('Z', ' UTC')
 }
 
 export default function ManagerPage({
@@ -174,14 +175,14 @@ export default function ManagerPage({
   const toggleHref = `/mail/manager?lang=${toggleLang}`
 
   return (
-    <main className="min-h-screen bg-slate-50 p-4 lg:p-6">
+    <div className="min-h-screen bg-slate-50 p-4 lg:p-6">
       <header className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold" data-testid="manager-title">
+        <h1 className="text-2xl font-semibold text-slate-900" data-testid="manager-title">
           {t.pageTitle}
         </h1>
         <Link
           href={toggleHref}
-          className="text-sm text-blue-600 underline"
+          className="text-sm text-blue-700 underline"
           data-testid="language-toggle"
         >
           {t.langToggle}: {toggleLang.toUpperCase()}
@@ -190,22 +191,22 @@ export default function ManagerPage({
 
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="rounded-lg bg-white p-4 shadow-sm" aria-label={t.missions}>
-          <h2 className="mb-2 text-lg font-semibold">{t.missions}</h2>
+          <h2 className="mb-2 text-lg font-semibold text-slate-900">{t.missions}</h2>
           <ul className="divide-y divide-slate-200">
             {missions.map((m) => (
               <li key={m.id} className="py-2" data-testid="mission-row">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">{m.title}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="font-medium text-slate-900">{m.title}</p>
+                    <p className="text-xs text-slate-600">
                       {t.owner}: {m.owner} · {t.runMode}: {t.runModes[m.run_mode]}
                     </p>
                   </div>
-                  <span className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700">
+                  <span className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-800">
                     {t.statuses[m.status]}
                   </span>
                 </div>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-600">
                   {t.updatedAt}: {formatIso(m.updated_at)}
                 </p>
               </li>
@@ -214,7 +215,7 @@ export default function ManagerPage({
         </section>
 
         <section className="rounded-lg bg-white p-4 shadow-sm" aria-label={t.taskGroups}>
-          <h2 className="mb-2 text-lg font-semibold">{t.taskGroups}</h2>
+          <h2 className="mb-2 text-lg font-semibold text-slate-900">{t.taskGroups}</h2>
           <div className="space-y-2">
             {groups.map((g) => (
               <article
@@ -224,16 +225,16 @@ export default function ManagerPage({
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">{g.title}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="font-medium text-slate-900">{g.title}</p>
+                    <p className="text-xs text-slate-800">
                       {t.kind}: {t.kinds[g.kind]} · {t.status}: {t.statuses[g.status]}
                     </p>
                   </div>
-                  <span className="rounded bg-indigo-50 px-2 py-1 text-[11px] text-indigo-700">
+                  <span className="rounded bg-indigo-50 px-2 py-1 text-[11px] text-indigo-800">
                     {t.runModes[g.kind] || g.kind}
                   </span>
                 </div>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-700">
                   {t.startedAt}: {formatIso(g.started_at)} / {t.finishedAt}: {formatIso(g.finished_at)}
                 </p>
               </article>
@@ -242,7 +243,7 @@ export default function ManagerPage({
         </section>
 
         <section className="rounded-lg bg-white p-4 shadow-sm" aria-label={t.tasksArtifacts}>
-          <h2 className="mb-2 text-lg font-semibold">{t.tasksArtifacts}</h2>
+          <h2 className="mb-2 text-lg font-semibold text-slate-900">{t.tasksArtifacts}</h2>
           <div className="space-y-2">
             {tasks.map((task) => (
               <article
@@ -250,8 +251,8 @@ export default function ManagerPage({
                 className="rounded border border-slate-200 p-3"
                 data-testid="task-card"
               >
-                <p className="font-medium">{task.title}</p>
-                <p className="text-xs text-slate-500">
+                <p className="font-medium text-slate-900">{task.title}</p>
+                <p className="text-xs text-slate-700">
                   {t.status}: {t.statuses[task.status]} · Agent: {task.agent}
                 </p>
 
@@ -266,12 +267,12 @@ export default function ManagerPage({
                       >
                         <div className="flex items-center justify-between">
                           <span>{t.artifactTypes[a.type]}</span>
-                          <span className="text-[10px] uppercase text-slate-500">{a.scope}</span>
+                          <span className="text-[10px] uppercase text-slate-700">{a.scope}</span>
                         </div>
-                        <div className="text-[11px] text-slate-500">
+                        <div className="text-[11px] text-slate-700">
                           {t.version}: {a.version} · {t.sha}: {a.sha}
                         </div>
-                        <div className="text-[11px] text-slate-500">
+                        <div className="text-[11px] text-slate-700">
                           {t.tags}: {a.tags.join(', ')}
                         </div>
                       </div>
@@ -282,6 +283,6 @@ export default function ManagerPage({
           </div>
         </section>
       </div>
-    </main>
+    </div>
   )
 }
