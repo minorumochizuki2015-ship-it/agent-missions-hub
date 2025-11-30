@@ -153,7 +153,7 @@ class SequentialWorkflow(WorkflowEngine):
             stmt = (
                 select(TaskGroup)
                 .where(TaskGroup.mission_id == mission.id)
-                .order_by(TaskGroup.order.asc())
+                .order_by(TaskGroup.order.asc())  # type: ignore[arg-type]
             )
             result = await self.session.execute(stmt)
             task_groups = result.scalars().all()
@@ -169,7 +169,7 @@ class SequentialWorkflow(WorkflowEngine):
                 stmt_tasks = (
                     select(Task)
                     .where(Task.group_id == group.id)
-                    .order_by(Task.order.asc())
+                    .order_by(Task.order.asc())  # type: ignore[arg-type]
                 )
                 result_tasks = await self.session.execute(stmt_tasks)
                 tasks_in_group = result_tasks.scalars().all()
