@@ -41,6 +41,7 @@
   - Mission 一覧／TaskGroup タイムライン／Artifact タイルを Manager View に実装し、Playwright で検証。
 - **Phase 2D (CLI 接続 / Knowledge/Inbox/Graph 計画)**  
   - v1 は SequentialWorkflow＋簡易並列、Windows/PS7＋ConPTY、初期サポート CLI（CodexCLI＋Claude Code CLI）のみを対象とし、DAG/AsyncThink/WSL+tmux などは Phase 3 以降の拡張とする。Artifact promote→Knowledge、Inbox スレッド化、Graph View は Phase 3。
+  - CLI call 成功時に cli_runs の run_id/path を echo 済み（2025-12-02、wrapper pytest 4 passed）。
 - **Auto Gate v1（Phase 2B〜2C で完了想定）**  
   - `auto_gate_rules.yaml` で UI Gate / SBOM / secret-scan / bandit / GitOps ゲートを判定し、CI で `auto_gate_decider.py` が run/skip/force_run を決定する。  
   - 判定結果を `event=auto_gate_decision` として `observability/policy/ci_evidence.jsonl` に記録する。判定失敗時は全て実行し、理由を記録する。  
