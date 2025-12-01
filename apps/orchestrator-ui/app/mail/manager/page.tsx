@@ -260,6 +260,12 @@ export default function ManagerPage({
   )
   const showApiAlert = fetched && (!fromApi || apiError !== null || missions.length === 0)
   const alertDetail = apiError && apiError !== 'empty' ? ` (${apiError})` : ''
+  const navItems = [
+    { key: 'plan', label: t.navPlan },
+    { key: 'test', label: t.navTest },
+    { key: 'review', label: t.navReview },
+    { key: 'release', label: t.navRelease }
+  ]
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 lg:p-6">
@@ -284,6 +290,17 @@ export default function ManagerPage({
           {t.langToggle}: {toggleLang.toUpperCase()}
         </Link>
       </header>
+      <div className="mb-4 flex flex-wrap gap-2">
+        {navItems.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-slate-50 shadow-sm"
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
       {showApiAlert && (
         <div className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900" role="alert">
           <div className="font-semibold">{t.apiAlertTitle}</div>
@@ -476,6 +493,23 @@ export default function ManagerPage({
             ))}
             {signals.length === 0 && <p className="text-sm text-slate-600">No signals yet</p>}
           </div>
+        </section>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        <section className="rounded-lg bg-white p-4 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-amber-600">{t.dangerousCommands}</div>
+          <p className="text-sm text-slate-700">{t.noRecent}</p>
+        </section>
+        <section className="rounded-lg bg-white p-4 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-emerald-600">{t.approvals}</div>
+          <p className="text-sm text-slate-700">{t.noApprovals}</p>
+        </section>
+        <section className="rounded-lg bg-white p-4 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-sky-600">{t.externalSignals}</div>
+          <p className="text-sm text-slate-700">
+            {signals.length === 0 ? t.noSignals : `${signals.length} ${t.latest}`}
+          </p>
         </section>
       </div>
     </div>
