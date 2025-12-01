@@ -164,6 +164,7 @@ def _echo_health_check(host: str, port: int, run_id: str) -> None:
         (log_dir / f"{run_id}_health.log").write_text(
             f"run_id={run_id} status={status_text}\n", encoding="utf-8"
         )
+        typer.echo(f"health_log=cli_runs/{run_id}_health.log")
     except Exception:  # pragma: no cover - IO failures
         pass
 def main() -> None:  # pragma: no cover
