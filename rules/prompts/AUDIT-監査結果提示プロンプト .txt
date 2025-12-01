@@ -1,0 +1,180 @@
+【監査レポート】
+
+対象：<プロジェクト名>
+AIモデル：<使用モデル名>
+
+監査AIは以下の規約に従い監査を実施した：
+- AUDIT_rules.yaml
+- codexcli_git_ops_policy.md
+- 監査・テスト方法.md
+- Shadow Audit Layer（manifest/hash/signature/KPI 検証）
+- GitOps 制約（diff ≤3 files / ≤50 lines）
+- Plan→Test→Patch / SafeOps / LOCK / APPROVALS
+
+────────────────────────────
+【Git情報】
+Target Commit: <再掲>
+Branch: <再掲>
+
+────────────────────────────
+【コンテキスト】
+タスク概要：
+- <Issue / 今回のバッチの目的>
+
+関連ドキュメント：
+- <docs/...>
+- multi_agent_terminal_checklist_v2.md
+- multi_agent_terminal_milestones_v2.md
+- agent_missions_hub_design_v2.md
+
+────────────────────────────
+【監査結果本文（CI / Test / Evidence の検証）】
+
+<ここに WORK が提出した CI ログ・pytest 結果・黒化状況・変更内容を総合評価した内容を記述>
+
+例：
+- pytest: PASS (4 passed / 17 skipped / 0 warnings)
+- ruff/black/isort: PASS
+- UI Gate: 差分なし → スキップ理由を ci_evidence.jsonl に記録済み
+- Shadow Audit emitter のテスト：hash chain 2 append + tamper detection PASS
+- plan_diff.json status 更新：valid
+
+────────────────────────────
+【Shadow Audit Evidence の監査】
+
+※ WORK の提出した “Evidence” を監査した結果を示す（改ざん耐性レイヤーの中核）
+
+- manifest.jsonl 存在: OK / NG / N/A  
+- hash chain 整合性: OK / NG  
+- signature（cosign）: OK / NG / N/A（署名未実装時は N/A）  
+- explainability_rate: <0〜100%>  
+- unsigned_events: <n>  
+- rule_drift: <n>  
+- approval_mismatch: <n>  
+
+問題がある場合、Status は原則 Block または Proceed with fixes。
+
+────────────────────────────
+【監査レポート（義務形式）】
+
+1. Summary
+   - Target Commit: <再掲>
+   - Branch: <再掲>
+   - Status: Block / Proceed with fixes / Proceed
+   - Overall（1〜3行の要約）:
+     例）Shadow Audit Batch2 は emitter/hash chain を適切に実装しているが、
+         黒化未完 / .vs/ 未追跡 / Shadow Audit 後続バッチ未実装のため、
+         現時点では Proceed with fixes が妥当。
+
+2. Findings（分類必須）
+   - Blocking:
+     - Detail: <致命的な問題>  
+       Suggestion: <どう直すべきか>
+   - Major:
+     - Detail: <MVPを阻害する重大問題>  
+       Suggestion: <修正指示>
+   - Minor:
+     - Detail: <軽微な問題>  
+       Suggestion: <修正指示>
+   - Cosmetic:
+     - Detail: <形式・軽度の改善点>  
+       Suggestion: <修正指示>
+
+3. Tests
+   - pytest: <結果>
+   - ruff / isort / black: <結果>
+   - UI Gate: <結果 or スキップ理由>
+   - mypy（該当時）: <結果>
+   - SBOM（必要時）: <結果>
+   - coverage/diff-cover（必要時）: <結果>
+
+4. Notes
+   - Lock 状態 / APPROVALS の一貫性
+   - Shadow Audit Events の網羅性
+   - ci_evidence.jsonl の更新状況
+   - Auto Gate の最新性 など
+
+────────────────────────────
+【GitOps 判定（push/PR）】
+
+- push/PR: 許可 / 非許可
+- 理由:
+  - <テスト状況>
+  - <Shadow Audit Evidence の整合性>
+  - <黒化・未追跡ファイルの有無>
+  - <MVP に対する進捗>
+  - <リスク評価>
+
+────────────────────────────
+【WORK に渡す修正指示プロンプト（完全版）】
+
+以下は WORK がそのまま Plan→Test→Patch として実行すべき指示である。
+
+【作業依頼】
+対象：<プロジェクト名>
+Branch：<作業ブランチ>
+Base：<必要なら>
+Goal：<今回サイクルの最小ゴール（例：Batch3 PS hook）>
+
+【修正対象ファイル】
+- <ファイルパス> … <目的/理由>
+- <ファイルパス> … <目的/理由>
+
+【修正指示（WORK が行うべき具体タスク）】
+- diff ≤3 files / ≤50 lines を厳守
+- Plan→Test→Patch を必ず plans/diff-plan.json に記録
+- SafeOps/LOCK を維持、APPROVALS 二者承認遵守
+- manifest* は Git 管理外（生成は tmp / artifacts のみ）
+- Shadow Audit:
+  - （Batch3）Invoke-WithShadowAudit.ps1 を追加（DryRun）
+  - WORK_rules.yaml に hook（PLAN/TEST/PATCH/APPLY 後の emit）追加
+  - tests/test_shadow_audit_pshook.py で chain 更新を検証
+- 黒化バッチを別途実施（3ファイルずつ）
+- .vs/ cleanup（削除 or .gitignore 追加）
+- Auto Gate が古い場合は再実行（必要時）
+
+【テスト戦略】
+- ruff check scripts tests
+- isort --check-only scripts tests
+- black --check scripts tests
+- pytest -q tests/<今回の対象>
+- UI 差分なし → ci_evidence.jsonl に “UI Gate skipped (no diff)” を記録
+- SBOM（必要時）を observability/policy/sbom*.json に出力
+
+【MVP までのステップ（優先度順）】
+1) Phase 2A: <データモデル/マイグレーション確定 + migration test>
+2) Phase 2B: <WorkflowEngine 実装・テスト・ci_evidence 連携>
+3) Phase 2C: <Manager UI / Agent Mail 統合・UI Gate・Playwright/Jest>
+4) Phase 2D: <CLI Orchestrator 実装・E2E・run_id 記録>
+
+────────────────────────────
+【Shadow Audit Events（WORK 生成ログの監査結果）】
+
+※ WORK が提出したイベントログの整合性を監査して記述する：
+
+例：
+
+- event: PLAN  
+  actor: WORK  
+  ts: <UTC>  
+  rule_ids: [...]  
+  policy_refs: [...]  
+  reasoning_digest: "<200–600 chars>"  
+  inputs_hash: sha256(...)  
+  outputs_hash: sha256(...)  
+  approval_state: none  
+  approvals_row_id: ""
+
+- event: TEST  
+  actor: WORK  
+  ts: <UTC>  
+  rule_ids: [...]  
+  policy_refs: [...]  
+  reasoning_digest: "<200–600 chars>"  
+  inputs_hash: sha256(...)  
+  outputs_hash: sha256(...)  
+  approval_state: none  
+  approvals_row_id: ""
+
+（PATCH / APPROVALS / APPLY イベントもあれば同様に追記）
+

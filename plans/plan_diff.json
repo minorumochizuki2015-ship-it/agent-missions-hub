@@ -1,0 +1,532 @@
+{
+  "plan_id": "20251111-multi-agent-mvp",
+  "created_at": "2025-11-11T00:00:00Z",
+  "summary": "Docs front-matter継続→SafeOps KPI改善→SpecKit導入→UI-Audit周知のMVPプラン",
+  "steps": [
+    {
+      "id": "docs-frontmatter-batch3",
+      "status": "completed",
+      "description": "docs/operations/*, docs/plans/*, docs/templates/README.md等の未対応ファイルへフロントマターを3件ずつ追加し、docs_frontmatter batch3/4として証跡を残す",
+      "entries": [
+        "docs/operations/",
+        "docs/plans/",
+        "docs/templates/README.md"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl",
+        "TRAE SOLO Builder Report.txt"
+      ],
+      "notes": "SHAとbatch_idをci_evidence/Builder Reportに追記"
+    },
+    {
+      "id": "docs-frontmatter-batch5",
+      "status": "completed",
+      "description": "docs/plans 配下と SpecKit 生成物に front-matter (title/description/date/author) を追加し、SSOT を更新する。",
+      "entries": [
+        "docs/plans/20251104_safeops_phase2.md",
+        "docs/plans/README.md",
+        "docs/plans/mvp_development_plan_v1_deprecated.md",
+        "docs/plans/speckit/20251111-multi-agent-mvp/constitution.md",
+        "docs/plans/speckit/20251111-multi-agent-mvp/plan.md",
+        "docs/plans/speckit/20251111-multi-agent-mvp/spec.md",
+        "docs/plans/speckit/20251111-multi-agent-mvp/tasks.md"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl",
+        "TRAE SOLO Builder Report.txt",
+        "multi-agent Work.txt"
+      ],
+      "notes": "docs-frontmatter-5 (ci_evidence) / Builder Report でログ化。"
+    },
+    {
+      "id": "safeops-kpi-improvement",
+      "status": "completed",
+      "description": "scripts/safeops_summary.pyでAPPROVALS×dangerous log突合を実装し、approvals_missingを削減したKPIを反映",
+      "entries": [
+        "scripts/safeops_summary.py",
+        "observability/policy/safeops_kpi.json"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "safeops_kpi_refreshイベントを追記"
+    },
+    {
+      "id": "speckit-pipeline",
+      "status": "completed",
+      "description": "uv tool install specify-cli→./runner -- specify init/check を整備し、docs/plans/speckit/<plan-id>/に生成物を保存、PLAN.jsonと連携",
+      "entries": [
+        "scripts/runner.py",
+        "docs/plans/speckit/20251111-multi-agent-mvp"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl",
+        "TRAE SOLO Builder Report.txt"
+      ],
+      "notes": "spec_kit_bundle (sha=18ea662b8bed084d8b56f066d5891e937d5aa0841c8af695b40561c590499063) / PLAN README 連携完了。"
+    },
+    {
+      "id": "ui-audit-communication",
+      "status": "completed",
+      "description": "READMEとdocs/multi_agent_terminal_ui_spec_v1.mdに最新UI-Auditメトリクスを追記し、ui_audit_doc_updateを記録",
+      "entries": [
+        "README.md",
+        "docs/multi_agent_terminal_ui_spec_v1.md"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "README と docs/multi_agent_terminal_ui_spec_v1.md を更新し、ui_audit_doc_update を ci_evidence へ記録済み。"
+    },
+    {
+      "id": "safeops-audit-20251111",
+      "status": "completed",
+      "description": "AUDIT指摘(PLAN/APPROVALS/CI)に対して SafeOps bootstrap・dangerous logとAPPROVALSの突合・runner経由テストを実施し、docs v2群と Work log を Gate 状況に合わせて更新する",
+      "entries": [
+        "PLAN.json",
+        "plan_diff.json",
+        "APPROVALS.md",
+        "data/logs/current/audit/dangerous_command_events.jsonl",
+        "observability/policy/ci_evidence.jsonl",
+        "observability/policy/safeops_kpi.json",
+        "docs/multi_agent_terminal_checklist_v2.md",
+        "docs/multi_agent_terminal_design_v2.md",
+        "docs/multi_agent_terminal_milestones_v2.md",
+        "multi-agent Work.txt"
+      ],
+      "evidence": [
+        "multi-agent AUDIT.txt",
+        "observability/policy/ci_evidence.jsonl",
+        "observability/policy/safeops_kpi.json"
+      ],
+      "notes": "safeops_summary / safeops_guard / specify check / pytest 実行ログと docs 反映を Gate 合格条件にする"
+    },
+    {
+      "id": "safeops-phase2-ci-hardening",
+      "status": "completed",
+      "description": "Override/Worktree Runbook と `scripts/safeops/worktree_guard.ps1` を整備し、Windows CI (`safeops-phase2.yml`)＋DocLint で SafeOps Phase2 をハードニングする",
+      "entries": [
+        "docs/operations/runbooks/safeops_override_runbook.md",
+        "docs/operations/runbooks/safeops_worktree_runbook.md",
+        "scripts/safeops/worktree_guard.ps1",
+        ".github/workflows/safeops-phase2.yml",
+        "scripts/ci/audit_docs_safeops_consistency.py"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl",
+        "multi-agent Work.txt"
+      ],
+      "notes": "CI ワークフローと runbook のセットで override/worktree の Dry-Run→Apply 証跡を自動化する"
+    },
+    {
+      "id": "orchestrator-api-and-ui-plan",
+      "status": "in_progress",
+      "description": "Orchestrator API 実装（FastAPI）・Next.js ダッシュボード初期化・SafeOps KPI 突合をPLANに明記し、CI証跡の更新フローを整備する",
+      "entries": [
+        "PLAN.json",
+        "apps/orchestrator-api/",
+        "apps/orchestrator-ui/",
+        "observability/policy/safeops_kpi.json"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl",
+        "TRAE SOLO Builder Report.txt"
+      ],
+      "notes": "runner 経由で `npm run lint && npm run test && npm run test:e2e` を実行し、FastAPI 側の `/api/health/ui` を含む最小エンドポイントを追加したうえで SafeOps KPI パネルと連携する。UI Gate (EN/JA, 2025/11/30 18:48–18:52, vitals_missing=true) も PASS し ci_evidence に追記済み。Jest ダッシュボード再実行 (2025/11/20 14:47:37, 15:10:30 dashboard.test.tsx) PASS、Playwright 15:12 PASS、lint 15:10 PASS、pytest 15:13 PASS。今後は UI Gate/Playwright 実行前に FastAPI 起動確認（/health 200）と `/api/missions` 非空シードを必須とし、未起動・空のときは Blocker とする。"
+    },
+    {
+      "id": "workflow-engine-phase2a",
+      "status": "in_progress",
+      "description": "WorkflowEngine v1 (Sequential + self-heal) を MVP 詳細設計に沿って実装し、missions/task_groups/tasks/artifacts/knowledge スキーマとマイグレーション・テストを統合する。",
+      "entries": [
+        "src/mcp_agent_mail/workflow_engine.py",
+        "src/mcp_agent_mail/models.py",
+        "migrations/",
+        "src/mcp_agent_mail/routers/missions.py",
+        "docs/plans/mvp_detailed_technical_design.md",
+        "docs/plans/mission_control_plan.md",
+        "tests/test_workflow_engine.py",
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl",
+        "reports/test/"
+      ],
+      "notes": "Phase 2A の実装タスクを管理。workflow_engine self-heal 系 pytest を 2025/11/30 に再実行し、success/failure 両方の workflow_run イベントを ci_evidence に追記。UI 資産移植後に npm lint/test/e2e と ui_audit を再実行し、pytest/ruff/UI 証跡を ci_evidence/reports に追記済み。残タスク: 追加異常系・フル allowlist pytest・UI Gate 最新結果の反映継続。"
+    },
+    {
+      "id": "data-model-mission-task",
+      "status": "completed",
+      "description": "missions/task_groups/tasks/artifacts/knowledge スキーマ追加とマイグレーションを作成し、ER 差分と API 定義を docs に同期する（モデル定義＋ SQLite へのフィールド追加を実施）",
+      "entries": [
+        "docs/plans/mvp_detailed_technical_design.md",
+        "plans/plan_diff.json",
+        "docs/multi_agent_terminal_checklist_v2.md",
+        "docs/multi_agent_terminal_milestones_v2.md"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl",
+        "data/logs/current/audit/"
+      ],
+      "notes": "ドキュメント先行で API/DB/テスト観点を固め、次フェーズで SQLModel/マイグレーション実装と WorkflowEngine/self-heal を着手する。 Alembic 84eef2bb1c4f で schema を公式化し preview.sql（offline）と upgrade を実行（SQLite render_as_batch）。"
+    },
+    {
+      "id": "windows-short-suite",
+      "status": "completed",
+      "description": "Windows では pytest を allowlist/denylist で短縮実行し TMP/CACHEDIR をローカル固定（ENABLE_FULL_SUITE=1 で解除）",
+      "entries": [
+        "tests/conftest.py",
+        "tests/test_http_liveness_min.py",
+        "pyproject.toml",
+        ".gitignore",
+        "notes/agent_md.md",
+        "reports/test/pytest_windows_short_suite_run1.txt",
+        "reports/test/pytest_windows_short_suite_run2.txt"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "allowlist: workflow_engine/http_liveness/integration_showcase/ci_smoke_min/cli_help/config/models/storage/utils unit_min、denylist: ack/macro/attachment/http-edge/db-lock 系。ENABLE_FULL_SUITE=1 で解除。"
+    },
+    {
+      "id": "storage-diff-cover-hardening",
+      "status": "completed",
+      "description": "storage.py の差分未被覆 11 行を対象にモックテストを追加し、diff-cover ブロックを解消。best-effort suppress は pragma: no cover を付与。",
+      "entries": [
+        "tests/test_storage_cov.py",
+        "src/mcp_agent_mail/storage.py",
+        "reports/test/coverage_storage_cov.txt",
+        "reports/test/diff_cover_storage_cov.txt"
+      ],
+      "evidence": [
+        "reports/test/coverage_storage_cov.txt",
+        "reports/test/diff_cover_storage_cov.txt",
+        "coverage.xml"
+      ],
+      "notes": "TEST_ALLOWLIST_APPEND=tests/test_storage_cov.py で coverage run 実行。diff-cover は origin/feature/mvp-ui-audit 比較で未被覆ゼロを確認。"
+    },
+    {
+      "id": "auto-gate-20251128",
+      "status": "completed",
+      "description": "auto_gate_decider.py を base=origin/feature/mvp-ui-audit, head=HEAD で実行し、auto_gate_decision（ui_gate=skip/no_ui_affecting_files, sbom=skip, secret_scan=run, bandit=skip, gitops_*=skip）を ci_evidence に記録した。",
+      "entries": [
+        "scripts/auto_gate_decider.py",
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "ts=2025-11-28T02:05:03Z, branch=feature/mvp-ui-audit（env未設定のため記録空欄）, UI差分なしのため UI Gate は未実行。"
+    },
+    {
+      "id": "shadow-audit-manifest-setup",
+      "status": "completed",
+      "description": "Shadow Audit Layer 導入の準備として manifest を Git 管理外にし、計画エントリを追加する。",
+      "entries": [
+        ".gitignore",
+        "observability/policy/shadow_audit/manifest*.jsonl"
+      ],
+      "evidence": [
+        "plans/plan_diff.json"
+      ],
+      "notes": "Batch1: manifest ignore 登録完了。ruff/pytest PASS。以降のバッチで emitter/CI 連携/署名を段階追加。"
+    },
+    {
+      "id": "shadow-audit-ci-verify",
+      "status": "completed",
+      "description": "AUDIT_rules に hash chain 検証を追加し、CI で shadow_audit を artifact 収集するステップを追加した。",
+      "entries": [
+        "rules/agent/AUDIT_rules.yaml",
+        ".github/workflows/ci.yml"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "cosign があれば署名検証、無い場合は signature=skip と明示。"
+    },
+    {
+      "id": "shadow-audit-signature-option",
+      "status": "completed",
+      "description": "Shadow Audit emitter/PS hook に署名オプションを追加（cosign 未在時は skip で落ちない）。",
+      "entries": [
+        "scripts/shadow_audit_emit.py",
+        "scripts/Invoke-WithShadowAudit.ps1",
+        "rules/agent/AUDIT_rules.yaml"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "署名実行は未。Apply時のみ sign、環境変数鍵参照。"
+    },
+    {
+      "id": "shadow-audit-emit-fix",
+      "status": "completed",
+      "description": "shadow_audit_emit で JSONDecodeError が発生する不具合を修正し、連続 emit が安全に動作することをテストで確認した。",
+      "entries": [
+        "scripts/shadow_audit_emit.py",
+        "tests/test_shadow_audit.py"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "validate_jsonl を manifest のみに限定し hash 書き込み時の失敗を解消。"
+    },
+    {
+      "id": "shadow-audit-chain-rebuild",
+      "status": "completed",
+      "description": "manifest.jsonl から hash chain を再計算し、verify_chain を通過させた。cosign は鍵欠如で skip。",
+      "entries": [
+        "scripts/shadow_audit_emit.py"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "cosign_found=true / sign_status=skip:key_missing。"
+    },
+    {
+      "id": "shadow-audit-sign-verify-attempt",
+      "status": "completed",
+      "description": "cosign が存在する環境で sign/verify を試行し、鍵未設定のため skip で処理した上で chain_ok を確認した。",
+      "entries": [
+        "observability/policy/shadow_audit/manifest.jsonl"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "sign_status=skip:key_missing, verify_status=skip:key_missing, chain_ok=true。"
+    },
+    {
+      "id": "shadow-audit-events-test-approvals-apply",
+      "status": "completed",
+      "description": "TEST/APPROVALS/APPLY イベントを emit し、署名は鍵欠如で skip だが chain_ok を確認した。",
+      "entries": [
+        "observability/policy/shadow_audit/manifest.jsonl"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "events=TEST,APPROVALS,APPLY / sign_status=skip:key_missing / verify_status=skip:key_missing / chain_ok=true。"
+    },
+    {
+      "id": "vs-ignore-cleanup",
+      "status": "completed",
+      "description": ".vs/ を .gitignore に追加し IDE 生成物を除外した。",
+      "entries": [
+        ".gitignore"
+      ],
+      "evidence": [
+        "git status --short"
+      ],
+      "notes": "コード影響なし。"
+    },
+    {
+      "id": "workflow-run-log-ignore",
+      "status": "completed",
+      "description": "workflow_run ログの誤コミットを防ぐため、data/logs/current/audit/workflow_runs/*.jsonl を .gitignore に追加した。",
+      "entries": [
+        ".gitignore"
+      ],
+      "evidence": [
+        "git status --short"
+      ],
+      "notes": "Shadow Audit 生成ログは Git 管理外とし、artifact/ci_evidence 側で管理。"
+    },
+    {
+      "id": "council-poc-v1",
+      "status": "planned",
+      "description": "ChatGPT CLI プロファイル（creative/concise/code + fact_checker + chair）で正確性のみの Council PoC を構築し、匿名化・減点方式・ci_evidence 記録を実装する。",
+      "entries": [
+        "docs/multi_agent_terminal_checklist_v2.md",
+        "docs/multi_agent_terminal_milestones_v2.md",
+        "docs/plans/mvp_detailed_technical_design.md",
+        "docs/plans/mission_control_plan.md",
+        "plans/plan_diff.json"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl",
+        "artifacts/council/"
+      ],
+      "notes": "評価軸=正確性のみ、0–10 スコア、question は ci_evidence では question_hash で記録。timeout=60s、再試行なし、個別失敗はスキップ・全滅で failed。"
+    },
+    {
+      "id": "ack-timeout-remediation",
+      "status": "planned",
+      "description": "ack/macro/attachment/HTTP-heavy/DB-lock 系 pytest に伴う lock/timeout を恒久対策。Windows short suite の skip 依存からの脱却を管理",
+      "entries": [
+        "tests/conftest.py",
+        "notes/agent_md.md"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "Linux/WSL ENABLE_FULL_SUITE=1 でフルスイート必須。対策案: lock wait 短縮、メッセージ件数削減、In-memory DB 化、marker slow 導入。"
+    },
+    {
+      "id": "shadow-audit-sign-verify-complete",
+      "status": "completed",
+      "description": "Shadow audit manifest signed and verified with cosign (tlog off, trusted root).",
+      "entries": [
+        "observability/policy/shadow_audit/manifest.jsonl"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "signature/bundle kept git-ignored; trusted_root verify OK"
+    },
+    {
+      "id": "black-batch-20251128-b",
+      "status": "completed",
+      "description": "Black/isort/ruff applied to scripts/ui_audit_run.py, scripts/auto_gate_decider.py, tests/test_ui_gate.py.",
+      "entries": [
+        "scripts/ui_audit_run.py",
+        "scripts/auto_gate_decider.py",
+        "tests/test_ui_gate.py"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "formatted within diff limit"
+    },
+    {
+      "id": "phase2a-er-migration",
+      "status": "completed",
+      "description": "Phase 2A ER確定→Alembicマイグレーション→diff-plan記録→pytest最小＋auditログを残す",
+      "entries": [
+        "db/ERD",
+        "alembic/versions",
+        "plans/diff-plan.json",
+        "data/logs/current/audit/"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl",
+        "data/logs/current/audit/"
+      ],
+      "notes": "Auto Gate対象: sbom/secret_scan/bandit/gitops_*。alembic upgrade head applied 2025-11-28T09:04:15Z (sqlite); ci_evidence に migration_run を追記。lock acquired 2025-11-28T08:16:12Z; ER scope & migration plan完了"
+    },
+    {
+      "id": "phase2b-workflow-selfheal",
+      "status": "completed",
+      "description": "Phase 2B: implement WorkflowEngine self-heal + workflow_runs persistence + ci_evidence traces",
+      "entries": [
+        "src/mcp_agent_mail/workflow_engine.py",
+        "src/mcp_agent_mail/models.py",
+        "tests/test_workflow_engine.py",
+        "observability/policy/ci_evidence.jsonl",
+        "data/logs/current/audit/"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl",
+        "data/logs/current/audit/"
+      ],
+      "notes": "lock PHASE2B-WORKFLOW acquired 2025-11-28T09:12:49Z; workflow_runs 永続化・self-heal・pytest/ci_evidence 実行を完了（axe重複main修正後 Playwright 13/13 PASS）。",
+      "substeps": [
+        "workflow_runs 永続化とトレース設計（models/workflow_engine を更新）",
+        "self-heal ポリシー実装（リトライ/フォールバックを定義）",
+        "tests/test_workflow_engine.py を拡張しトレース/リトライを検証",
+        "ci_evidence と audit ログに workflow/self-heal 実行結果を記録し整合確認"
+      ]
+    },
+    {
+      "id": "phase2c-manager-ui",
+      "status": "completed",
+      "description": "Phase 2C: Manager UI + Playwright/Jest + UI Gate再実行（必要時）",
+      "entries": [
+        "src/mcp_agent_mail/ui/manager",
+        "tests/ui",
+        "scripts/ui_audit_run.py",
+        "observability/policy/ci_evidence.jsonl",
+        "docs/multi_agent_terminal_checklist_v2.md",
+        "docs/multi_agent_terminal_milestones_v2.md"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "Manager UIを実装し i18n/Jest/Playwright/axe=0 まで改善。UI Audit EN/JA で vitals_missing=true を警告許容とし、checklist/milestones に方針追記。ci_evidence に ui_audit_executed/ui_gate_pass_* (page=manager/unified_inbox) を記録。"
+    },
+    {
+      "id": "phase2d-cli-e2e",
+      "status": "completed",
+      "description": "Phase 2D: CLI連携（Codex/Claude）+ API連動 + 最小E2E",
+      "entries": [
+        "src/orchestrator/cli.py",
+        "tests/e2e",
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "CLI serve/call を Typer で実装し、/api/missions への call を E2E で検証。ci_evidence に cli_call / cli_e2e_run を記録し、LOCK を PHASE2D-CLI-E2E へ更新。"
+    },
+    {
+      "id": "phase3-p0-design-sync",
+      "status": "completed",
+      "description": "Phase 3 P0: 完全版設計を docs/checklist/milestones に反映し、mcp_agent_mail 中核化と P0〜P4 ロードマップを明記",
+      "entries": [
+        "docs/plans/agent_missions_hub_design_v2.md",
+        "docs/plans/cli_orchestrator_design.md",
+        "docs/multi_agent_terminal_milestones_v2.md",
+        "docs/multi_agent_terminal_checklist_v2.md"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "v1 スコープ（Sequential＋Windows/PS7＋ConPTY、CodexCLI+Claudeのみ、CodeMachine外部扱い）と mcp_agent_mail 中核化、役割プリセット/Signals 方針、P0〜P4 ロードマップを文書に反映。"
+    },
+    {
+      "id": "phase3-ui-dashboard-refresh",
+      "status": "in_progress",
+      "description": "Phase 3: Manager UI を実データ化しダッシュボードを刷新（旧 /mail ダッシュボード要素を統合）",
+      "entries": [
+        "apps/orchestrator-ui/app/mail/manager/page.tsx",
+        "apps/orchestrator-ui/app",
+        "playwright/tests",
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "サブステップ: (1) 要件整理/ワイヤー（必須=ミッション一覧+Smoke Test, 任意=メッセージ/プロジェクトカード/検索）(2) API 実データ化（MISSIONS_HUB_API_BASE + /api/missions を第一段階。Smoke/Messages はモックを段階追加）(3) レイアウト刷新＋i18n/axe=0 維持、Web Vitals 取得を試行（未取得時は vitals_missing 許容）(4) Playwright/Jest/UI Audit EN/JA 実行→ci_evidence 更新 (5) checklist/milestones 更新。2025-12-01 時点で api_ready（/health 200、missions_seeded=true）、api_smoke_fastmcp03（REST missions OK, 405 on legacy MCP APIs）、ui_audit_executed / ui_gate_pass_en/ja（api_up=true, missions_seeded=true, v3）を ci_evidence に記録済み。"
+    },
+    {
+      "id": "mail-lease-ssot",
+      "status": "completed",
+      "description": "MailClient ラッパを追加し、API (/api/mail send/list, /api/leases create/release) へ統合。スモークと evidence を記録。",
+      "entries": [
+        "src/mcp_agent_mail/mail_client.py",
+        "src/mcp_agent_mail/http.py",
+        "tests/test_mail_client_smoke.py"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "uv run pytest -q tests/test_mail_client_smoke.py PASS。ci_evidence に P1 mail/lease integration smoke OK を追記。API経路を MailClient 統一済み。Signals API を別ステップで追加済み。"
+    },
+    {
+      "id": "signals-ui-panel",
+      "status": "completed",
+      "description": "Signals を Manager/Inbox UI のサイドパネルで表示する（dangerous_command/approval_required/failing_test/retry/timeout を一覧）。",
+      "entries": [
+        "apps/orchestrator-ui/app/mail/manager/page.tsx",
+        "docs/multi_agent_terminal_checklist_v2.md"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "列: type/severity/status/created_at/message。project_id は既存 import の project 解決を使用。2025-11-30 ui_audit_run (EN/JA) で Gate=PASS (vitals_missing 許容)。"
+    },
+    {
+      "id": "phase3-dashboard-integration",
+      "status": "planned",
+      "description": "Phase3開始: /api/missions の実データを Manager ダッシュボードに反映し、Smoke Testカード・検索/フィルタを実データベースで復元。i18n と axe=0 を維持。",
+      "entries": [
+        "apps/orchestrator-ui/app/mail/manager/page.tsx",
+        "apps/orchestrator-ui/app/api/missions",
+        "docs/multi_agent_terminal_milestones_v2.md"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "初手は 3ファイル/50行以内で実データカードを追加し、npm test --runInBand と必要なら UI Gate を実施。"
+    }
+  ]
+}

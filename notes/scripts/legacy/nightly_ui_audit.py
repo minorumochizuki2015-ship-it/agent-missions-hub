@@ -72,7 +72,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--jira-webhook",
         default=os.environ.get("JIRA_WEBHOOK_URL", ""),
-        help="差分検出時に通知する Jira Webhook URL（未設定ならスキップ）。",
+        help="差分検出時に通知する Jira Webhook URL(未設定ならスキップ)。",
     )
     return parser.parse_args()
 

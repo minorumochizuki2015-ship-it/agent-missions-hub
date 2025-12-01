@@ -1,0 +1,53 @@
+name: Nightly Maintenance
+
+on:
+  schedule:
+    - cron: '17 3 * * *' # 03:17 UTC daily
+  workflow_dispatch: {}
+
+jobs:
+  nightly:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install uv
+        run: curl -Ls https://astral.sh/uv/install.sh | sh
+      - name: Add uv to PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            .venv
+          key: nightly-uv-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: |
+            nightly-uv-${{ runner.os }}-
+      - name: Sync dependencies (dev)
+        run: uv sync --dev
+      - name: Run migrations
+        run: uv run python -m mcp_agent_mail.cli migrate
+      - name: Install Playwright browsers
+        run: uv run python -m playwright install --with-deps chromium
+      - name: Start MCP HTTP server
+        run: |
+          uv run python -m mcp_agent_mail.cli serve-http --host 127.0.0.1 --port 8765 > server.log 2>&1 &
+          echo $! > server.pid
+          sleep 5
+      - name: Run nightly UI-Audit orchestrator
+        env:
+          JIRA_WEBHOOK_URL: ${{ secrets.JIRA_WEBHOOK_URL }}
+        run: |
+          uv run python scripts/nightly_ui_audit.py --langs ja en --host 127.0.0.1 --port 8765 --preview-html artifacts/preview/index.html --report-dir reports/work
+      - name: Stop MCP HTTP server
+        if: always()
+        run: |
+          if [ -f server.pid ]; then kill "$(cat server.pid)" || true; fi
+          rm -f server.pid
+      - name: List projects
+        run: uv run python -m mcp_agent_mail.cli list-projects --include-agents

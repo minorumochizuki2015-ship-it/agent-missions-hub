@@ -1,0 +1,51 @@
+{
+  "pageTitle": "マネージャー",
+  "disabledTitle": "Manager 無効",
+  "disabledBody": "機能フラグにより Manager UI は無効化されています。",
+  "backToInbox": "Inbox に戻る",
+  "missions": "ミッション",
+  "taskGroups": "タスクグループ",
+  "tasksArtifacts": "タスク・アーティファクト",
+  "owner": "担当",
+  "status": "ステータス",
+  "runMode": "実行モード",
+  "updatedAt": "更新日時",
+  "kind": "種別",
+  "startedAt": "開始",
+  "finishedAt": "終了",
+  "artifactType": "種別",
+  "scope": "スコープ",
+  "version": "バージョン",
+  "sha": "SHA",
+  "tags": "タグ",
+  "messages": "メッセージ",
+  "liveMissions": "ライブミッション（API）",
+  "liveMissionsEmpty": "ライブミッションなし",
+  "liveMissionsUpdated": "最終更新",
+  "apiAlertTitle": "API未起動またはデータなし",
+  "apiAlertBody": "バックエンドAPIが失敗したか、ミッションが返ってきません。表示内容はモック/古いデータの可能性があります。",
+  "langToggle": "言語",
+  "searchPlaceholder": "タイトルで絞り込み...",
+  "kinds": {
+    "sequential": "順次",
+    "parallel": "並列",
+    "loop": "ループ"
+  },
+  "statuses": {
+    "pending": "待機",
+    "running": "実行中",
+    "completed": "完了",
+    "failed": "失敗"
+  },
+  "runModes": {
+    "sequential": "順次",
+    "parallel": "並列",
+    "loop": "ループ"
+  },
+  "artifactTypes": {
+    "plan": "計画",
+    "diff": "差分",
+    "test": "テスト結果",
+    "screenshot": "スクリーンショット"
+  }
+}

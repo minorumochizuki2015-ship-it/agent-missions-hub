@@ -1,13 +1,15 @@
-from __future__ import annotations
-
 """FastMCP サーバと DB バックエンドの最小実装。"""
+
+from __future__ import annotations
 
 from typing import Any, Dict, List
 
 try:  # pragma: no cover - dependency guard
     from fastmcp import FastMCP  # type: ignore
 except ImportError as exc:  # pragma: no cover - fail fast when dependency missing
-    raise ImportError("fastmcp FastMCP API is required. Please upgrade/install fastmcp>=0.3.") from exc
+    raise ImportError(
+        "fastmcp FastMCP API is required. Please upgrade/install fastmcp>=0.3."
+    ) from exc
 from sqlmodel import select
 
 from .db import Agent, Message, Project, get_session, init_db
@@ -92,7 +94,7 @@ def build_mcp_server(settings: Settings) -> FastMCP:
         body_md: str,
         ack_required: bool = False,
     ) -> Dict[str, Any]:
-        """メッセージ送信（簡易 DB バックエンド）。"""
+        """メッセージ送信(簡易 DB バックエンド)。"""
 
         slug = project_key
         with get_session(settings.database_url) as session:
@@ -117,3 +119,14 @@ def build_mcp_server(settings: Settings) -> FastMCP:
         return {"message_id": message.id, "status": "queued", "project_slug": slug}
 
     return server
+
+
+def get_http_adapter(server: FastMCP):
+    """FastMCP 0.3+ の http_app 互換呼び出しを取得する。存在しない場合は None。"""
+
+    if hasattr(server, "http_app"):
+        return server.http_app
+    if hasattr(server, "asgi_app"):
+        # asgi_app は引数を取らないため、そのまま返す
+        return lambda *_, **__: server.asgi_app
+    return None

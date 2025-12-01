@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Shadow Audit Overview</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 32px; line-height: 1.5; }
+      h1 { margin-bottom: 0.2em; }
+      .status { padding: 8px 12px; border-radius: 6px; display: inline-block; background: #e6ffed; color: #065f46; font-weight: bold; }
+      ul { margin-top: 0.5em; }
+      code { background: #f5f5f5; padding: 2px 4px; border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <h1>Shadow Audit Overview</h1>
+    <div class="status">Status: OK</div>
+    <p>Shadow Audit の署名・検証を完了し、ci_evidence に記録済みです。</p>
+    <h2>署名詳細</h2>
+    <ul>
+      <li>対象: <code>observability/policy/shadow_audit/manifest.jsonl</code></li>
+      <li>署名: <code>manifest.sig</code>（Git 管理外）</li>
+      <li>バンドル: <code>manifest.sig.bundle</code>（Git 管理外）</li>
+      <li>検証: trusted root 指定で Verified OK</li>
+    </ul>
+    <h2>Evidence</h2>
+    <ul>
+      <li><code>observability/policy/ci_evidence.jsonl</code> に <code>shadow_audit_sign_verify</code> を追記済み</li>
+    </ul>
+  </body>
+</html>

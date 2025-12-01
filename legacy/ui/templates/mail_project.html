@@ -1,0 +1,814 @@
+{% extends "base.html" %}
+
+{% block title %}{% if lang == 'ja' %}{{ project.human_key }} — Agent Mail{% else %}{{ project.human_key }} — Agent
+Mail{% endif %}{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="Breadcrumb" class="text-sm">
+  <ol class="flex items-center gap-2">
+    <li>
+      <a href="/mail{% if lang %}?lang={{ lang }}{% endif %}"
+        class="text-slate-600 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors flex items-center gap-1">
+        <i data-lucide="home" class="w-3.5 h-3.5"></i>
+        {% if lang == 'ja' %}プロジェクト{% else %}Projects{% endif %}
+      </a>
+    </li>
+    <li aria-hidden="true">
+      <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+    </li>
+    <li aria-current="page">
+      <span class="text-slate-900 dark:text-white font-semibold">{{ project.human_key }}</span>
+    </li>
+    <li class="ml-auto">
+      <div class="flex items-center gap-2">
+        <a href="?lang=en" class="px-2 py-1 text-xs rounded border border-slate-300 hover:bg-slate-100"
+          aria-label="English">EN</a>
+        <a href="?lang=ja" class="px-2 py-1 text-xs rounded border border-slate-300 hover:bg-slate-100"
+          aria-label="日本語">日本語</a>
+      </div>
+    </li>
+  </ol>
+</nav>
+{% endblock %}
+
+{% block header_actions %}
+<div class="flex items-center gap-3">
+  <!-- Human Overseer - Primary Action -->
+  <a href="/mail/{{ project.slug }}/overseer/compose{% if lang %}?lang={{ lang }}{% endif %}"
+    class="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700 text-white font-semibold rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+    aria-label="Send high-priority message as Human Overseer">
+    <i data-lucide="megaphone" class="w-4 h-4"></i>
+    <span class="text-sm">{% if lang == 'ja' %}管理者メッセージ{% else %}Human Overseer{% endif %}</span>
+  </a>
+
+  <!-- Divider -->
+  <div class="w-px h-8 bg-slate-200 dark:bg-slate-700"></div>
+
+  <!-- Secondary Actions -->
+  <div class="flex items-center gap-2">
+    <!-- File Reservations -->
+    <a href="/mail/{{ project.slug }}/file_reservations"
+      class="inline-flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all duration-200"
+      data-tippy-content="View file coordination signals" aria-label="File Reservations">
+      <i data-lucide="file-lock" class="w-4 h-4"></i>
+      <span class="text-sm">{% if lang == 'ja' %}予約{% else %}Reservations{% endif %}</span>
+    </a>
+
+    <!-- Attachments -->
+    <a href="/mail/{{ project.slug }}/attachments"
+      class="inline-flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all duration-200"
+      data-tippy-content="View shared files" aria-label="Attachments">
+      <i data-lucide="paperclip" class="w-4 h-4"></i>
+      <span class="text-sm">{% if lang == 'ja' %}添付ファイル{% else %}Attachments{% endif %}</span>
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+  <div class="space-y-8 page-transition">
+    <!-- Project Hero Header -->
+    <div
+      class="relative overflow-hidden bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-soft border border-slate-200 dark:border-slate-700">
+    <div class="flex items-start justify-between">
+      <div class="flex-1">
+        <div class="flex items-center gap-4 mb-4">
+          <div class="w-16 h-16 bg-primary-600 rounded-xl flex items-center justify-center shadow-md">
+            <i data-lucide="git-branch" class="w-8 h-8 text-white"></i>
+          </div>
+          <div>
+            <h1 class="text-4xl font-bold text-slate-900 dark:text-white mb-2">
+              {{ project.human_key }}
+            </h1>
+            <div class="flex items-center gap-3 text-sm">
+              <div class="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                <i data-lucide="hash" class="w-4 h-4"></i>
+                <span class="font-mono">{{ project.slug }}</span>
+              </div>
+              <span class="text-slate-300 dark:text-slate-600">•</span>
+              <div
+                class="flex items-center gap-1.5 px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full font-medium text-xs">
+                <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                <span>{% if lang == 'ja' %}稼働中{% else %}Active{% endif %}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Actions: Agent Registration + Messaging -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4" data-project-key="{{ project.human_key }}">
+      <!-- Register Agent -->
+      <div class="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white">{% if lang == 'ja' %}エージェント登録{% else %}Register Agent{% endif %}</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">{% if lang == 'ja' %}プログラムとモデルを選び、必要なら名前と説明を入力{% else %}Pick program/model, optional name and description{% endif %}</p>
+          </div>
+          <span id="reg-status" class="text-xs text-slate-500 dark:text-slate-400"></span>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-slate-500 dark:text-slate-400">{% if lang == 'ja' %}プログラム{% else %}Program{% endif %}</label>
+            <select id="reg-program" class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm p-2">
+              <option value="codex-cli">codex-cli</option>
+              <option value="claude-code">claude-code</option>
+              <option value="gemini">gemini</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs text-slate-500 dark:text-slate-400">{% if lang == 'ja' %}モデル{% else %}Model{% endif %}</label>
+            <input id="reg-model" list="reg-model-options" class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm p-2" placeholder="gpt-4o-mini" />
+            <datalist id="reg-model-options"></datalist>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-slate-500 dark:text-slate-400">{% if lang == 'ja' %}名前ヒント（任意）{% else %}Name hint (optional){% endif %}</label>
+            <input id="reg-name" class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm p-2" />
+          </div>
+          <div>
+            <label class="text-xs text-slate-500 dark:text-slate-400">{% if lang == 'ja' %}概要（カード抜粋用・任意）{% else %}Summary (card excerpt, optional){% endif %}</label>
+            <input id="reg-desc" class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm p-2" placeholder="{% if lang == 'ja' %}最初の1〜2文{% else %}First 1-2 lines{% endif %}" />
+          </div>
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
+            {% if lang == 'ja' %}役割プロンプト（system）{% else %}Role prompt (system){% endif %}
+          </label>
+          <textarea id="reg-role" rows="6" class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm p-2" placeholder="[ロール]\nあなたは一級市民を支援するAIエージェント..."></textarea>
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs text-slate-500 dark:text-slate-400">{% if lang == 'ja' %}スキルセット（複数選択可）{% else %}Skill set (multi-select){% endif %}</label>
+          <div class="flex flex-wrap gap-2" id="reg-skills">
+            {% set skill_opts = [
+              ("web-search", "Web Search"),
+              ("web-fetch", "Web Fetch"),
+              ("code-edit", "Code Edit"),
+              ("code-refactor", "Code Refactor"),
+              ("repo-search", "Repo Search"),
+              ("doc-search", "Doc Search"),
+              ("doc-qa", "Doc QA"),
+              ("data-viz", "Data Viz"),
+              ("task-orchestrator", "Task Orchestrator")
+            ] %}
+            {% for sid, label in skill_opts %}
+            <label class="flex items-center gap-1 px-3 py-1 rounded-full border border-slate-300 dark:border-slate-600 text-xs text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 hover:border-primary-400">
+              <input type="checkbox" value="{{ sid }}" data-skill-checkbox class="rounded border-slate-300 dark:border-slate-600">
+              <span>{{ label }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-slate-500 dark:text-slate-400">{% if lang == 'ja' %}APIキー{% else %}API Key{% endif %}</label>
+            <input id="reg-api-key" data-api-key-input class="flex-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm p-2" type="password" placeholder="sk-..." />
+          </div>
+          <label class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
+            <input type="checkbox" data-api-key-storage-toggle class="rounded border-slate-300 dark:border-slate-600" />
+            <span data-api-key-storage-label>localStorage に保存 (ブラウザに残ります)</span>
+          </label>
+          <p class="text-[12px] text-slate-500 dark:text-slate-400">{% if lang == 'ja' %}APIキーはブラウザローカルにのみ保存され、サーバへは送信しません。キー不要のプログラム（codex-cli など）の場合は空のままで構いません。{% else %}API keys are stored only in your browser (local/session storage) and never sent to the server. For keyless providers (e.g., codex-cli), leaving this blank is fine.{% endif %}</p>
+        </div>
+        <button id="btn-register-agent" class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-lg transition">
+          {% if lang == 'ja' %}登録{% else %}Register{% endif %}
+        </button>
+      </div>
+
+      <!-- Message -->
+      <div class="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white">{% if lang == 'ja' %}メッセージ送信{% else %}Send Message{% endif %}</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">{% if lang == 'ja' %}宛先を選び、件名と本文を入力{% else %}Select recipients, subject, body{% endif %}</p>
+          </div>
+          <span id="msg-status" class="text-xs text-slate-500 dark:text-slate-400"></span>
+        </div>
+        {% if not agents %}
+        <div class="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 text-xs flex items-center gap-2">
+          <i data-lucide="alert-circle" class="w-4 h-4"></i>
+          <span>{% if lang == 'ja' %}まずエージェントを登録してください。{% else %}Please register at least one agent first.{% endif %}</span>
+          <a href="#reg-program" class="underline text-amber-800 dark:text-amber-100 text-xs">{% if lang == 'ja' %}登録カードへ移動{% else %}Go to registration{% endif %}</a>
+        </div>
+        {% endif %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-slate-500 dark:text-slate-400">{% if lang == 'ja' %}送信エージェント{% else %}Sender (registered){% endif %}</label>
+            <select id="msg-sender-select" class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm p-2">
+              <option value="">{% if lang == 'ja' %}未選択{% else %}(not selected){% endif %}</option>
+              {% for a in agents %}
+              <option value="{{ a.name }}" data-agent-option data-role="{{ a.task_description|e }}" data-summary="{{ (a.task_summary or '')|e }}" data-skills="{{ (a.skills or [])|join(', ') }}" data-model="{{ a.primary_model or a.model }}">{{ a.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="text-xs text-slate-500 dark:text-slate-400">{% if lang == 'ja' %}送信者名（自由入力）{% else %}Sender name (free text){% endif %}</label>
+            <input id="msg-sender" class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm p-2" placeholder="BlueLake" />
+          </div>
+        </div>
+        <div class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+          <button id="btn-show-role" type="button" class="px-3 py-1 rounded border border-slate-300 dark:border-slate-600 hover:border-primary-400 text-slate-700 dark:text-slate-200">
+            {% if lang == 'ja' %}選択したエージェントの役割プロンプト{% else %}View role prompt{% endif %}
+          </button>
+          <span id="role-summary" class="truncate"></span>
+        </div>
+        <div>
+          <label class="text-xs text-slate-500 dark:text-slate-400">{% if lang == 'ja' %}宛先{% else %}Recipients{% endif %}</label>
+          <select id="msg-to" multiple class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm p-2">
+            {% for a in agents %}
+            <option value="{{ a.name }}">{{ a.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-slate-500 dark:text-slate-400">{% if lang == 'ja' %}件名{% else %}Subject{% endif %}</label>
+          <input id="msg-subject" class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm p-2" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-500 dark:text-slate-400">{% if lang == 'ja' %}本文{% else %}Body{% endif %}</label>
+          <textarea id="msg-body" rows="3" class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm p-2"></textarea>
+        </div>
+        <button id="btn-send-msg" class="px-4 py-2 bg-success-600 hover:bg-success-700 text-white text-sm font-semibold rounded-lg transition">
+          {% if lang == 'ja' %}送信{% else %}Send{% endif %}
+        </button>
+      </div>
+    </div>
+
+    <!-- Subtle accent -->
+    <div
+      class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-primary-500/5 to-purple-500/5 rounded-full blur-3xl pointer-events-none">
+    </div>
+  </div>
+
+  <!-- Enhanced Search Section -->
+  <div class="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-soft border border-slate-200 dark:border-slate-700"
+    x-data="{ scope: {{ (scope or '')|tojson }}, order: {{ (order or 'relevance')|tojson }}, query: {{ (q or '')|tojson }}, isExpanded: {{ 'true' if (q is not none and q != '') else 'false' }} }">
+
+    <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 bg-primary-600 rounded-xl flex items-center justify-center shadow-md">
+          <i data-lucide="search" class="w-6 h-6 text-white"></i>
+        </div>
+        <div>
+          <h2 class="text-2xl font-bold text-slate-900 dark:text-white">{% if lang == 'ja' %}メッセージ検索{% else %}Search
+            Messages{% endif %}</h2>
+          <p class="text-sm text-slate-600 dark:text-slate-400">{% if lang == 'ja'
+            %}件名と本文を対象にこのプロジェクト内のすべてのメッセージを検索します。{% else %}Scan subjects and bodies from every message in this
+            project.{% endif %}</p>
+        </div>
+      </div>
+      <button @click="isExpanded = !isExpanded"
+        class="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-lg transition-all duration-200 flex items-center gap-2"
+        data-tippy-content="Toggle advanced search filters">
+        <i x-show="!isExpanded" data-lucide="chevron-down" class="w-4 h-4" x-cloak></i>
+        <i x-show="isExpanded" data-lucide="chevron-up" class="w-4 h-4" x-cloak></i>
+        <span x-text="isExpanded ? 'Hide Advanced Filters' : 'Show Advanced Filters'"
+          class="text-sm font-medium"></span>
+      </button>
+    </div>
+
+    <div class="mb-4 space-y-2 text-sm text-slate-600 dark:text-slate-400">
+      <p>{% if lang == 'ja' %}既定では件名と本文の両方に一致させます。下のフィルタで範囲を絞り込むか、結果の並び順を変更できます。{% else %}By default we match both
+        subject and body text. Add filters below to narrow the scope or change how results are
+        ranked.{% endif %}</p>
+      <p>
+        <span class="font-semibold text-slate-700 dark:text-slate-200">{% if lang == 'ja' %}例:{% else %}Example:{% endif
+          %}</span>
+        <code
+          class="px-2 py-1 bg-slate-100 dark:bg-slate-900 rounded text-xs font-mono border border-slate-300 dark:border-slate-700">urgent status update</code>
+        {% if lang == 'ja' %}&mdash; その語句が件名または本文に含まれるメッセージを優先表示します。{% else %}&mdash; prioritizes messages whose subject
+        or body mentions that phrase.{% endif %}
+      </p>
+    </div>
+
+    <form method="get" action="/mail/{{ project.slug }}" class="space-y-6">
+      {% if lang %}<input type="hidden" name="lang" value="{{ lang }}" />{% endif %}
+      <!-- Search Input -->
+      <div class="relative group">
+        <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+          <i data-lucide="search"
+            class="w-5 h-5 text-slate-400 group-focus-within:text-primary-500 transition-colors"></i>
+        </div>
+        <input type="text" id="q" name="q" x-model="query" value="{{ q or '' }}"
+          placeholder="{% if lang == 'ja' %}件名・本文の検索、または subject:キーワード のようなフィルタを使用...{% else %}Search by subject, body, or use filters like subject:keyword...{% endif %}"
+          class="w-full pl-14 pr-4 py-4 bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 focus:border-primary-500 dark:focus:border-primary-500 rounded-xl text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 transition-all duration-200 font-medium"
+          autocomplete="off"
+          aria-label="{% if lang == 'ja' %}プロジェクト内のメッセージ検索{% else %}Search project messages{% endif %}" />
+        <input type="hidden" id="scope" name="scope" x-model="scope" />
+        <input type="hidden" id="order" name="order" x-model="order" />
+
+        <!-- Keyboard shortcut hint (cross-platform) -->
+        <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+          <kbd
+            class="hidden sm:inline-flex items-center gap-1 px-2 py-1 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 text-xs font-mono rounded border border-slate-300 dark:border-slate-600"
+            id="search-shortcut">
+            <span class="shortcut-key">⌘</span><span>K</span>
+          </kbd>
+        </div>
+      </div>
+
+      <p class="text-xs text-slate-500 dark:text-slate-500">{% if lang == 'ja' %}ヒント: 検索は大文字小文字を区別せず、引用符で囲んだ語句（例: <code
+          class="px-1 py-0.5 bg-slate-100 dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700">"weekly sync"</code>）にも対応します。{%
+        else %}Tip: searches are case-insensitive and support phrases in quotes, e.g. <code
+          class="px-1 py-0.5 bg-slate-100 dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700">"weekly sync"</code>.{%
+        endif %}</p>
+
+      <!-- Advanced Filters -->
+      <div x-show="isExpanded" x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 transform -translate-y-2"
+        x-transition:enter-end="opacity-100 transform translate-y-0"
+        class="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
+        <!-- Scope Filters -->
+        <div class="space-y-3">
+          <label class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+            <i data-lucide="filter" class="w-4 h-4"></i>
+            {% if lang == 'ja' %}検索対象{% else %}Choose where to search{% endif %}
+          </label>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" @click="scope = ''"
+              :class="scope === '' ? 'bg-primary-600 text-white ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-slate-900' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700'"
+              class="px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2">
+              <i data-lucide="align-justify" class="w-4 h-4"></i>
+              {% if lang == 'ja' %}件名＋本文（既定）{% else %}Subject + body (default){% endif %}
+            </button>
+            <button type="button" @click="scope = 'subject'"
+              :class="scope === 'subject' ? 'bg-primary-600 text-white ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-slate-900' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700'"
+              class="px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2">
+              <i data-lucide="heading" class="w-4 h-4"></i>
+              {% if lang == 'ja' %}件名のみ{% else %}Subject only{% endif %}
+            </button>
+            <button type="button" @click="scope = 'body'"
+              :class="scope === 'body' ? 'bg-primary-600 text-white ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-slate-900' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700'"
+              class="px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2">
+              <i data-lucide="file-text" class="w-4 h-4"></i>
+              {% if lang == 'ja' %}本文のみ{% else %}Body only{% endif %}
+            </button>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-500">{% if lang == 'ja' %}より厳密に検索する場合は、件名または本文に限定できます。{% else
+            %}Limit matching to the subject line or body when you need a tighter query.{% endif %}</p>
+        </div>
+
+        <!-- Order Filters -->
+        <div class="space-y-3">
+          <label class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+            <i data-lucide="arrow-up-down" class="w-4 h-4"></i>
+            {% if lang == 'ja' %}並び順{% else %}Sort results{% endif %}
+          </label>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" @click="order = 'relevance'"
+              :class="order === 'relevance' ? 'bg-primary-600 text-white ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-slate-900' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700'"
+              class="px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2">
+              <i data-lucide="star" class="w-4 h-4"></i>
+              {% if lang == 'ja' %}関連度順{% else %}Best match first{% endif %}
+            </button>
+            <button type="button" @click="order = 'time'"
+              :class="order === 'time' ? 'bg-primary-600 text-white ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-slate-900' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700'"
+              class="px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2">
+              <i data-lucide="clock" class="w-4 h-4"></i>
+              {% if lang == 'ja' %}新しい順{% else %}Newest first{% endif %}
+            </button>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-500">{% if lang == 'ja' %}最新の更新を上部に表示したい場合は時系列で並び替えます。{% else
+            %}Switch to chronological sorting when you need the latest
+            updates at the top.{% endif %}</p>
+        </div>
+
+        <!-- Additional Options -->
+        <div
+          class="md:col-span-2 flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
+          <label class="flex items-center gap-3 cursor-pointer group">
+            <input type="checkbox" id="boostSubject" name="boost" value="1"
+              class="w-4 h-4 text-primary-600 bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 rounded focus:ring-2 focus:ring-primary-500 transition-all duration-200"
+              {% if boost %}checked{% endif %}>
+            <span
+              class="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+              {% if lang == 'ja' %}件名一致を優先{% else %}Prioritize subject matches in rankings{% endif %}
+            </span>
+          </label>
+
+          <button type="submit"
+            class="px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white font-semibold rounded-lg shadow-medium hover:shadow-large transition-all duration-300 flex items-center gap-2 btn-ripple">
+            <i data-lucide="search" class="w-4 h-4"></i>
+            <span>{% if lang == 'ja' %}検索{% else %}Search{% endif %}</span>
+          </button>
+        </div>
+        <p class="md:col-span-2 text-xs text-slate-500 dark:text-slate-500">Subject prioritization nudges messages whose
+          subject matches your query higher without hiding relevant body matches.</p>
+      </div>
+    </form>
+
+    <!-- Search Results -->
+    {% if results is defined and results %}
+    <div class="mt-8 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+          <i data-lucide="list-checks" class="w-5 h-5 text-primary-600 dark:text-primary-400"></i>
+          Found <span class="text-primary-600 dark:text-primary-400">{{ results|length }}</span> result{{ 's' if
+          results|length != 1 else '' }}
+        </h3>
+      </div>
+
+      <div class="space-y-3">
+        {% for r in results %}
+        <a href="/mail/{{ project.slug }}/message/{{ r.id }}"
+          class="block group bg-slate-50 dark:bg-slate-900 hover:bg-white dark:hover:bg-slate-800 rounded-xl p-5 border-2 border-slate-200 dark:border-slate-700 hover:border-primary-400 dark:hover:border-primary-600 transition-all duration-300 shadow-sm hover:shadow-md stagger-item"
+          style="animation-delay: {{ [loop.index0 * 0.05, 1.0]|min }}s;">
+          <div class="flex items-start justify-between mb-3">
+            <h4
+              class="text-lg font-semibold text-slate-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors line-clamp-1">
+              {{ r.subject }}
+            </h4>
+            {% if r.hits %}
+            <span
+              class="px-3 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-xs font-bold rounded-full whitespace-nowrap ml-4">
+              {{ r.hits }} match{{ 'es' if r.hits != 1 else '' }}
+            </span>
+            {% endif %}
+          </div>
+
+          <div class="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400 mb-3">
+            <div class="flex items-center gap-1.5">
+              <i data-lucide="user" class="w-4 h-4"></i>
+              <span class="font-medium">{{ r.sender }}</span>
+            </div>
+            <span class="text-slate-300 dark:text-slate-600">•</span>
+            <div class="flex items-center gap-1.5">
+              <i data-lucide="calendar" class="w-4 h-4"></i>
+              <span>{{ r.created }}</span>
+            </div>
+            {% if r.thread_id %}
+            <span class="text-slate-300 dark:text-slate-600">•</span>
+            <div class="flex items-center gap-1.5" data-tippy-content="Canonical thread identifier shared across agents"
+              title="Canonical thread identifier shared across agents">
+              <i data-lucide="message-circle" class="w-4 h-4"></i>
+              <span class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-500">{% if lang == 'ja'
+                %}スレッド{% else %}Thread{% endif %}</span>
+              <span class="font-mono text-xs">{{ r.thread_id }}</span>
+            </div>
+            {% endif %}
+          </div>
+
+          {% if r.snippet %}
+          <div
+            class="text-sm text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 rounded-lg p-3 line-clamp-2 border border-slate-200 dark:border-slate-700">
+            {{ r.snippet | safe }}
+          </div>
+          {% endif %}
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% elif results is defined %}
+    <div
+      class="mt-8 text-center py-12 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
+      <div class="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i data-lucide="search-x" class="w-8 h-8 text-slate-400"></i>
+      </div>
+      <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-2">{% if lang == 'ja' %}一致するメッセージはありません{% else
+        %}No matching messages{% endif %}</h3>
+      <p class="text-sm text-slate-600 dark:text-slate-400">{% if lang == 'ja'
+        %}検索条件に一致するメッセージはありません。キーワードの変更や誤字の確認、検索範囲の拡大をお試しください。{% else %}No messages in this project match your search
+        criteria. Try using different keywords, checking for typos, or broadening your search terms.{% endif %}</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Agents Section -->
+  <div>
+    <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center gap-3">
+        <div class="w-1 h-10 bg-gradient-to-b from-success-600 to-success-800 rounded-full"></div>
+        <div>
+          <h2 class="text-2xl font-bold text-slate-900 dark:text-white">{% if lang == 'ja' %}登録済みエージェント{% else
+            %}Registered Agents{% endif %}</h2>
+          <p class="text-sm text-slate-600 dark:text-slate-400">{% if lang == 'ja' %}このプロジェクトで活動中の共同作業者{% else %}Active
+            collaborators in this project{% endif %}</p>
+        </div>
+      </div>
+      {% if agents %}
+      <span
+        class="px-4 py-2 bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-300 text-sm font-bold rounded-full flex items-center gap-2">
+        <span class="w-2 h-2 bg-success-500 rounded-full animate-pulse"></span>
+        {{ agents|length }} {% if lang == 'ja' %}稼働中{% else %}active{% endif %}
+      </span>
+      {% endif %}
+    </div>
+
+    {% if agents %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      {% for a in agents %}
+      <div
+        class="group relative bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-soft border-2 border-slate-200 dark:border-slate-700 hover:border-success-400 dark:hover:border-success-600 transition-all duration-300 card-hover overflow-hidden stagger-item"
+        style="animation-delay: {{ [loop.index0 * 0.05, 1.0]|min }}s;">
+
+        <!-- Decorative gradient blob -->
+        <div
+          class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-success-500/10 to-emerald-500/10 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-500 pointer-events-none">
+        </div>
+
+        <!-- Agent Header -->
+        <div class="relative flex items-center gap-4 mb-5">
+          <div
+            class="w-14 h-14 bg-gradient-to-br from-success-500 to-success-700 rounded-2xl flex items-center justify-center shadow-medium group-hover:shadow-glow group-hover:scale-110 transition-all duration-300">
+            <i data-lucide="bot" class="w-7 h-7 text-white"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <h3
+              class="text-lg font-bold text-slate-900 dark:text-white truncate group-hover:text-success-600 dark:group-hover:text-success-400 transition-colors">
+              {{ a.name }}
+            </h3>
+            <div class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 mt-1">
+              <span class="truncate">{{ a.program }}</span>
+              <span class="text-slate-300 dark:text-slate-600">•</span>
+              <span class="truncate">{{ a.model }}</span>
+            </div>
+          </div>
+        </div>
+
+        {% set summary = (a.task_summary or a.task_description or "") %}
+        {% if summary %}
+        <p class="text-sm text-slate-700 dark:text-slate-300 mb-2">
+          {{ summary[:140] }}{% if summary|length > 140 %}…{% endif %}
+        </p>
+        {% endif %}
+        {% if a.skills %}
+        <div class="flex flex-wrap gap-2 mb-2">
+          {% for s in a.skills %}
+          <span class="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-xs text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600">{{ s }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+        <div class="text-xs text-slate-500 dark:text-slate-400 mb-3">
+          {% if lang == 'ja' %}モデル{% else %}Model{% endif %}: {{ a.primary_model or a.model }}
+        </div>
+
+        <!-- Agent Actions -->
+        <div class="relative flex items-center gap-2">
+          <a href="/mail/{{ project.slug }}/inbox/{{ a.name }}"
+            class="flex-1 px-4 py-2.5 bg-gradient-to-r from-success-600 to-success-700 hover:from-success-700 hover:to-success-800 text-white text-sm font-semibold rounded-lg shadow-medium hover:shadow-large transition-all duration-300 text-center flex items-center justify-center gap-2 btn-ripple">
+            <i data-lucide="inbox" class="w-4 h-4"></i>
+            <span>Inbox</span>
+          </a>
+          <button onclick="copyToClipboard(this.dataset.agentName, 'Agent name copied!')" data-agent-name="{{ a.name }}"
+            class="p-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+            data-tippy-content="Copy agent name" aria-label="Copy agent name">
+            <i data-lucide="copy" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% else %}
+    <!-- Premium Empty State for Agents -->
+    <div
+      class="bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-800/50 rounded-2xl p-16 shadow-soft border border-slate-200 dark:border-slate-700 text-center">
+      <div class="relative inline-flex mb-6">
+        <div class="absolute inset-0 flex items-center justify-center">
+          <div class="w-32 h-32 bg-success-500/10 rounded-full animate-pulse"></div>
+        </div>
+        <div
+          class="relative w-20 h-20 bg-gradient-to-br from-success-500 to-success-700 rounded-2xl flex items-center justify-center shadow-large float">
+          <i data-lucide="user-plus" class="w-10 h-10 text-white"></i>
+        </div>
+      </div>
+
+      <h3 class="text-2xl font-bold text-slate-900 dark:text-white mb-3">
+        No agents registered yet
+      </h3>
+      <p class="text-slate-600 dark:text-slate-400 max-w-md mx-auto mb-6">
+        Agents will appear here once they register with this project using the MCP tools.
+      </p>
+
+      <div
+        class="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-sm text-slate-700 dark:text-slate-300">
+        <i data-lucide="info" class="w-4 h-4"></i>
+        <span>Use <code class="px-2 py-0.5 bg-white dark:bg-slate-900 rounded font-mono text-xs">register_agent</code>
+          to add agents</span>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const projectKey = document.querySelector('[data-project-key]')?.dataset.projectKey || '';
+      const regStatus = document.getElementById('reg-status');
+      const msgStatus = document.getElementById('msg-status');
+      const regProgram = document.getElementById('reg-program');
+      const regModel = document.getElementById('reg-model');
+      const regModelOptions = document.getElementById('reg-model-options');
+      const regRole = document.getElementById('reg-role');
+      const regSummary = document.getElementById('reg-desc');
+      const skillCheckboxes = Array.from(document.querySelectorAll('[data-skill-checkbox]'));
+      const msgSenderSelect = document.getElementById('msg-sender-select');
+      const msgSenderInput = document.getElementById('msg-sender');
+      const roleSummary = document.getElementById('role-summary');
+      const btnShowRole = document.getElementById('btn-show-role');
+      const agentMeta = {};
+      Array.from(document.querySelectorAll('[data-agent-option]')).forEach((opt) => {
+        agentMeta[opt.value] = {
+          role: opt.dataset.role || '',
+          summary: opt.dataset.summary || '',
+          skills: (opt.dataset.skills || '').split(',').map(s => s.trim()).filter(Boolean),
+          model: opt.dataset.model || ''
+        };
+      });
+      const defaultModels = {
+        'codex-cli': ['gpt-5.1-codex', 'gpt-5.1-codex-mini', 'gpt-5.1'],
+        'claude-code': ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229'],
+        'gemini': ['gemini-1.5-pro-latest', 'gemini-1.5-flash-latest']
+      };
+
+      async function fetchModelList(program) {
+        return defaultModels[program] || [];
+      }
+
+      async function updateModelOptions(program) {
+        if (!regModelOptions || !regModel) return;
+        regModelOptions.innerHTML = '';
+        const list = await fetchModelList(program);
+        list.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m;
+          regModelOptions.appendChild(opt);
+        });
+        if (list.length > 0) {
+          regModel.value = list[0];
+        }
+      }
+
+      // initialize model options
+      if (regProgram) {
+        updateModelOptions(regProgram.value);
+        regProgram.addEventListener('change', (e) => {
+          updateModelOptions(e.target.value);
+        });
+      }
+
+      async function rpcCall(name, args, apiKey) {
+        const headers = { 'Content-Type': 'application/json' };
+        if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+        const body = {
+          jsonrpc: '2.0',
+          id: `rpc-${name}-${Date.now()}`,
+          method: 'tools/call',
+          params: { name, arguments: args }
+        };
+        const res = await fetch('/mcp/', { method: 'POST', headers, body: JSON.stringify(body) });
+        const json = await res.json();
+        if (!res.ok || json.error) {
+          throw new Error(json.error?.message || `HTTP ${res.status}`);
+        }
+        return json.result;
+      }
+
+      function showStatus(el, text) {
+        if (el) el.textContent = text;
+      }
+
+      const getSelectedAgentMeta = () => {
+        const selected = msgSenderSelect?.value || '';
+        if (selected && agentMeta[selected]) return { name: selected, ...agentMeta[selected] };
+        return null;
+      };
+
+      const updateRolePreview = () => {
+        const meta = getSelectedAgentMeta();
+        if (!roleSummary) return;
+        if (!meta) {
+          roleSummary.textContent = '';
+          return;
+        }
+        roleSummary.textContent = meta.summary || meta.role.slice(0, 80);
+      };
+
+      msgSenderSelect?.addEventListener('change', (e) => {
+        const val = e.target.value;
+        if (val && msgSenderInput) msgSenderInput.value = val;
+        updateRolePreview();
+      });
+
+      btnShowRole?.addEventListener('click', () => {
+        const meta = getSelectedAgentMeta();
+        if (!meta) {
+          window.showToast?.('送信エージェントを選択してください', 'info');
+          return;
+        }
+        const skillsLabel = meta.skills?.length ? `\nSkills: ${meta.skills.join(', ')}` : '';
+        alert(`${meta.summary || meta.role}\n${skillsLabel}`);
+      });
+
+      updateRolePreview();
+
+      // Register Agent handler
+      const btnRegister = document.getElementById('btn-register-agent');
+      btnRegister?.addEventListener('click', async () => {
+        const program = regProgram?.value || '';
+        const model = regModel?.value || '';
+        const nameHint = document.getElementById('reg-name')?.value || '';
+        const summary = regSummary?.value || '';
+        const rolePrompt = regRole?.value || '';
+        const desc = summary || rolePrompt || '';
+        const taskSummary = summary || (rolePrompt ? rolePrompt.slice(0, 160) : '');
+        const skills = skillCheckboxes.filter(cb => cb.checked).map(cb => cb.value);
+        const apiKey = document.getElementById('reg-api-key')?.value || '';
+        if (!program || !model) { window.showToast?.('program/model を入力してください', 'warning'); return; }
+        showStatus(regStatus, '…');
+        btnRegister.disabled = true;
+        try {
+          await rpcCall('ensure_project', { human_key: projectKey }, apiKey);
+          const result = await rpcCall('create_agent_identity', {
+            project_key: projectKey,
+            program,
+            model,
+            primary_model: model,
+            name_hint: nameHint || null,
+            task_description: rolePrompt || desc || '',
+            task_summary: taskSummary || null,
+            skills
+          }, apiKey);
+          window.showToast?.(`登録完了: ${result?.name || ''}`, 'success');
+          showStatus(regStatus, 'ok');
+          setTimeout(() => window.location.reload(), 800);
+        } catch (e) {
+          console.error(e);
+          window.showToast?.(`登録失敗: ${e.message}`, 'error');
+          showStatus(regStatus, 'error');
+        } finally {
+          btnRegister.disabled = false;
+        }
+      });
+
+      // Send Message handler
+      const btnSend = document.getElementById('btn-send-msg');
+      btnSend?.addEventListener('click', async () => {
+        const selectedSender = msgSenderSelect?.value || '';
+        const sender = (msgSenderInput?.value || selectedSender || '').trim();
+        const subject = document.getElementById('msg-subject')?.value || '';
+        const body = document.getElementById('msg-body')?.value || '';
+        const toSel = document.getElementById('msg-to');
+        const apiKey = document.getElementById('reg-api-key')?.value || '';
+        const to = Array.from(toSel?.selectedOptions || []).map(o => o.value).filter(Boolean);
+
+        if (!sender) { window.showToast?.('送信者を入力してください', 'warning'); return; }
+        if (!to.length) { window.showToast?.('宛先を選択してください', 'warning'); return; }
+        if (!subject || !body) { window.showToast?.('件名と本文を入力してください', 'warning'); return; }
+
+        showStatus(msgStatus, '…');
+        btnSend.disabled = true;
+        try {
+          await rpcCall('ensure_project', { human_key: projectKey }, apiKey);
+          await rpcCall('send_message', {
+            project_key: projectKey,
+            sender_name: sender,
+            to,
+            subject,
+            body_md: body
+          }, apiKey);
+          window.showToast?.('送信しました', 'success');
+          showStatus(msgStatus, 'ok');
+          setTimeout(() => window.location.reload(), 500);
+        } catch (e) {
+          console.error(e);
+          window.showToast?.(`送信失敗: ${e.message}`, 'error');
+          showStatus(msgStatus, 'error');
+        } finally {
+          btnSend.disabled = false;
+        }
+      });
+
+      // Update keyboard shortcut display based on platform (with modern API fallback)
+      const shortcutKey = document.querySelector('.shortcut-key');
+      if (shortcutKey) {
+        // Use modern API if available, fall back to legacy navigator.platform / userAgent
+        const platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+      const ua = navigator.userAgent || '';
+      const isMac = /mac/i.test(platform) || /mac|iphone|ipad|ipod/i.test(ua);
+
+      if (!isMac) {
+        shortcutKey.textContent = 'Ctrl';
+      }
+    }
+
+    // Debounced search - disabled by default to avoid too many requests
+    // Uncomment the form.submit() line below to enable auto-search as you type
+    const form = document.querySelector('form');
+    const input = document.getElementById('q');
+    let timeout;
+
+    input?.addEventListener('input', () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        if (input.value.length >= 3) {
+          // Uncomment to enable live search (searches after 3+ characters)
+          // form.submit();
+        }
+      }, 800);
+    });
+  });
+</script>
+{% endblock %}

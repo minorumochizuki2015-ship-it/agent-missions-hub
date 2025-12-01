@@ -1,0 +1,3 @@
+Command: npm run lint && npm run test && npm run test:e2e --prefix apps/orchestrator-ui
+Result: PASSED (exit code 0)
+Notes: lint/Jest PASS; Playwright 13/13 PASS after fixing main landmark duplicate on Missions page (axe violations resolved).

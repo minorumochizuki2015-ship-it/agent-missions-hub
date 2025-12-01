@@ -1,0 +1,32 @@
+.ssssssssssssssss...                                                     [100%]
+============================== warnings summary ===============================
+.venv\Lib\site-packages\_pytest\config\__init__.py:1397
+  C:\Users\User\Trae\ORCH-Next\projects\agent-missions-hub-remote\.venv\Lib\site-packages\_pytest\config\__init__.py:1397: PytestConfigWarning: Unknown config option: timeout
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+.venv\Lib\site-packages\_pytest\config\__init__.py:1397
+  C:\Users\User\Trae\ORCH-Next\projects\agent-missions-hub-remote\.venv\Lib\site-packages\_pytest\config\__init__.py:1397: PytestConfigWarning: Unknown config option: timeout_method
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=============================== tests coverage ================================
+______________ coverage: platform win32, python 3.12.12-final-0 _______________
+
+Name                                     Stmts   Miss  Cover   Missing
+----------------------------------------------------------------------
+src\mcp_agent_mail\__init__.py               5      2    60%   6-8
+src\mcp_agent_mail\app.py                   45     25    44%   24, 29, 34, 39, 46, 54-60, 65, 76-100
+src\mcp_agent_mail\config.py               152     35    77%   26, 176-181, 185-188, 194-335, 446-448
+src\mcp_agent_mail\db.py                   159    121    24%   23-32, 66-110, 119-195, 201-206, 212-216, 220-224, 229-231, 246-264, 270-288, 298-311, 315-361, 369-380
+src\mcp_agent_mail\http.py                1116   1064     5%   57-64, 72-78, 88-131, 136-139, 144-154, 159-161, 164-188, 193-194, 198-213, 225-250, 254-291, 298-314, 318-335, 339-377, 381-518, 522-524, 529-3306, 3314-3317, 3323-3344
+src\mcp_agent_mail\models.py               151      0   100%
+src\mcp_agent_mail\routers\__init__.py       2      0   100%
+src\mcp_agent_mail\routers\missions.py      98     44    55%   67-84, 102-122, 149-187, 219-250
+src\mcp_agent_mail\storage.py              709    643     9%   31-32, 36-42, 60, 73-79, 83-102, 105-118, 122-126, 135-156, 160-163, 167-177, 181, 187-254, 258-261, 265-276, 288-307, 311-314, 318-330, 347-426, 442-477, 488-520, 531-581, 585-668, 673-674, 678-680, 684-685, 708-746, 773-828, 845-979, 993-1029, 1048-1104, 1125-1165, 1184-1256, 1275-1320, 1350-1498
+src\mcp_agent_mail\utils.py                 30     30     0%   3-90
+src\mcp_agent_mail\workflow_engine.py      179      9    95%   38, 66, 115, 145, 283-286, 359
+----------------------------------------------------------------------
+TOTAL                                     2646   1973    25%
+4 passed, 17 skipped, 2 warnings in 21.99s

@@ -1,16 +1,15 @@
-from __future__ import annotations
-
 """SQLModel ベースの永続化スキーマ雛形。"""
 
-from datetime import datetime
-from typing import Optional
+from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 from sqlalchemy import JSON, Column
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
-from sqlmodel import Field, Session, SQLModel, create_engine, select
+from sqlmodel import Field, Session, SQLModel, create_engine
 
 
 class Project(SQLModel, table=True):
@@ -50,7 +49,7 @@ class Mission(SQLModel, table=True):
 
 
 class TaskGroup(SQLModel, table=True):
-    """タスクグループ（シーケンス単位）を保持するテーブル。"""
+    """タスクグループ(シーケンス単位)を保持するテーブル。"""
 
     id: int | None = Field(default=None, primary_key=True)
     mission_id: int = Field(foreign_key="mission.id", index=True)
@@ -64,7 +63,9 @@ class Task(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     mission_id: int = Field(foreign_key="mission.id", index=True)
-    group_id: Optional[int] = Field(default=None, foreign_key="taskgroup.id", index=True)
+    group_id: Optional[int] = Field(
+        default=None, foreign_key="taskgroup.id", index=True
+    )
     kind: str
     status: str = Field(default="pending")
     assignee_agent_id: Optional[int] = Field(default=None, foreign_key="agent.id")
@@ -115,7 +116,7 @@ _SESSIONMAKER_CACHE: dict[str, sessionmaker] = {}
 
 
 def get_engine(database_url: str) -> Engine:
-    """同期エンジンを構築／キャッシュする。"""
+    """同期エンジンを構築/キャッシュする。"""
 
     engine = _ENGINE_CACHE.get(database_url)
     if engine is None:

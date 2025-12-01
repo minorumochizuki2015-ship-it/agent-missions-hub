@@ -1,0 +1,66 @@
+version: 1
+
+global:
+  max_files_force_run: 500
+
+ui_gate:
+  paths_any:
+    - "apps/orchestrator-ui/**"
+    - "src/**/templates/**"
+    - "**/*.css"
+    - "**/*.scss"
+    - "**/*.ts"
+    - "**/*.tsx"
+    - "playwright.config*"
+    - "scripts/ui_audit*.py"
+    - "package.json"
+    - "package-lock.json"
+    - "pnpm-lock.yaml"
+  labels_any:
+    - "run-ui-gate"
+  always_on_branches:
+    - "main"
+    - "release/*"
+  max_files_force_run: 500
+
+sbom:
+  dep_files:
+    - "**/pyproject.toml"
+    - "**/uv.lock"
+    - "**/package.json"
+    - "**/package-lock.json"
+    - "**/pnpm-lock.yaml"
+  always_on_branches:
+    - "main"
+  always_on_events:
+    - "tag"
+
+secret_scan:
+  paths_any:
+    - "**/*.py"
+    - "**/*.js"
+    - "**/*.ts"
+    - "**/*.tsx"
+    - "**/*.yml"
+    - "**/*.yaml"
+    - "**/*.json"
+    - "**/*.tf"
+    - ".github/workflows/**"
+    - "infra/**"
+
+bandit:
+  paths_any:
+    - "**/*.py"
+
+gitops_plan:
+  requires_update_if_paths_any:
+    - "migrations/**"
+    - "schema/**"
+    - "src/**/models/**"
+
+gitops_approvals:
+  requires_update_if_paths_any:
+    - "src/orchestrator/**"
+    - "src/mcp_agent_mail/workflow/**"
+    - "infra/**"
+    - "config/security/**"

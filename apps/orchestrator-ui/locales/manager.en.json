@@ -1,0 +1,51 @@
+{
+  "pageTitle": "Manager",
+  "disabledTitle": "Manager disabled",
+  "disabledBody": "Manager UI is turned off by feature flag.",
+  "backToInbox": "Back to Inbox",
+  "missions": "Missions",
+  "taskGroups": "Task Groups",
+  "tasksArtifacts": "Tasks & Artifacts",
+  "owner": "Owner",
+  "status": "Status",
+  "runMode": "Run mode",
+  "updatedAt": "Updated",
+  "kind": "Kind",
+  "startedAt": "Started",
+  "finishedAt": "Finished",
+  "artifactType": "Type",
+  "scope": "Scope",
+  "version": "Version",
+  "sha": "SHA",
+  "tags": "Tags",
+  "messages": "Messages",
+  "liveMissions": "Live missions (API)",
+  "liveMissionsEmpty": "No live missions",
+  "liveMissionsUpdated": "Last update",
+  "apiAlertTitle": "API unavailable or no data",
+  "apiAlertBody": "Backend API failed or returned no missions. Data shown may be stale/mock.",
+  "langToggle": "Language",
+  "searchPlaceholder": "Filter missions by title…",
+  "kinds": {
+    "sequential": "Sequential",
+    "parallel": "Parallel",
+    "loop": "Loop"
+  },
+  "statuses": {
+    "pending": "Pending",
+    "running": "Running",
+    "completed": "Completed",
+    "failed": "Failed"
+  },
+  "runModes": {
+    "sequential": "Sequential",
+    "parallel": "Parallel",
+    "loop": "Loop"
+  },
+  "artifactTypes": {
+    "plan": "Plan",
+    "diff": "Diff",
+    "test": "Test Result",
+    "screenshot": "Screenshot"
+  }
+}

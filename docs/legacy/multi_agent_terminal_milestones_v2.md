@@ -1,25 +1,23 @@
 # マルチエージェント端末 マイルストーン v2
 
-更新日時: 2025-11-17T17:10:20Z (UTC換算)
+更新日時: 2025-11-17T17:10:20Z (legacy 証跡) → **新リポでの確認は未実施**
 
 ## 現在の状況
-- UI Gate: PASS（preview_dir=artifacts/preview/, UI-Audit=ui-audit-v2, ts=2025/11/17 17:10:20）
-- エビデンス:
-  - 日本語ビュー `ui_gate_pass_ja`（`artifacts/ui_audit/summary_ja.json` 生成を nightly で行い、summary/screen/DOM の SHA を ci_evidence に記録）
-  - 英語ビュー `ui_gate_pass_en`（`artifacts/ui_audit/summary_en.json` の LCP=344ms / TTI=0.018s を基準, screen/html は `_en` 付与でスナップショット済み）
-  - `observability/policy/ci_evidence.jsonl` へ両イベント・nightly_preview_diff を追記（coverage_updated: 2025/11/17 16:47:42 / line_coverage=0.03864、UI Gate より前の時刻である旨を注記）
+- UI Gate: **未検証**（旧リポの PASS を参照中。新リポで Playwright 監査が通った段階で更新する）
+- エビデンス（legacy 参考値）:
+  - 日本語ビュー `ui_gate_pass_ja`（`artifacts/ui_audit/summary_ja.json` を旧環境で生成、summary/screen/DOM の SHA を ci_evidence に記録）
+  - 英語ビュー `ui_gate_pass_en`（`artifacts/ui_audit/summary_en.json` の LCP=344ms / TTI=0.018s を基準として旧環境で取得）
+  - `observability/policy/ci_evidence.jsonl` への `ui_gate_pass_*` / nightly_preview_diff は旧リポの値。新リポでの再実行前に参照しない。
 
-## 直近で完了した項目
-1. preview 生成（`artifacts/preview/index.html` + README）を整備。
-2. UI-Audit（Playwright + axe + WebVitals、日本語ビュー）を再実行し、serious=0 を確認。
-3. Gate=PASS に更新し、`summary.json` の `gate.pass=true` を確認（JA/EN 両ビュー）。
-4. `ci_evidence.jsonl` に最新 SHA と `ui_gate_pass_ja` / `ui_gate_pass_en` を追記。
-5. 統合受信箱ソートメニュー日本語化（新しい順/古い順/送信者順）と戻りリンクの言語伝搬を完了。
+## 直近で完了した項目（新リポ視点）
+1. 旧リポから UI/runner/監査資産を `apps/orchestrator-ui/`・`scripts/ui_audit*`・`runner*` として取り込み、参照可能にした。
+2. pytest／API スモークを新リポのみで実行し、バックエンド基盤が正常に動作することを確認。
+3. 今後の UI-Audit を新リポで再実行し、結果をもとに本ドキュメントとチェックリストを更新する予定。
 
 ## 次のマイルストーン
-1. docs/operations/handover_recovery_checklist.md を PASS 状態と「ユーザー専用ログ」ポリシーに合わせて維持する。
-2. nightly UI-Audit（cron）で `preview_dir` と `artifacts/ui_audit`（summary_{lang}/html_{lang}/screen_{lang}）の SHA を監視し、差分が出たら自動で Jira 連携。
-3. 週次で `artifacts/preview/` と最新 Design-UI ハンドオフを突き合わせ、差分サマリを `reports/work/` に出力。
+1. 新リポで Next/React フロントをビルドし、`/plan` `/test` `/health/ui` の動作と preview 生成を確認する。
+2. Playwright + axe UI-Audit を JA/EN で再実行し、`observability/policy/ci_evidence.jsonl` に最新 SHA を記録する。
+3. 週次で `artifacts/preview/` と Design-UI ハンドオフを突き合わせ、差分サマリを `reports/work/` に出力。
 
 ## 参照ドキュメント
 - `docs/multi_agent_terminal_checklist_v2.md`

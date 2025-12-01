@@ -1,0 +1,185 @@
+【監査依頼】
+
+対象：<プロジェクト名>
+AIモデル：<使用モデル名>
+
+監査AI（AUDIT_rules.yaml）は以下のルールに基づき監査する：
+- 監査・テスト方法.md
+- codexcli_git_ops_policy.md
+- AUDIT_rules.yaml
+- Shadow Audit Layer（manifest/hash/signature/metrics）
+- GitOps 制約（diff ≤3 files / ≤50 lines）
+- Plan→Test→Patch / SafeOps / LOCK / APPROVALS
+
+────────────────────────────
+【Git情報】
+Target Commit: <監査対象コミットSHA>
+Branch: <対象ブランチ名>
+
+────────────────────────────
+【コンテキスト（任意）】
+タスク概要：
+- <Issue / 今回の作業サイクルの目的>
+
+関連ドキュメント：
+- <docs/...>
+- multi_agent_terminal_checklist_v2.md
+- multi_agent_terminal_milestones_v2.md
+- agent_missions_hub_design_v2.md
+
+※不要なら削除可。
+
+────────────────────────────
+【監査結果本文（CI / pytest / UI Gate / Auto Gate の証跡）】
+
+<ここに最新 CI ログや pytest 結果、UI Gate 差分、前回監査ログなどをそのまま貼る>
+
+例：
+- GitHub Actions の stdout/SARIF 要点
+- pytest -q の PASS/FAIL 行
+- UI Gate（差分あり/なし、スキップ理由）
+- mypy / ruff / black の結果
+- SBOM / coverage の要点（必要時）
+
+────────────────────────────
+【作業結果（WORK が本バッチで行った作業内容）】
+
+対応内容:
+- <今回バッチで行った作業を箇条書きで記載>
+  - 例：scripts/shadow_audit_emit.py を新規追加
+  - 例：tests/test_shadow_audit.py を追加し hash chain / tamper を検証
+  - 例：plans/diff-plan.json の status を updated
+
+再テスト結果:
+- ruff check <対象ファイル> → PASS/FAIL
+- isort --check-only <対象ファイル> → PASS/FAIL
+- black --check <対象ファイル> → PASS/FAIL
+- pytest <対象テスト> → PASS/FAIL
+- （必要なら）pytest -q → Pass/Skip/Warn の総括
+- UI Gate：差分なし = スキップ理由を ci_evidence.jsonl に記録
+
+監査指摘への回答:
+- <前回監査で挙がった指摘ごとに明確に回答する>
+  - 指摘A：XXXX → 対応内容は YYYY（証跡：Test PASS）
+  - 指摘B：ZZZZ → 今回はバッチ制約上未対応、次サイクルで実施
+
+更新ファイル:
+- <今回のバッチで実際に変更したファイルのみ列挙>
+
+次の推奨ステップ（WORKによる自己評価）:
+- <次回やるべき作業を優先度順に簡潔に記載>
+
+────────────────────────────
+【Shadow Audit Evidence（WORK 実行結果として必ず記録）】
+
+※ “実際の manifest/hash/signature の状態” を報告する欄  
+※ manifest* は Git 管理外（.gitignore）であり、tmp/テスト環境での状態をそのまま報告すればよい
+
+- manifest.jsonl 存在：OK / NG / N/A（テスト用 tmp のみ）
+- hash chain：OK / NG（全行整合の可否）
+- signature：OK / NG / N/A（Batch2 では N/A）
+- explainability_rate：<0–100%>
+- unsigned_events：<数値>
+- rule_drift：<数値>
+- approval_mismatch：<数値>
+
+────────────────────────────
+【Shadow Audit Events（WORK 自身の PLAN/TEST/PATCH/APPLY ログ）】
+
+※ WORK は自分が行った各イベントについて 1 行 JSON の概略をここに貼る  
+※ （Batch2 では emit のテストのみでも可、Batch3 以降は PLAN/TEST/PATCH/APPLY/APPROVALS 全イベント必須）
+
+例：
+
+- event: PLAN
+  actor: WORK
+  ts: <UTC>
+  rule_ids: [...]
+  policy_refs: [...]
+  reasoning_digest: "<本バッチの計画理由（200–600 chars）>"
+  inputs_hash: sha256("<before>")
+  outputs_hash: sha256("<after>")
+  approval_state: none / requested / granted
+  approvals_row_id: ""
+
+- event: TEST
+  actor: WORK
+  ts: <UTC>
+  rule_ids: [...]
+  policy_refs: [...]
+  reasoning_digest: "<テスト実施の理由と目的>"
+  inputs_hash: sha256("<test_before>")
+  outputs_hash: sha256("<test_after>")
+  approval_state: none
+  approvals_row_id: ""
+
+（PATCH / APPROVALS / APPLY があれば同様に続ける）
+
+────────────────────────────
+【出力要件（監査AIへの明示命令）】
+
+監査AIは、上記 WORK 出力を基に、以下形式で監査レポートを作成する：
+
+1. 監査レポート（Summary / Findings / Tests / Notes）
+   - Summary:
+     - Target Commit: <再掲>
+     - Branch: <再掲>
+     - Status: Block / Proceed with fixes / Proceed
+     - Overall（1〜3行の要約）
+   - Findings:
+     - Blocking:
+       - Detail / Suggestion
+     - Major:
+       - Detail / Suggestion
+     - Minor:
+       - Detail / Suggestion
+     - Cosmetic:
+       - Detail / Suggestion
+   - Tests:
+       - ruff / black / isort / pytest / UI Gate などの結果まとめ
+   - Notes:
+       - 追加観点（Auto Gate・Lock 状態・CI artifact 等）
+
+2. GitOps（codexcli_git_ops_policy.md）に基づく push/PR 可否判定
+
+3. WORK_rules.yaml へ渡す「修正指示プロンプト全文」
+   - 修正対象ファイル
+   - 修正方針
+   - テスト戦略
+   - MVP 完了までのステップ（優先度順）
+
+4. 不明点の明示（不足情報がある場合）
+
+────────────────────────────
+【WORKへの追加指示（MVP までの作業サイクル）】
+
+対象：<プロジェクト名>
+Branch：<作業ブランチ>
+Base：<base>
+Goal：<今回バッチの目標（例：Batch3 / PS hook）>
+
+【修正対象ファイル】
+- <ファイルパス> … <目的/理由>
+
+【修正指示】
+- diff ≤3 files / ≤50 lines を厳守
+- Plan→Test→Patch を必ず plans/diff-plan.json に記録
+- SafeOps/LOCK を維持
+- manifest* は Git 管理外のまま（tmp での生成/検証のみ）
+- 影響ファイルが3件を超える場合はバッチ分割
+- push/PR は監査が許可するまで禁止
+
+【テスト戦略】
+- ruff check <対象>
+- isort --check-only <対象>
+- black --check <対象>
+- pytest -q <対象 test>
+- UI差分なしの場合は ci_evidence.jsonl に “UI Gate skipped (no diff)” を記録
+- SBOM/coverage 結果を artifacts へ保存（必要時）
+
+【MVPまでのステップ（優先度順）】
+1) Phase 2A：<タスク>
+2) Phase 2B：<タスク>
+3) Phase 2C：<タスク>
+4) Phase 2D：<タスク>
+

@@ -1,0 +1,32 @@
+{
+  "name": "mcp-agent-mail",
+  "version": "1.0.0",
+  "description": "MCP Agent Mail - AI-powered email management system",
+  "scripts": {
+    "ui:audit": "python scripts/ui_audit_run.py",
+    "ui:audit:dev": "python scripts/ui_audit_run.py --url http://127.0.0.1:8766/mail/unified-inbox",
+    "ui:audit:ci": "python scripts/ui_audit_run.py --url http://127.0.0.1:8766/mail/unified-inbox --ci-mode",
+    "test:ui": "pytest tests/test_ui_gate.py -v",
+    "test:http": "pytest tests/test_http_transport.py -v",
+    "test:all": "pytest tests/ -v",
+    "test:ui-gate": "pytest tests/test_ui_gate.py -v --tb=short",
+    "test:http-transport": "pytest tests/test_http_transport.py -v --tb=short"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "axe-core": "^4.8.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "agent",
+    "mail",
+    "email",
+    "ai",
+    "automation"
+  ],
+  "author": "MCP Agent Team",
+  "license": "MIT"
+}

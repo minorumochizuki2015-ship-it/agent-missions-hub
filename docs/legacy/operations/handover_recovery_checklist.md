@@ -5,7 +5,7 @@
 **注意**: `houkokuzenbun.txt` はユーザー専用の手入力ログです。AI は参照・追記を行わず、必要な場合はユーザーへ更新依頼のみ伝えます。
 
 ## 1. 初動確認
-1. `plans/diff-plan.json` と `docs/plans/diff-plan-local.json` でタスク状態 (Pending / Blocked / Completed) を照合する。
+1. `plans/plan_diff.json` を参照し、タスク状態 (Pending / Blocked / Completed) を確認する（ローカル版は未運用）。
 2. `TRAE SOLO Builder Report*.txt` の記述が runner ログと SHA 証跡に整合しているか確認する。`houkokuzenbun.txt` はユーザー管理ファイルのため存在のみチェックし、内容へは触れない。
 3. UI Gate: `artifacts/ui_audit/summary.json` の `gate.pass` が **true** (ts=2025/11/17 10:12:00 JST, script=ui-audit-v2) であることを確認し、`FAIL` 時は checklist / diff-plan を Blocked に戻す。
 4. CI エビデンス: `observability/policy/ci_evidence.jsonl` に最新テストの SHA・coverage・runner ログが追記されているか検証する。
@@ -56,7 +56,7 @@
 ## 5. バックアップ / 証跡
 1. `backups/` に diff-plan・cmd報告書・ci evidence をまとめた最新スナップショットを保存。
 2. `scripts/mail_lightning_audit.py` で取得したログは `data/logs/current/` と `observability/` へ格納。
-3. 重要ファイル (diff-plan、checklist、README 等) を更新したら `docs/plans/diff-plan-local.json` の `updated_at` も更新。
+3. 重要ファイル (plan_diff、checklist、README 等) を更新したら `plans/plan_diff.json` の該当項目を更新。
 4. `TRAE SOLO Builder Report.txt` は runner コマンドと対応 SHA を記録し、`houkokuzenbun.txt` での共有はユーザーへ依頼する。
 
 ## 6. レポート更新

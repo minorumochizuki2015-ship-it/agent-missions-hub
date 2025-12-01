@@ -1,0 +1,3 @@
+{"ts": "2025-11-25T13:43:57.410331+00:00", "event": "workflow_engine_run_started", "mission_id": "f19a7d74-671a-4abe-b90e-25a4b28238f4", "mode": "sequential", "status": "running", "run_id": "190fd606-f2a1-4201-902b-3dde734f9477"}
+{"ts": "2025-11-25T13:43:57.486224+00:00", "event": "workflow_engine_run_failed", "mission_id": "f19a7d74-671a-4abe-b90e-25a4b28238f4", "run_id": "190fd606-f2a1-4201-902b-3dde734f9477", "error": "Task adcf4a01-e3e9-440c-b4ec-f002b0d685ef failed: Simulated hard failure"}
+{"ts": "2025-11-25T13:43:57.487287+00:00", "event": "workflow_engine_run_completed", "mission_id": "f19a7d74-671a-4abe-b90e-25a4b28238f4", "run_id": "190fd606-f2a1-4201-902b-3dde734f9477", "status": "failed"}

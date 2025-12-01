@@ -1,0 +1,3 @@
+Command: python -m pytest -vv tests/test_workflow_engine.py tests/test_missions_api.py
+Result: PASSED (exit code 0)
+Notes: Phase 2B short suite covering run API, self-heal success/failure traces, artifacts/knowledge CRUD (404/422).
