@@ -1,5 +1,12 @@
 【監査レポート】
 
+【State】（実測必須）
+- Workspace: <pwd>
+- git status -sb: <実行結果>
+- HEAD: <git log -1 --oneline>
+- Shadow Audit verify_chain: <OK/NG/未実行理由>
+- Tests: <実行コマンドと結果 or 未実行理由>
+
 対象：<プロジェクト名>
 AIモデル：<使用モデル名>
 
@@ -117,8 +124,8 @@ Base：<必要なら>
 Goal：<今回サイクルの最小ゴール（例：Batch3 PS hook）>
 
 【修正対象ファイル】
-- <ファイルパス> … <目的/理由>
-- <ファイルパス> … <目的/理由>
+ - <ファイルパス> … <目的/理由>
+ - <ファイルパス> … <目的/理由>
 
 【修正指示（WORK が行うべき具体タスク）】
 - diff ≤3 files / ≤50 lines を厳守
@@ -137,9 +144,9 @@ Goal：<今回サイクルの最小ゴール（例：Batch3 PS hook）>
 - ruff check scripts tests
 - isort --check-only scripts tests
 - black --check scripts tests
-- pytest -q tests/<今回の対象>
-- UI 差分なし → ci_evidence.jsonl に “UI Gate skipped (no diff)” を記録
-- SBOM（必要時）を observability/policy/sbom*.json に出力
+ - pytest -q tests/<今回の対象>
+ - UI 差分なし → ci_evidence.jsonl に “UI Gate skipped (no diff)” を記録
+ - SBOM（必要時）を observability/policy/sbom*.json に出力
 
 【MVP までのステップ（優先度順）】
 1) Phase 2A: <データモデル/マイグレーション確定 + migration test>
@@ -177,4 +184,11 @@ Goal：<今回サイクルの最小ゴール（例：Batch3 PS hook）>
   approvals_row_id: ""
 
 （PATCH / APPROVALS / APPLY イベントもあれば同様に追記）
+
+────────────────────────────
+【Self-check（監査者が Yes/No で記載）】
+- 実測コマンドに基づいて記載したか？
+- テスト実行有無と理由を明記したか？
+- diff ≤3 files / ≤50 lines に言及したか？
+- Shadow Audit への言及を含めたか？
 
