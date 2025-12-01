@@ -30,6 +30,7 @@ def serve(
 
     run_id = str(int(time.time() * 1000))
     typer.echo(f"serve_start host={host} port={port} run_id={run_id}")
+    _echo_health_check(host, port, run_id)
     uvicorn.run(
         "agent_missions_hub.http:build_app",
         factory=True,
@@ -147,6 +148,14 @@ def _log_cli_call_evidence(
         pass  # Best-effort logging, don't crash CLI on evidence write failure
 
 
+def _echo_health_check(host: str, port: int, run_id: str) -> None:
+    """serve 起動時に /health の疎通を1行ログ出力する。"""
+    url = f"http://{host}:{port}/health"
+    try:
+        resp = httpx.get(url, timeout=2.0)
+        typer.echo(f"health_check run_id={run_id} status={resp.status_code}")
+    except Exception:  # pragma: no cover - network errors
+        typer.echo(f"health_check run_id={run_id} status=NG")
 def main() -> None:  # pragma: no cover
     app()
 
