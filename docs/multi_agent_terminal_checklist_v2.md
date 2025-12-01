@@ -16,6 +16,7 @@
   2. `python scripts/ui_audit_run.py`（JA/EN 両方）
   3. `artifacts/ui_audit/summary*.json`・`screens/*.png`・`report.html` の SHA を `observability/policy/ci_evidence.jsonl` に追記
   4. Gate=PASS を確認後、本チェックリストと docs/multi_agent_terminal_milestones_v2.md を同期更新
+ - Phase2D: call で run_id/path/api_up を echo 済み、serve の /health を `cli_runs/<run_id>_health.log` に記録済み（2025-12-02 wrapper pytest 4 passed）。次は Phase2C 実データ UI へ移行。
 
 ## PASS 維持フロー
 1. `artifacts/preview/` を更新して差分を記録（Plan→Test→Patch の範囲内）。
