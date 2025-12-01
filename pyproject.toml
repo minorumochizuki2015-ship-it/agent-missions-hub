@@ -203,6 +203,7 @@ filterwarnings = [
 markers = [
   "asyncio: mark test as requiring asyncio event loop",
 ]
+console_output_style = "classic"
 
 [dependency-groups]
 dev = [
@@ -210,5 +211,4 @@ dev = [
     "pytest-cov>=7.0.0",
     "pytest-timeout>=2.4.0",
 ]
-
 
