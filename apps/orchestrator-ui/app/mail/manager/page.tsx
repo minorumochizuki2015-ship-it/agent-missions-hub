@@ -219,11 +219,16 @@ export default function ManagerPage({
 
   const [selectedMission] = missions
   const groups = useMemo(
-    () => MOCK_GROUPS.filter((g) => g.mission_id === selectedMission.id).sort((a, b) => a.order - b.order),
-    [selectedMission.id]
+    () =>
+      selectedMission
+        ? MOCK_GROUPS.filter((g) => g.mission_id === selectedMission.id).sort((a, b) => a.order - b.order)
+        : [],
+    [selectedMission?.id]
   )
-  const tasks = MOCK_TASKS.filter((t) => groups.some((g) => g.id === t.group_id))
-  const artifacts = MOCK_ARTIFACTS.filter((a) => tasks.some((t) => t.id === a.task_id))
+  const tasks = selectedMission ? MOCK_TASKS.filter((t) => groups.some((g) => g.id === t.group_id)) : []
+  const artifacts = selectedMission
+    ? MOCK_ARTIFACTS.filter((a) => tasks.some((t) => t.id === a.task_id))
+    : []
 
   const messages: Message[] = missions.slice(0, 3).map((m, i) => ({
     id: `msg-${m.id}-${i}`,
