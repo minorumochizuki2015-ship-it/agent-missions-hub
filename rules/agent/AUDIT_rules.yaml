@@ -130,7 +130,7 @@ procedures:
     steps:
       - "Require pytest=100% pass; compute coverage by component (unit, integration, e2e)."
       - "Assert coverage.* ≥ constraints.policy_parameters.coverage_min.*."
-      - "Fail on EOL≠LF or secrets findings; forbid diffs that exceed lane limits (A=3 files/50 lines, B=3 files/150 lines, C=logic-only unlimited lines)."
+      - "Fail on EOL≠LF or secrets findings; forbid diffs that exceed lane limits (A=3 files/50 lines; B=preferred<=130 lines, max 200 lines/5 files, >200 requires lead approval + full human review, >=400 forbidden; C=logic-only, lines/files unlimited)."
 
   - name: "Path policy check (Windows absolute)"
     steps:
@@ -202,7 +202,7 @@ procedures:
   - name: "Response template enforcement"
     steps:
       - "All AUDIT responses MUST begin with a [State] block containing workspace path, git status -sb, HEAD (git log -1 --oneline), shadow audit verify_chain result, and tests run (or reason not run)."
-      - "All AUDIT responses MUST end with a Self-check block (Yes/No) for: measured data only, tests recorded or reason, lane-specific diff constraints noted, shadow-audit mention."
+      - "All AUDIT responses MUST end with a Self-check block (Yes/No) for: measured data only, tests recorded or reason, lane-specific diff constraints noted (A=3/50; B<=130 preferred, 200 max/5 files; >200 needs lead approval + human review; >=400 NG; C=logic-only unlimited), shadow-audit mention."
       - "State and Self-check MUST be based on fresh commands per response; prior logs or assumptions are insufficient."
       - "If verification passes, note 'shadow audit chain: OK' and 'signature: OK/skip' in the audit report."
 
