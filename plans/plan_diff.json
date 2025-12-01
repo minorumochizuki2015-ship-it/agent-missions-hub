@@ -526,7 +526,7 @@
       "evidence": [
         "observability/policy/ci_evidence.jsonl"
       ],
-      "notes": "初手は 3ファイル/50行以内で実データカードを追加し、npm test --runInBand と必要なら UI Gate を実施。"
+      "notes": "初手は 3ファイル/50行以内で実データカードを追加し、npm test --runInBand と必要なら UI Gate を実施。2025-12-01 時点で engines.yaml を外部化し load_engine_config で loader 統合済み（pytest tests/test_workflow_engine.py 4/4 PASS 確認）。"
     },
     {
       "id": "engines-yaml-externalization",
