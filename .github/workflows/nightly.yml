@@ -31,6 +31,8 @@ jobs:
       - name: Sync dependencies (dev)
         run: uv sync --dev
       - name: Run migrations
+        env:
+          PYTHONPATH: src
         run: uv run python -m mcp_agent_mail.cli migrate
       - name: Install Playwright browsers
         run: uv run python -m playwright install --with-deps chromium
