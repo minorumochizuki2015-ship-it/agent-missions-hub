@@ -286,6 +286,7 @@ export default function ManagerPage({
             {t.apiAlertBody}
             {alertDetail}
           </div>
+          <div className="text-xs text-rose-800">{t.apiAlertHint}</div>
         </div>
       )}
 

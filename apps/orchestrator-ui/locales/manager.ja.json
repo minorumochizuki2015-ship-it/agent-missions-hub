@@ -24,6 +24,7 @@
   "liveMissionsUpdated": "最終更新",
   "apiAlertTitle": "API未起動またはデータなし",
   "apiAlertBody": "バックエンドAPIが失敗したか、ミッションが返ってきません。表示内容はモック/古いデータの可能性があります。",
+  "apiAlertHint": "バックエンドの /health=200 とミッションseedを確認し、再読み込みしてください。",
   "langToggle": "言語",
   "searchPlaceholder": "タイトルで絞り込み...",
   "kinds": {

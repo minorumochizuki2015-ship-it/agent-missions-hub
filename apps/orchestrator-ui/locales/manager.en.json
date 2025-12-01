@@ -24,6 +24,7 @@
   "liveMissionsUpdated": "Last update",
   "apiAlertTitle": "API unavailable or no data",
   "apiAlertBody": "Backend API failed or returned no missions. Data shown may be stale/mock.",
+  "apiAlertHint": "Confirm /health=200 and seeded missions, then reload.",
   "langToggle": "Language",
   "searchPlaceholder": "Filter missions by title…",
   "kinds": {
