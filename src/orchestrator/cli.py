@@ -77,6 +77,7 @@ def call(
     typer.echo(f"status={resp.status_code} duration_ms={duration}")
     typer.echo(f"api_up=true engine={engine} run_id={run_id}")
     typer.echo(f"workflow_run_ref={run_id}")
+    typer.echo(f"workflow_run_ref logged to cli_runs/{run_id}.log")
     try:
         typer.echo(resp.json())
     except Exception:
