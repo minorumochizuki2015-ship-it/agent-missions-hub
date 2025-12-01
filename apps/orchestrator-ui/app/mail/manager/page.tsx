@@ -162,7 +162,7 @@ export default function ManagerPage({
   const t = useI18n(lang)
   const featureOn = (process.env.NEXT_PUBLIC_FEATURE_MANAGER_UI || 'true').toLowerCase() === 'true'
 
-  const [missions, setMissions] = useState<Mission[]>(MOCK_MISSIONS)
+  const [missions, setMissions] = useState<Mission[]>([])
   const [loading, setLoading] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
   const [fromApi, setFromApi] = useState(false)
