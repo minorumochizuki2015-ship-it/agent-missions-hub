@@ -441,7 +441,7 @@
       "evidence": [
         "observability/policy/ci_evidence.jsonl"
       ],
-      "notes": "Manager UIを実装し i18n/Jest/Playwright/axe=0 まで改善。UI Audit EN/JA で vitals_missing=true を警告許容とし、checklist/milestones に方針追記。ci_evidence に ui_audit_executed/ui_gate_pass_* (page=manager/unified_inbox) を記録。次バッチで /api/missions 実データ表示（seed 済み・/health=200 前提）と UI Gate 再実行計画を策定する。"
+      "notes": "Manager UIを実装し i18n/Jest/Playwright/axe=0 まで改善。UI Audit EN/JA で vitals_missing=true を警告許容とし、checklist/milestones に方針追記。ci_evidence に ui_audit_executed/ui_gate_pass_* (page=manager/unified_inbox) を記録。次バッチで /api/missions 実データ表示（seed 済み・/health=200 前提）を再有効化し、UI Gate EN/JA を backend up + seed 前提で再実行する計画を策定する。"
     },
     {
       "id": "phase2d-cli-e2e",
