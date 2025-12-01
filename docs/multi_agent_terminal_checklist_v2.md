@@ -9,7 +9,7 @@
   - 判定エラーや巨大 diff（閾値超過）、`main`/`release/*` へのマージ、`label: run-ui-gate` が付いた PR では強制実行（decision=run/force_run）。
   - 対象パス例: `apps/orchestrator-ui/**`, `src/**/templates/**`, `**/*.css|scss|ts|tsx`, `playwright.config*`, `scripts/ui_audit*.py`, `package*.json`。
   - UI Gate 実行時は従来どおり `npm run ui:audit:ci`（または `scripts/ui_audit_run.py`）を実行し、summary/screenshot/HTML の SHA を `ui_audit_executed` / `ui_gate_pass_*` として ci_evidence に追記。
-- 最新状況: 2025-11-30 に `/mail` `/mail/manager` を EN/JA で ui_audit_run.py 実行し Gate=PASS（vitals_missing 許容）。2025-12-01 再実行は EN が timeout（ja 未実施）につき再実行が必要。Auto Gate 判定は引き続き no-ui-change=skip だが手動で実施する。
+- 最新状況: 2025-11-30 に `/mail` `/mail/manager` を EN/JA で ui_audit_run.py 実行し Gate=PASS（vitals_missing 許容）。2025-12-01 再実行は EN/JA とも手動再実行で成功（生成物は Git 外・ci_evidence 未更新、追記予定）。Auto Gate 判定は引き続き no-ui-change=skip だが手動で実施する。
 - Web Vitals が取得できない場合（vitals_missing=true）は警告扱いで許容し、axe=0 であれば Gate=PASS と見なす。取得できた場合は LCP<=2.5s / CLS<=0.10 / FID<=100ms の予算で判定する。
 - ローカルでの手動実行が必要な場合は従来手順を踏むこと:
   1. `npm run lint && npm run test && npm run test:e2e --prefix apps/orchestrator-ui`
