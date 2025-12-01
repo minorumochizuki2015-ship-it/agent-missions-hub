@@ -527,6 +527,21 @@
         "observability/policy/ci_evidence.jsonl"
       ],
       "notes": "初手は 3ファイル/50行以内で実データカードを追加し、npm test --runInBand と必要なら UI Gate を実施。"
+    },
+    {
+      "id": "engines-yaml-externalization",
+      "status": "completed",
+      "description": "CodexCLI/Claude CLI のエンジン設定を config/engines.yaml へ外部化し、workflow_engine.py で load_engine_config() を使用して動的読み込みを実装。PyYAML 依存あり、フォールバック保持。",
+      "entries": [
+        "config/engines.yaml",
+        "src/orchestrator/conpty_wrapper.py",
+        "src/mcp_agent_mail/workflow_engine.py",
+        "tests/test_workflow_engine.py"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl"
+      ],
+      "notes": "2025-12-01: engines.yaml 作成 (codex_cli/demo 定義, workdir=null)。conpty_wrapper.py に load_engine_config() 追加 (PyYAML try/except フォールバック)。workflow_engine.py L283-290 で hardcoded demo 置換→engine_name/engine_cfg 経由で command ロード。pytest test_workflow_engine.py 4/4 PASS。Commits: 8ca3ac6 (externalize), f266b7f (integrate)。Shadow Audit PLAN/TEST/PATCH/APPLY 完了。Batch: 1ファイル net +2行 (≤3files/≤50lines)。"
     }
   ]
 }

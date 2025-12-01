@@ -5,6 +5,7 @@
 ## 現在の状況
 - UI Gate: PASS（preview_dir=artifacts/preview/, UI-Audit=ui-audit-v2, EN/JA=2025/11/30 18:48–18:52, vitals_missing=true 許容）
 - 備考: Web Vitals が取得できない場合（vitals_missing=true）は警告として許容し、axe=0 なら Gate=PASS と扱う。取得できた場合は LCP<=2.5s / CLS<=0.10 / FID<=100ms の予算で判定する。
+- engines.yaml を外部化し load_engine_config で loader 統合済み（2025-12-01、pytest tests/test_workflow_engine.py 4/4 PASS で確認）。
 - CLI: `/api/missions` を CLI (serve+call) から叩く E2E を実施し、ci_evidence に `cli_call` / `cli_e2e_run` を記録。Mail/Lease smoke OK (2025-11-30 07:35:00Z) を ci_evidence に追記。
 - 前提: UI Gate/Playwright/Jest 実行時は FastAPI 起動＋Seed 済み（`/health`=200, `/api/missions` 非空）を必須とし、未起動・空レスポンスは Gate=FAIL とする。
 
