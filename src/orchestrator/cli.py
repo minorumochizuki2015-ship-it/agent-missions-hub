@@ -100,7 +100,7 @@ def _write_cli_run_log(
         log_path = log_dir / f"{run_id}.log"
         line = (
             f"run_id={run_id} engine={engine} endpoint={endpoint} "
-            f"status={status_code} duration_ms={duration_ms}\n"
+            f"status={status_code} duration_ms={duration_ms} api_up=true\n"
         )
         log_path.write_text(line, encoding="utf-8")
     except Exception:  # pragma: no cover - IO failures
