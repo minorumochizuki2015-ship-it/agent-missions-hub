@@ -44,6 +44,7 @@
 - ui_audit: `artifacts/ui_audit/summary.json`（SHA256: 40233969...89C0, LCP=428ms / TTI=0.030s）・`summary_ja.json`（SHA256: 241C2B14...9715, LCP=448ms / TTI=0.052s）と `screens/unified_inbox.png` / `screens/unified_inbox_ja.png`（4CFF8863...5DDD）。`axe_result.json`/`report.html` に加え HTML ダンプ `artifacts/ui_audit/html/route_unified_inbox.html` を再生成。HTML レポートは `artifacts/ui_audit_report/20251120-0930` を参照。
 - JS tests: `npm run lint --prefix apps/orchestrator-ui` / `CI=1 npm run test --prefix apps/orchestrator-ui` / `npm run test:e2e --prefix apps/orchestrator-ui` を 11/20 09:25–09:30 に実行し、いずれも PASS（Jest は Dashboard ヘッダ期待値更新後、Playwright 13/13）。
 - coverage: 2025/11/17 16:47:42 に `coverage_updated`（lines_valid=6522 / lines_covered=252 / line_coverage=0.03864）を記録（UI Gate より前の時刻）。
+- エンジン設定: `config/engines.yaml` を外部化し load_engine_config で loader 統合済み（2025-12-01 pytest tests/test_workflow_engine.py 4/4 PASS で確認）。設計書・マイルストンにも反映済み。
 
 ## Mission/Workflow 拡張チェック
 - データモデル: missions/task_groups/tasks/artifacts/knowledge のスキーマとマイグレーションを定義し、ER 差分を `plans/diff-plan.json` に反映する
