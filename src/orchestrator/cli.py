@@ -56,6 +56,7 @@ def call(
     method_norm = method.upper()
     payload = json.loads(data) if data else None
     run_id = str(int(time.time() * 1000))
+    typer.echo(f"cli_run_id={run_id}")
     start = time.monotonic()
     try:
         with httpx.Client(timeout=timeout) as client:
