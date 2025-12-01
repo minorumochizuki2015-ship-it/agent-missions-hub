@@ -76,6 +76,7 @@ def call(
     duration = int((time.monotonic() - start) * 1000)
     typer.echo(f"status={resp.status_code} duration_ms={duration}")
     typer.echo(f"api_up=true engine={engine} run_id={run_id}")
+    typer.echo(f"workflow_run_ref={run_id}")
     try:
         typer.echo(resp.json())
     except Exception:
