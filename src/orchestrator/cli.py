@@ -82,6 +82,7 @@ def call(
         typer.echo(resp.text)
 
     _write_cli_run_log(run_id, engine, endpoint, resp.status_code, duration)
+    typer.echo(f"cli_run_log=cli_runs/{run_id}.log")
     _log_cli_call_evidence(
         url, endpoint, method_norm, resp.status_code, duration, engine, run_id
     )
