@@ -455,7 +455,7 @@
       "evidence": [
         "observability/policy/ci_evidence.jsonl"
       ],
-      "notes": "CLI serve/call を Typer で実装し、/api/missions への call を E2E で検証。ci_evidence に cli_call / cli_e2e_run を記録し、LOCK を PHASE2D-CLI-E2E へ更新。"
+      "notes": "CLI serve+call E2E 計画: /health=200 ＆ /api/missions seeded を前提に `python src/orchestrator/cli.py serve` → `call --engine codex_cli|claude_cli --endpoint /api/missions` を実行し、ci_evidence に cli_call/cli_e2e_run（api_up=true, missions_seeded=true, engine=codex|claude）を記録。spawn_agent_cli は cli_runs/{run_id}.log を必ず生成し、workflow_runs.run_id と紐付ける。engines.yaml から command/workdir を解決し、欠如時は fallback コマンド許容。テスト計画（実施は別バッチ）: pytest -q tests/test_workflow_engine.py、必要に応じて conpty_wrapper 短縮 pytest、CLI serve+call smoke を記録。Shadow Audit: 各バッチで PLAN→PATCH→TEST→APPLY を emit し verify_chain PASS を完了条件に含める。"
     },
     {
       "id": "phase3-p0-design-sync",
