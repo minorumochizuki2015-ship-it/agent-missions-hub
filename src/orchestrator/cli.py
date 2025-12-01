@@ -28,7 +28,8 @@ def serve(
 ) -> None:
     """FastAPI サーバーを起動する。"""
 
-    typer.echo(f"serve_start host={host} port={port}")
+    run_id = str(int(time.time() * 1000))
+    typer.echo(f"serve_start host={host} port={port} run_id={run_id}")
     uvicorn.run(
         "agent_missions_hub.http:build_app",
         factory=True,
