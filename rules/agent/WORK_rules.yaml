@@ -71,7 +71,10 @@ approvals_policy:
 
 policy_parameters:
   env_override: true
-  diff_limits: {max_lines: 50, max_files: 3}
+  diff_limits:
+    lane_a: {max_lines: 50, max_files: 3, scope: "security/auth/infra/config/migration/external_api"}
+    lane_b: {max_lines: 150, max_files: 3, scope: "feature/ui/bugfix/crud/state/business_logic"}
+    lane_c: {max_lines: null, max_files: null, scope: "mechanical (rename/formatter/autogen/import/order/comment)", logic_change_forbidden: true}
   coverage_min: {unit: 0.85, integration: 0.75, e2e: 0.70}
   static_score_min: "B+"
   vulnerabilities_max: {high: 0, critical: 0}
