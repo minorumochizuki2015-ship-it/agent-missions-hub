@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import time
+from pathlib import Path
 from typing import Optional
 
 import httpx
@@ -25,7 +26,7 @@ def serve(
     host: str = typer.Option("127.0.0.1", help="Host to bind"),
     port: int = typer.Option(8000, help="Port to bind"),
 ) -> None:
-    """Start FastAPI server (agent_missions_hub.http:build_app)."""
+    """FastAPI サーバーを起動する。"""
 
     uvicorn.run(
         "agent_missions_hub.http:build_app",
@@ -45,12 +46,16 @@ def call(
         DEFAULT_BASE, help="Base URL (env MISSIONS_HUB_API_BASE で上書き可)"
     ),
     timeout: float = typer.Option(10.0, help="HTTP timeout seconds"),
+    engine: str = typer.Option(
+        "codex_cli", help="使用するエンジン名 (codex_cli|claude_cli)"
+    ),
 ) -> None:
-    """Call MISSIONS HUB API endpoint and print JSON response."""
+    """MISSIONS HUB API を呼び出し、レスポンスを表示する。"""
 
     url = _compose_url(base_url, endpoint)
     method_norm = method.upper()
     payload = json.loads(data) if data else None
+    run_id = str(int(time.time() * 1000))
     start = time.monotonic()
     try:
         with httpx.Client(timeout=timeout) as client:
@@ -72,20 +77,44 @@ def call(
     except Exception:
         typer.echo(resp.text)
 
-    # Log CLI call to ci_evidence for observability
-    _log_cli_call_evidence(url, endpoint, method_norm, resp.status_code, duration)
+    _write_cli_run_log(run_id, engine, endpoint, resp.status_code, duration)
+    _log_cli_call_evidence(
+        url, endpoint, method_norm, resp.status_code, duration, engine, run_id
+    )
 
     if resp.status_code >= 400:
         raise typer.Exit(code=1)
 
 
-def _log_cli_call_evidence(
-    url: str, endpoint: str, method: str, status_code: int, duration_ms: int
+def _write_cli_run_log(
+    run_id: str, engine: str, endpoint: str, status_code: int, duration_ms: int
 ) -> None:
-    """Log CLI call event to observability/policy/ci_evidence.jsonl."""
+    """CLI 実行結果を最小限に1行ログとして記録する。"""
+    try:
+        log_dir = Path("cli_runs")
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_path = log_dir / f"{run_id}.log"
+        line = (
+            f"run_id={run_id} engine={engine} endpoint={endpoint} "
+            f"status={status_code} duration_ms={duration_ms}\n"
+        )
+        log_path.write_text(line, encoding="utf-8")
+    except Exception:  # pragma: no cover - IO failures
+        pass
+
+
+def _log_cli_call_evidence(
+    url: str,
+    endpoint: str,
+    method: str,
+    status_code: int,
+    duration_ms: int,
+    engine: str,
+    run_id: str,
+) -> None:
+    """CLI call イベントを ci_evidence.jsonl に追記する。"""
     import hashlib
     from datetime import datetime, timezone
-    from pathlib import Path
 
     evidence_path = Path("observability/policy/ci_evidence.jsonl")
     if not evidence_path.exists():
@@ -98,9 +127,11 @@ def _log_cli_call_evidence(
         "method": method,
         "status_code": status_code,
         "duration_ms": duration_ms,
+        "engine": engine,
+        "run_id": run_id,
         "url_hash": hashlib.sha256(url.encode()).hexdigest()[:16],
     }
-    
+
     try:
         with evidence_path.open("a", encoding="utf-8") as f:
             json.dump(event, f, ensure_ascii=False)
