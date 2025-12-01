@@ -18,6 +18,7 @@
 - **P2 Orchestration UI + Signals**: planner/executor/reviewer/overseer をプリセット（ターミナル上限3〜4）、ログストリームから Dangerous Commands/Approvals/Signals を検知し UI 表示。
 - **P3 Dashboard/Inbox 拡充**: 旧 `/mail` の Smoke Test/メッセージ/プロジェクトカード/検索・フィルタを実データで復元し、UI Gate/テスト/UI Audit を再実行。
 - **P4 Mission/Task/Artifact/Knowledge**: 中期スキーマを追加し、Manager/Graph/Knowledge の基盤を整備。
+- **UI移植ゴール（段階）**: ①旧UIレイアウト移植完了（ナビ/右パネル/赤帯/カードをReact化）、②新機能追加（Signals/Approvals等の実データ連携）、③既存バックエンドとの完全統合（/api/missions 等を安定表示・UI Gate PASS）、④その上でUI/UXの高度化（パフォーマンス・アクセシビリティ・操作性強化）。
 
 -## Phase 3（UI ダッシュボード刷新）※計画
 - 旧 `/mail` ダッシュボード要素（Smoke Test / メッセージ / プロジェクトカード等）を統合し、実データ（MISSIONS_HUB_API_BASE + `/api/missions`）を表示する新レイアウトを実装する。UI Gate/Playwright 実行時は FastAPI 起動中（/health 200）かつ `/api/missions` 非空を必須条件とし、未起動・空レスポンスは Gate=FAIL とする。
