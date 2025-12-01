@@ -282,10 +282,12 @@ class SequentialWorkflow(WorkflowEngine):
 
             # Agent CLI execution path (minimal integration)
             if task.input.get("kind") == "agent_cli":
-                import sys
-                from orchestrator.conpty_wrapper import spawn_agent_cli
+                from orchestrator.conpty_wrapper import load_engine_config, spawn_agent_cli
 
-                command = task.input.get("command", [sys.executable, "-c", "print('demo')"])
+                # Load engine config from engines.yaml with fallback
+                engine_name = task.input.get("engine", "demo")
+                engine_cfg = load_engine_config(engine_name)
+                command = task.input.get("command", engine_cfg["command"])
                 result = spawn_agent_cli(command, context.mission_id, context.run_id)
 
                 task.output = {
