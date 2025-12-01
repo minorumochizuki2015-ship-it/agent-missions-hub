@@ -266,6 +266,9 @@ export default function ManagerPage({
     { key: 'review', label: t.navReview },
     { key: 'release', label: t.navRelease }
   ]
+  const runningCount = missions.filter((m) => m.status === 'running').length
+  const pendingCount = missions.filter((m) => m.status === 'pending').length
+  const completedCount = missions.filter((m) => m.status === 'completed').length
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 lg:p-6">
@@ -300,6 +303,24 @@ export default function ManagerPage({
             {item.label}
           </button>
         ))}
+      </div>
+      <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-lg bg-white px-3 py-2 text-sm shadow-sm ring-1 ring-slate-200">
+          <div className="text-xs font-semibold uppercase text-slate-500">Running</div>
+          <div className="text-base font-semibold text-slate-900">{runningCount}</div>
+        </div>
+        <div className="rounded-lg bg-white px-3 py-2 text-sm shadow-sm ring-1 ring-slate-200">
+          <div className="text-xs font-semibold uppercase text-slate-500">Pending</div>
+          <div className="text-base font-semibold text-slate-900">{pendingCount}</div>
+        </div>
+        <div className="rounded-lg bg-white px-3 py-2 text-sm shadow-sm ring-1 ring-slate-200">
+          <div className="text-xs font-semibold uppercase text-slate-500">Completed</div>
+          <div className="text-base font-semibold text-slate-900">{completedCount}</div>
+        </div>
+        <div className="rounded-lg bg-white px-3 py-2 text-sm shadow-sm ring-1 ring-slate-200">
+          <div className="text-xs font-semibold uppercase text-slate-500">Signals</div>
+          <div className="text-base font-semibold text-slate-900">{signals.length}</div>
+        </div>
       </div>
       {showApiAlert && (
         <div className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900" role="alert">
