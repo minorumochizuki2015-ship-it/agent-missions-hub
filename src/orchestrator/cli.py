@@ -156,6 +156,7 @@ def _echo_health_check(host: str, port: int, run_id: str) -> None:
         resp = httpx.get(url, timeout=2.0)
         status_text = str(resp.status_code)
     except Exception:  # pragma: no cover - network errors
+        typer.echo(f"health_check_error run_id={run_id}")
         status_text = "NG"
     typer.echo(f"health_check run_id={run_id} status={status_text}")
     try:
