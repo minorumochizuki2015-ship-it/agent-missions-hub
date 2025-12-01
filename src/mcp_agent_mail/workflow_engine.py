@@ -281,7 +281,7 @@ class SequentialWorkflow(WorkflowEngine):
                 task.input = {}
 
             # Agent CLI execution path (minimal integration)
-            if task.kind == "agent_cli":
+            if task.input.get("kind") == "agent_cli":
                 import sys
                 from orchestrator.conpty_wrapper import spawn_agent_cli
 

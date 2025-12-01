@@ -1,0 +1,9 @@
+# Agent CLI Engine Configurations
+engines:
+  codex_cli:
+    command: ["codex", "chat"]
+    workdir: null
+
+  demo:
+    command: ["python", "-c", "print('demo')"]
+    workdir: null

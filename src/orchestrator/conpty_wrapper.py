@@ -10,6 +10,30 @@ from typing import Any
 from uuid import UUID
 
 
+def load_engine_config(engine_name: str = "demo") -> dict[str, Any]:
+    """Load engine configuration from config/engines.yaml with fallback."""
+    fallback = {"command": [sys.executable, "-c", "print('demo')"], "workdir": None}
+    try:
+        import yaml  # type: ignore
+    except Exception:
+        return fallback
+
+    config_path = Path("config/engines.yaml")
+    if not config_path.exists():
+        return fallback
+
+    try:
+        with config_path.open("r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        engines = data.get("engines", {}) if isinstance(data, dict) else {}
+        engine = engines.get(engine_name, {}) if isinstance(engines, dict) else {}
+        command = engine.get("command", fallback["command"]) if isinstance(engine, dict) else fallback["command"]
+        workdir = engine.get("workdir", fallback["workdir"]) if isinstance(engine, dict) else fallback["workdir"]
+        return {"command": command, "workdir": workdir}
+    except Exception:
+        return fallback
+
+
 def spawn_agent_cli(
     command: list[str],
     mission_id: UUID,
