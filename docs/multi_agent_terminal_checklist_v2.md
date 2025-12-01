@@ -9,7 +9,7 @@
   - 判定エラーや巨大 diff（閾値超過）、`main`/`release/*` へのマージ、`label: run-ui-gate` が付いた PR では強制実行（decision=run/force_run）。
   - 対象パス例: `apps/orchestrator-ui/**`, `src/**/templates/**`, `**/*.css|scss|ts|tsx`, `playwright.config*`, `scripts/ui_audit*.py`, `package*.json`。
   - UI Gate 実行時は従来どおり `npm run ui:audit:ci`（または `scripts/ui_audit_run.py`）を実行し、summary/screenshot/HTML の SHA を `ui_audit_executed` / `ui_gate_pass_*` として ci_evidence に追記。
-- 最新状況: 2025-11-30 に `/mail` `/mail/manager` を EN/JA で ui_audit_run.py 実行し Gate=PASS（vitals_missing 許容）。Auto Gate 判定は引き続き no-ui-change=skip だが手動で実施済み。
+- 最新状況: 2025-11-30 に `/mail` `/mail/manager` を EN/JA で ui_audit_run.py 実行し Gate=PASS（vitals_missing 許容）。2025-12-01 再実行は EN が timeout（ja 未実施）につき再実行が必要。Auto Gate 判定は引き続き no-ui-change=skip だが手動で実施する。
 - Web Vitals が取得できない場合（vitals_missing=true）は警告扱いで許容し、axe=0 であれば Gate=PASS と見なす。取得できた場合は LCP<=2.5s / CLS<=0.10 / FID<=100ms の予算で判定する。
 - ローカルでの手動実行が必要な場合は従来手順を踏むこと:
   1. `npm run lint && npm run test && npm run test:e2e --prefix apps/orchestrator-ui`
@@ -17,7 +17,7 @@
   3. `artifacts/ui_audit/summary*.json`・`screens/*.png`・`report.html` の SHA を `observability/policy/ci_evidence.jsonl` に追記
   4. Gate=PASS を確認後、本チェックリストと docs/multi_agent_terminal_milestones_v2.md を同期更新
 - Phase2D: call で run_id/path/api_up を echo 済み、serve の /health を `cli_runs/<run_id>_health.log` に記録済み（2025-12-02 wrapper pytest 4 passed）。次は Phase2C 実データ UI へ移行。
-- Phase2C: /api/missions 実データ表示を再有効化し、backend up+seed 前提で UI Gate EN/JA を再実行予定（計画策定済み、実装は別バッチ）。
+- Phase2C: /api/missions 実データ表示を再有効化し、backend up+seed 前提で UI Gate EN/JA を再実行予定（計画策定済み、実装は別バッチ）。UI移植の段階ゴール: ①旧UIレイアウト移植完了 ②Signals/Approvals など新機能追加 ③バックエンド完全統合（/api/missions 等を安定表示） ④UI/UX高度化と Gate 再実行。
 
 ## PASS 維持フロー
 1. `artifacts/preview/` を更新して差分を記録（Plan→Test→Patch の範囲内）。
