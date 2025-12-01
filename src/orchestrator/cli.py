@@ -72,6 +72,7 @@ def call(
                 raise typer.Exit(code=2)
     except Exception as exc:  # pragma: no cover - network failures
         typer.echo(f"Request failed: {exc}", err=True)
+        typer.echo(f"api_up=false engine={engine} run_id={run_id}")
         raise typer.Exit(code=1)
 
     duration = int((time.monotonic() - start) * 1000)
@@ -91,6 +92,7 @@ def call(
     )
 
     if resp.status_code >= 400:
+        typer.echo(f"api_up=false engine={engine} run_id={run_id}")
         raise typer.Exit(code=1)
 
 
