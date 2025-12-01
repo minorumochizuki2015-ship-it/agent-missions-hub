@@ -151,11 +151,21 @@ def _log_cli_call_evidence(
 def _echo_health_check(host: str, port: int, run_id: str) -> None:
     """serve 起動時に /health の疎通を1行ログ出力する。"""
     url = f"http://{host}:{port}/health"
+    status_text = "NG"
     try:
         resp = httpx.get(url, timeout=2.0)
-        typer.echo(f"health_check run_id={run_id} status={resp.status_code}")
+        status_text = str(resp.status_code)
     except Exception:  # pragma: no cover - network errors
-        typer.echo(f"health_check run_id={run_id} status=NG")
+        status_text = "NG"
+    typer.echo(f"health_check run_id={run_id} status={status_text}")
+    try:
+        log_dir = Path("cli_runs")
+        log_dir.mkdir(parents=True, exist_ok=True)
+        (log_dir / f"{run_id}_health.log").write_text(
+            f"run_id={run_id} status={status_text}\n", encoding="utf-8"
+        )
+    except Exception:  # pragma: no cover - IO failures
+        pass
 def main() -> None:  # pragma: no cover
     app()
 
