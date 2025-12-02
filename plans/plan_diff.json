@@ -170,7 +170,7 @@
         "data/logs/current/audit/cli_runs",
         "observability/policy/shadow_audit/manifest.jsonl"
       ],
-      "notes": "署名は cosign.pub + manifest.sig.bundle で Verified OK (tlog skip)。必要に応じ tlog 有効で再署名可能。"
+      "notes": "署名は cosign.pub + manifest.sig.bundle で Verified OK (tlog skip)。必要に応じ tlog 有効で再署名可能。workflow_endpoint は /missions/{id}/run を想定し、roles/bus は config/roles.json + data/logs/current/audit/message_bus.json で handoff を記録。"
     },
     {
       "id": "data-model-mission-task",
