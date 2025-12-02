@@ -269,6 +269,12 @@ export default function ManagerPage({
   const runningCount = missions.filter((m) => m.status === 'running').length
   const pendingCount = missions.filter((m) => m.status === 'pending').length
   const completedCount = missions.filter((m) => m.status === 'completed').length
+  const statusBadge = {
+    running: 'bg-emerald-500/20 text-emerald-100',
+    pending: 'bg-amber-500/20 text-amber-100',
+    completed: 'bg-slate-200/20 text-slate-900',
+    failed: 'bg-rose-500/20 text-rose-50'
+  } as const
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50">
@@ -397,7 +403,9 @@ export default function ManagerPage({
                       {t.owner}: {m.owner} · {t.runMode}: {t.runModes[m.run_mode]}
                     </p>
                   </div>
-                  <span className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-800">
+                  <span
+                    className={`rounded px-2 py-1 text-xs font-semibold ${statusBadge[m.status] || 'bg-slate-800 text-slate-100'}`}
+                  >
                     {t.statuses[m.status]}
                   </span>
                 </div>
