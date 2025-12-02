@@ -271,13 +271,14 @@ export default function ManagerPage({
   const completedCount = missions.filter((m) => m.status === 'completed').length
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 lg:p-6">
+    <div className="min-h-screen bg-slate-950 text-slate-50">
+    <div className="mx-auto max-w-7xl p-4 lg:p-6">
       <header className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900" data-testid="manager-title">
+          <h1 className="text-2xl font-semibold text-slate-50" data-testid="manager-title">
             {t.pageTitle}
           </h1>
-          <p className="text-xs text-slate-600">
+          <p className="text-xs text-slate-300">
             {loading
               ? 'Loading…'
               : showApiAlert
@@ -298,43 +299,43 @@ export default function ManagerPage({
           <button
             key={item.key}
             type="button"
-            className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-slate-50 shadow-sm"
+            className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-medium text-slate-50 shadow-sm ring-1 ring-slate-700"
           >
             {item.label}
           </button>
         ))}
       </div>
       <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-lg bg-white px-3 py-2 text-sm shadow-sm ring-1 ring-slate-200">
-          <div className="text-xs font-semibold uppercase text-slate-500">Running</div>
-          <div className="text-base font-semibold text-slate-900">{runningCount}</div>
+        <div className="rounded-lg bg-slate-900/80 px-3 py-2 text-sm shadow-sm ring-1 ring-slate-800">
+          <div className="text-xs font-semibold uppercase text-slate-300">Running</div>
+          <div className="text-base font-semibold text-emerald-100">{runningCount}</div>
         </div>
-        <div className="rounded-lg bg-white px-3 py-2 text-sm shadow-sm ring-1 ring-slate-200">
-          <div className="text-xs font-semibold uppercase text-slate-500">Pending</div>
-          <div className="text-base font-semibold text-slate-900">{pendingCount}</div>
+        <div className="rounded-lg bg-slate-900/80 px-3 py-2 text-sm shadow-sm ring-1 ring-slate-800">
+          <div className="text-xs font-semibold uppercase text-slate-300">Pending</div>
+          <div className="text-base font-semibold text-amber-100">{pendingCount}</div>
         </div>
-        <div className="rounded-lg bg-white px-3 py-2 text-sm shadow-sm ring-1 ring-slate-200">
-          <div className="text-xs font-semibold uppercase text-slate-500">Completed</div>
-          <div className="text-base font-semibold text-slate-900">{completedCount}</div>
+        <div className="rounded-lg bg-slate-900/80 px-3 py-2 text-sm shadow-sm ring-1 ring-slate-800">
+          <div className="text-xs font-semibold uppercase text-slate-300">Completed</div>
+          <div className="text-base font-semibold text-slate-50">{completedCount}</div>
         </div>
-        <div className="rounded-lg bg-white px-3 py-2 text-sm shadow-sm ring-1 ring-slate-200">
-          <div className="text-xs font-semibold uppercase text-slate-500">Signals</div>
-          <div className="text-base font-semibold text-slate-900">{signals.length}</div>
+        <div className="rounded-lg bg-slate-900/80 px-3 py-2 text-sm shadow-sm ring-1 ring-slate-800">
+          <div className="text-xs font-semibold uppercase text-slate-300">Signals</div>
+          <div className="text-base font-semibold text-sky-100">{signals.length}</div>
         </div>
       </div>
       {showApiAlert && (
-        <div className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900" role="alert">
-          <div className="font-semibold">{t.apiAlertTitle}</div>
+        <div className="mb-4 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-50" role="alert">
+          <div className="font-semibold text-rose-50">{t.apiAlertTitle}</div>
           <div>
             {t.apiAlertBody}
             {alertDetail}
           </div>
-          <div className="text-xs text-rose-800">{t.apiAlertHint}</div>
+          <div className="text-xs text-rose-100/80">{t.apiAlertHint}</div>
         </div>
       )}
 
       <div className="grid gap-4 xl:grid-cols-4">
-        <section className="rounded-lg bg-white p-4 shadow-sm xl:col-span-1" aria-label={t.liveMissions}>
+        <section className="rounded-lg bg-white p-4 shadow-sm ring-1 ring-slate-100 xl:col-span-1" aria-label={t.liveMissions}>
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-900">{t.liveMissions}</h2>
             <span className="text-[11px] text-slate-600">{fromApi ? 'API' : 'mock'}</span>
@@ -355,7 +356,7 @@ export default function ManagerPage({
           </div>
         </section>
 
-        <section className="rounded-lg bg-white p-4 shadow-sm xl:col-span-1" aria-label={t.missions}>
+        <section className="rounded-lg bg-white p-4 shadow-sm ring-1 ring-slate-100 xl:col-span-1" aria-label={t.missions}>
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-900">{t.missions}</h2>
           </div>
@@ -533,6 +534,7 @@ export default function ManagerPage({
           </p>
         </section>
       </div>
+    </div>
     </div>
   )
 }
