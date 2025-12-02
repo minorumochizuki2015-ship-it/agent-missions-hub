@@ -20,6 +20,17 @@
 - Phase2C: /api/missions 実データ表示を再有効化し、backend up+seed 前提で UI Gate EN/JA を再実行予定（計画策定済み、実装は別バッチ）。UI移植の段階ゴール: ①旧UIレイアウト移植完了 ②Signals/Approvals など新機能追加 ③バックエンド完全統合（/api/missions 等を安定表示） ④UI/UX高度化と Gate 再実行。
 - Legacy parity リマインダ: 旧UI（`C:\Users\User\Trae\Codex-CLImutipule-CMD`、Flask/Alpine/Tailwind拡張）で提供していた言語リンク伝搬・ダークモード持続・トースト/チュートリアル等は未移植。各UIバッチ開始時に legacy を参照し、差分を埋めるタスクを plan_diff/milestones に反映すること。
 
+### 旧UI → 現行React 移植状況（抜け漏れ防止）
+- Agent登録フォーム（プログラム/モデル/スキルセット/APIキー入力、登録ボタン）: 未移植
+- メッセージ送信フォーム（宛先選択/件名/本文、送信ボタン、予約送信/添付）: 未移植
+- メッセージ検索・一覧（フィルター、Splitビュー）: 未移植
+- プロジェクト一覧カード（ステータス・アクション付きグリッド）: 未移植
+- Unified Inbox（左リスト＋右詳細）: 未移植
+- Signals/Approvals 右パネル（実データ連動）: 骨組みのみ、内容未移植
+- トースト/チュートリアル/通知: 未移植
+- lang/dark 持続（localStorage 連携・?lang自動付与）: 未移植
+- 拡張テーマ（カスタム色/影/グラデ/フォント）: 未移植
+
 ## PASS 維持フロー
 1. `artifacts/preview/` を更新して差分を記録（Plan→Test→Patch の範囲内）。
 2. `./.venv/Scripts/python.exe scripts/ui_audit_run.py` で axe + WebVitals + screenshot を再取得（JA/EN 両方を実行）。
