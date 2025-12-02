@@ -14,6 +14,13 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 - HTTP_LIGHTWEIGHT を追加し、デフォルトで test/pytest では軽量 HTTP アプリを返すため TestClient(app()) のハングを防止済み。conftest の denylist から http_* を除去し、短縮スイートでも liveness が実行される状態。
 - detect-secrets 再スキャンで検出ゼロ、bandit -r src/mcp_agent_mail は警告のみで exit 0。tailwind.cdn.js を CDN 参照に切替え、ci_evidence 実体を削除・.gitignore 登録済み。
 - storage.py の差分未被覆 11 行に対しモックテスト（tests/test_storage_cov.py）を追加し、diff-cover ブロックを解消。best-effort suppress には pragma: no cover を付与。
+- Shadow Audit manifest/sha256 は verify_chain で整合確認済み（2025-12-03 直近）。cosign verify-blob（cosign.pub + manifest.sig.bundle、--insecure-ignore-tlog）で Verified OK（署名=OK）。tlog はスキップ運用。透明性が必要になれば tlog 有効で再署名・再検証する。
+- orchestrator CLI serve→call E2E は PYTHONPATH=src＋WINDOWS_TEST_ALLOWLIST_APPEND=tests/test_cli_e2e.py を付与すると実行可能で、レスポンス JSON が JSON 文字列として出力される状態に修正済み。cli_runs ログ行は JSON より前に出力される。
+- orchestrator CLI run に `--parallel` / `--max-workers` を追加し、ThreadPoolExecutor で複数ロールを同時起動できるようにした（既定は従来どおりシーケンシャル）。
+- run に role プロファイル適用（config/roles.json をベストエフォートで読み込み、workdir/prompt を反映）と message_bus handoff（JSON 追記）、workflow_endpoint オプションを追加。並列エラーは role 単位で集約し exit する。
+- conpty_wrapper で trace_dir を必ず mkdir し、ログ出力失敗を防止。
+- tlog 方針: 現状は cosign verify-blob で tlog skip 検証。運用で透明性が必要な場合は tlog 有効で再署名・再検証する計画を別バッチで実施予定。
+- workflow_endpoint は `/missions/{id}/run` を想定。ci_evidence に run_id/log を残し、必要なら bus ログと合わせて記録する運用とする。
 
 # Decisions
 
@@ -56,6 +63,8 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 - src/mcp_agent_mail/__init__.py: asyncio のグローバルパッチを削除し、build_mcp_server に型を付与して mypy エラー解消。
 - pyproject.toml: mypy exclude/ignore を拡張（notes/legacy/scripts/test_api_smoke 等を除外、http/db/workflow_engine ほかを ignore_errors として暫定許容）。
 - detect-secrets/bandit 対応: ci_evidence.jsonl を削除し .gitignore 追加、ci_evidence.sample.jsonl の sha をプレースホルダ化、tailwind.cdn.js を削除して各テンプレートを CDN script へ切替。migrations/versions/* に allowlist 追記、tests/test_missions_api.py の sha 値をダミー化。storage.py の SHA1 に usedforsecurity=False を付与し random 系を secrets に置換、pass-only except を contextlib.suppress やログ出力へ変更。http.py の SQL f-string に nosec コメントを付記し、redis/token-bucket などの pass を suppress/log に修正。db.py の jitter を secrets ベースにし assert を RuntimeError に置換。utils.py の名前生成を secrets.choice 化。
+- src/orchestrator/cli.py: `call` コマンドで cli_runs ログ行を先に出力し、レスポンスを `json.dumps` で JSON 文字列として出力するよう調整（E2E で JSON decode 可能に）。
+- tests/test_orchestrator_cli_parallel.py: run の並列オプションが実行時間を短縮することを確認するテストを追加。
 
 # TODO (priority order)
 
@@ -63,18 +72,23 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 2. CI 残タスクの整備: coverage run + diff-cover（結果を reports/ 等へ保存）、detect-secrets/bandit の結果ログを observability/policy/ci_evidence*.jsonl の代替先へ記録。
 3. Phase 2A: workflow_engine v1 (Sequential + self-heal) 実装と missions/task_groups/tasks/artifacts/knowledge マイグレーション・テストを進め、ci_evidence へ Plan/Test/Patch を記録（plan_diff `workflow-engine-phase2a`）。設計書/mission plan/plan_diff を再読し、SQLModel定義＋マイグレーション＋SelfHealテストのスコープを Agent MD に明記する。
 4. API/SelfHeal の異常系テストをさらに拡充（422/400/失敗トレース追加分を allowlist pytest に編入）し、reports/test と ci_evidence を更新。
-3. Runner/CI 証跡: UI Gate/pytest/Jest/Playwright 実行結果を `observability/policy/ci_evidence.jsonl` と `reports/test/` に追記する運用を整備（UI Gate を実測値で更新）。
-4. 未追跡ファイル（apps/, scripts/, package-lock.json など）の取り込み方針を決定し、必要分のみクリーン worktree へ移行する。
+5. Runner/CI 証跡: UI Gate/pytest/Jest/Playwright 実行結果を `observability/policy/ci_evidence.jsonl` と `reports/test/` に追記する運用を整備（UI Gate を実測値で更新）。
+6. 未追跡ファイル（apps/, scripts/, package-lock.json など）の取り込み方針を決定し、必要分のみクリーン worktree へ移行する。
+7. cosign verify-blob（cosign.pub + manifest.sig.bundle、--insecure-ignore-tlog）で Verified OK。tlog スキップを現状許容。必要になれば tlog 有効で再署名・再検証し、ci_evidence/Shadow Audit に記録する。
+8. ci_evidence への署名検証ログ追記と、tlog 方針を docs/plan_diff に明記。
+9. Message Bus handoff と role プロファイルを実データに合わせて拡張し、/missions/{id}/run への接着を進める。
 
 # Assumptions
 
 - Windows はショートスイートをデフォルトとし、フルスイートは Linux/WSL CI で実行する。
 - UI Gate 証跡（EN/JA, 2025-11-20 11:01–11:02）は最新で、ドキュメントの SHA も一致している。
+- CLI 系 pytest は editable install 未前提のため、実行時に `PYTHONPATH=src` を付与する。
 
 # Risks / Mitigation
 
 - Windows 依存の skip によりカバレッジ低下 → Linux/WSL で ENABLE_FULL_SUITE=1 を必須化し、ci_evidence へ格納。
 - ロック遅延が恒久未解決 → “ack-timeout-remediation” ステップで原因と対策を管理。
+- cosign verify-blob は Verified OK だが tlog をスキップしているため、必要に応じて tlog 付き再検証を実施し、透明性を補完する。
 
 # Next Action
 
@@ -89,6 +103,8 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 - `python -m pytest -q tests/test_missions_api.py tests/test_workflow_engine.py tests/test_http_liveness_min.py` → `reports/test/pytest_phase2a_run.txt` に記録（Pass, CLI 出力はこの環境で画面に現れず）。
 - `python -m pytest -q tests/test_storage_* tests/test_http_liveness_min.py` → `reports/test/pytest_phase2a_storage_run.txt` に記録（Pass）。
 - `python -m pytest -vv tests/test_workflow_engine.py tests/test_missions_api.py` → `reports/test/pytest_phase2b_run.txt` に記録（Pass, run API/self-heal/knowledge 失敗系を含む）。
+- `PYTHONPATH=src WINDOWS_TEST_ALLOWLIST_APPEND=tests/test_cli_e2e.py .venv/Scripts/python.exe -m pytest -q tests/test_cli_e2e.py` → Pass（serve→call `/api/missions` E2E を再確認、JSON decode 可）
+- `PYTHONPATH=src WINDOWS_TEST_ALLOWLIST_APPEND=tests/test_cli_e2e.py,tests/test_orchestrator_cli_parallel.py .venv/Scripts/python.exe -m pytest -q tests/test_orchestrator_cli_parallel.py tests/test_cli_e2e.py` → Pass（並列オプションと既存 E2E を再確認）
 - `python -m ruff check src tests scripts` → `reports/test/ruff_phase2a_run.txt` に記録（出力なし／pass）。現行環境で `ruff` は Python モジュール経由で実行。
 - `npm run lint && npm run test && npm run test:e2e --prefix apps/orchestrator-ui` → `reports/test/npm_orchestrator_ui.txt` に記録。`apps/orchestrator-ui` フォルダが存在しないため実行できず（legacy worktree に移行予定）。
 - `python scripts/ui_audit_run.py` → `reports/test/ui_audit_run.txt` に記録（placeholder UI Audit run）。

@@ -31,6 +31,14 @@
 - lang/dark 持続（localStorage 連携・?lang自動付与）: 未移植 | DoD: リロード/リンク遷移後も lang/dark が保持
 - 拡張テーマ（カスタム色/影/グラデ/フォント）: 未移植 | DoD: 主要カードにテーマ適用+UI Gateで視覚確認
 
+### CLI単体運用ゴール（UI未完成でもマルチエージェントを回す）
+- goal_id: cli-v1-orchestrator
+- DoD: `orchestrator run --roles planner,coder,tester --mission <id>` で SequentialWorkflow が完走し、ConPTY子プロセスでCodex/Claudeを起動、必要時 `:attach <agent>` で人間介入可能。ログ/ci_evidence/Shadow Audit が記録されること。
+- 進捗: run v1 で role プロファイル適用（config/roles.json）、message bus handoff(JSON) 記録、workflow_endpoint フック（ベストエフォート）、並列エラー集約を実装。`tests/test_orchestrator_cli_parallel.py` で並列時間短縮と handoff 記録を確認済み。署名は tlog skip で Verified OK（必要なら tlog 有効で再署名可）。次は PTY/attach 実装と Agent Mail 通知・WorkflowEngine 接着の強化。
+
+### 補足メモ
+- Signals: 現状は右カラムUI枠のみ。Backend wired: NO（P2実装時に YES へ更新）。
+- Mail/Lease SSOT: 設計として mcp_agent_mail に統一済み。実装完了ステータスは P1の完了時に更新する。
 ### ゴール管理ルール（脱線防止）
 - 1バッチ=1 goal_id（legacy_feature_ref）を必須。PLAN に `closes:<goal_id>` と DoD項目を列挙すること。
 - Active goal は常に1つ（WIP=1）。別goalに着手する場合は必ず `PARKED(goal_id)` を記録後に新PLAN。
