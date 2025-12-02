@@ -34,6 +34,10 @@
 ### CLI単体運用ゴール（UI未完成でもマルチエージェントを回す）
 - goal_id: cli-v1-orchestrator
 - DoD: `orchestrator run --roles planner,coder,tester --mission <id>` で SequentialWorkflow が完走し、ConPTY子プロセスでCodex/Claudeを起動、必要時 `:attach <agent>` で人間介入可能。ログ/ci_evidence/Shadow Audit が記録されること。
+
+### 補足メモ
+- Signals: 現状は右カラムUI枠のみ。Backend wired: NO（P2実装時に YES へ更新）。
+- Mail/Lease SSOT: 設計として mcp_agent_mail に統一済み。実装完了ステータスは P1の完了時に更新する。
 ### ゴール管理ルール（脱線防止）
 - 1バッチ=1 goal_id（legacy_feature_ref）を必須。PLAN に `closes:<goal_id>` と DoD項目を列挙すること。
 - Active goal は常に1つ（WIP=1）。別goalに着手する場合は必ず `PARKED(goal_id)` を記録後に新PLAN。

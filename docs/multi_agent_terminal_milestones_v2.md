@@ -16,6 +16,7 @@
 - 移植優先順位（Phase2C〜P3）: ①lang/dark 持続＋トースト基盤 ②Agent登録/送信フォーム ③メッセージ検索・予約・添付 ④プロジェクト一覧・Unified Inbox ⑤ Signals/Approvals 実データ連動 ⑥ テーマ拡張（色/影/グラデ/フォント）
 - ゴール管理: PLANに必ず goal_id/closes を記載し、1バッチ=1 goal_id・WIP=1を徹底。DoD達成時のみ `goal_completed` を発行し、PARKEDで中断を明示する。
 - 新規ゴール: CLI単体でマルチエージェント実行を完了させる（goal_id=cli-v1-orchestrator）。DoD: `orchestrator run --roles planner,coder,tester --mission <id>` が ConPTY 経由で Codex/Claude を起動・完走し、必要時に `:attach <agent>` で介入でき、Shadow Audit/ci_evidence に記録が残ること。
+- Phase2B完了条件に cli-v1-orchestrator DoD 達成を含める（CLI先行で実用化し、UIは後続で段階移植）。
 
 ## ロードマップ（P0〜P4：Phase3 以降を含む）
 - **P0 設計同期**: v1 スコープ（Sequential＋Windows/PS7＋ConPTY、CodexCLI+Claudeのみ、CodeMachineは外部扱い）、mcp_agent_mail 中核化、役割プリセット・Signals 方針を設計・checklist・plan_diff に反映。
