@@ -31,6 +31,12 @@
 - lang/dark 持続（localStorage 連携・?lang自動付与）: 未移植 | DoD: リロード/リンク遷移後も lang/dark が保持
 - 拡張テーマ（カスタム色/影/グラデ/フォント）: 未移植 | DoD: 主要カードにテーマ適用+UI Gateで視覚確認
 
+### ゴール管理ルール（脱線防止）
+- 1バッチ=1 goal_id（legacy_feature_ref）を必須。PLAN に `closes:<goal_id>` と DoD項目を列挙すること。
+- Active goal は常に1つ（WIP=1）。別goalに着手する場合は必ず `PARKED(goal_id)` を記録後に新PLAN。
+- out_of_scope を PLAN に必須記載し、diff が paths外/out_of_scopeに触れた場合は Major とする。
+- interrupt は `interrupt_queue` へ記録し、即時対応は lane C・≤5行・1ファイルの例外のみ。
+
 ## PASS 維持フロー
 1. `artifacts/preview/` を更新して差分を記録（Plan→Test→Patch の範囲内）。
 2. `./.venv/Scripts/python.exe scripts/ui_audit_run.py` で axe + WebVitals + screenshot を再取得（JA/EN 両方を実行）。

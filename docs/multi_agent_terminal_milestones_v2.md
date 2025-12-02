@@ -14,6 +14,7 @@
 - 次バッチで UI Gate EN/JA を再実行し、ci_evidence (Git外) に `ui_audit_executed`/`ui_gate_pass_*` を追記予定（backend up+seed 前提）。既存 right パネル骨組みは完了済み。
 - Legacy UI 差分（要追従）: 旧UI（`C:\Users\User\Trae\Codex-CLImutipule-CMD`, Flask/Alpine/Tailwind拡張）で実装していた lang クエリ自動付与、ダークモード持続、トースト/チュートリアル等の共通コンポーネントは未移植。Phase2C〜P3で段階移植し、各バッチ開始時に legacy を参照してギャップを潰すこと。
 - 移植優先順位（Phase2C〜P3）: ①lang/dark 持続＋トースト基盤 ②Agent登録/送信フォーム ③メッセージ検索・予約・添付 ④プロジェクト一覧・Unified Inbox ⑤ Signals/Approvals 実データ連動 ⑥ テーマ拡張（色/影/グラデ/フォント）
+- ゴール管理: PLANに必ず goal_id/closes を記載し、1バッチ=1 goal_id・WIP=1を徹底。DoD達成時のみ `goal_completed` を発行し、PARKEDで中断を明示する。
 
 ## ロードマップ（P0〜P4：Phase3 以降を含む）
 - **P0 設計同期**: v1 スコープ（Sequential＋Windows/PS7＋ConPTY、CodexCLI+Claudeのみ、CodeMachineは外部扱い）、mcp_agent_mail 中核化、役割プリセット・Signals 方針を設計・checklist・plan_diff に反映。
