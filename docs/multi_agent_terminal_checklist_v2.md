@@ -18,6 +18,7 @@
   4. Gate=PASS を確認後、本チェックリストと docs/multi_agent_terminal_milestones_v2.md を同期更新
 - Phase2D: call で run_id/path/api_up を echo 済み、serve の /health を `cli_runs/<run_id>_health.log` に記録済み（2025-12-02 wrapper pytest 4 passed）。次は Phase2C 実データ UI へ移行。
 - Phase2C: /api/missions 実データ表示を再有効化し、backend up+seed 前提で UI Gate EN/JA を再実行予定（計画策定済み、実装は別バッチ）。UI移植の段階ゴール: ①旧UIレイアウト移植完了 ②Signals/Approvals など新機能追加 ③バックエンド完全統合（/api/missions 等を安定表示） ④UI/UX高度化と Gate 再実行。
+- Legacy parity リマインダ: 旧UI（`C:\Users\User\Trae\Codex-CLImutipule-CMD`、Flask/Alpine/Tailwind拡張）で提供していた言語リンク伝搬・ダークモード持続・トースト/チュートリアル等は未移植。各UIバッチ開始時に legacy を参照し、差分を埋めるタスクを plan_diff/milestones に反映すること。
 
 ## PASS 維持フロー
 1. `artifacts/preview/` を更新して差分を記録（Plan→Test→Patch の範囲内）。
