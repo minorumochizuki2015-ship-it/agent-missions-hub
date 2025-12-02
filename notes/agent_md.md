@@ -14,7 +14,7 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 - HTTP_LIGHTWEIGHT を追加し、デフォルトで test/pytest では軽量 HTTP アプリを返すため TestClient(app()) のハングを防止済み。conftest の denylist から http_* を除去し、短縮スイートでも liveness が実行される状態。
 - detect-secrets 再スキャンで検出ゼロ、bandit -r src/mcp_agent_mail は警告のみで exit 0。tailwind.cdn.js を CDN 参照に切替え、ci_evidence 実体を削除・.gitignore 登録済み。
 - storage.py の差分未被覆 11 行に対しモックテスト（tests/test_storage_cov.py）を追加し、diff-cover ブロックを解消。best-effort suppress には pragma: no cover を付与。
-- Shadow Audit manifest/sha256 は verify_chain で整合確認済み（2025-12-03 直近）。COSIGN_KEY は未設定のため signature=skip 継続。
+- Shadow Audit manifest/sha256 は verify_chain で整合確認済み（2025-12-03 直近）。cosign verify-blob（cosign.pub + manifest.sig.bundle、--insecure-ignore-tlog）で Verified OK を確認（署名=OK）。tlog はスキップしているため、必要に応じて tlog 付き再検証を検討。
 - orchestrator CLI serve→call E2E は PYTHONPATH=src＋WINDOWS_TEST_ALLOWLIST_APPEND=tests/test_cli_e2e.py を付与すると実行可能で、レスポンス JSON が JSON 文字列として出力される状態に修正済み。cli_runs ログ行は JSON より前に出力される。
 
 # Decisions
@@ -68,7 +68,8 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 4. API/SelfHeal の異常系テストをさらに拡充（422/400/失敗トレース追加分を allowlist pytest に編入）し、reports/test と ci_evidence を更新。
 5. Runner/CI 証跡: UI Gate/pytest/Jest/Playwright 実行結果を `observability/policy/ci_evidence.jsonl` と `reports/test/` に追記する運用を整備（UI Gate を実測値で更新）。
 6. 未追跡ファイル（apps/, scripts/, package-lock.json など）の取り込み方針を決定し、必要分のみクリーン worktree へ移行する。
-7. COSIGN_KEY が入手でき次第、manifest.sig を cosign verify-blob で検証し、Shadow Audit signature=skip を解消する。
+7. cosign verify-blob（cosign.pub + manifest.sig.bundle、--insecure-ignore-tlog）で Verified OK。tlog スキップを許容するか、必要に応じ tlog 付き再検証を行う。
+8. ci_evidence への署名検証ログ追記と、必要に応じて tlog 検証方針をドキュメント化。
 
 # Assumptions
 
@@ -80,7 +81,7 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 
 - Windows 依存の skip によりカバレッジ低下 → Linux/WSL で ENABLE_FULL_SUITE=1 を必須化し、ci_evidence へ格納。
 - ロック遅延が恒久未解決 → “ack-timeout-remediation” ステップで原因と対策を管理。
-- COSIGN_KEY 未設定により signature 検証が未完 → 鍵取得後に verify-blob を実行し、結果を Shadow Audit TEST/APPLY に追記する。
+- cosign verify-blob は Verified OK だが tlog をスキップしているため、必要に応じて tlog 付き再検証を実施し、透明性を補完する。
 
 # Next Action
 
@@ -95,7 +96,7 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 - `python -m pytest -q tests/test_missions_api.py tests/test_workflow_engine.py tests/test_http_liveness_min.py` → `reports/test/pytest_phase2a_run.txt` に記録（Pass, CLI 出力はこの環境で画面に現れず）。
 - `python -m pytest -q tests/test_storage_* tests/test_http_liveness_min.py` → `reports/test/pytest_phase2a_storage_run.txt` に記録（Pass）。
 - `python -m pytest -vv tests/test_workflow_engine.py tests/test_missions_api.py` → `reports/test/pytest_phase2b_run.txt` に記録（Pass, run API/self-heal/knowledge 失敗系を含む）。
-- `PYTHONPATH=src WINDOWS_TEST_ALLOWLIST_APPEND=tests/test_cli_e2e.py .venv/Scripts/python.exe -m pytest -q tests/test_cli_e2e.py` → Pass（CLI serve→call E2E、JSON decode 確認）。
+- `PYTHONPATH=src WINDOWS_TEST_ALLOWLIST_APPEND=tests/test_cli_e2e.py .venv/Scripts/python.exe -m pytest -q tests/test_cli_e2e.py` → Pass（serve→call `/api/missions` E2E を再確認、JSON decode 可）
 - `python -m ruff check src tests scripts` → `reports/test/ruff_phase2a_run.txt` に記録（出力なし／pass）。現行環境で `ruff` は Python モジュール経由で実行。
 - `npm run lint && npm run test && npm run test:e2e --prefix apps/orchestrator-ui` → `reports/test/npm_orchestrator_ui.txt` に記録。`apps/orchestrator-ui` フォルダが存在しないため実行できず（legacy worktree に移行予定）。
 - `python scripts/ui_audit_run.py` → `reports/test/ui_audit_run.txt` に記録（placeholder UI Audit run）。
