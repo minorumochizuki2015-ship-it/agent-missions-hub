@@ -299,9 +299,12 @@ export default function ManagerPage({
                 ? `${t.apiAlertTitle}${alertDetail}`
                 : `${missions.length} missions`}
           </p>
-          <p className="text-[11px] uppercase tracking-wide text-slate-400">
-            Data: {fromApi ? 'API' : 'mock'}
-          </p>
+          <div className="text-[11px] font-medium uppercase tracking-wide text-slate-300">
+            Data:{' '}
+            <span className="rounded-full bg-slate-800 px-2 py-1 text-[10px] font-semibold text-slate-100 ring-1 ring-slate-700">
+              {fromApi ? 'API' : 'mock'}
+            </span>
+          </div>
         </div>
         <Link
           href={toggleHref}
