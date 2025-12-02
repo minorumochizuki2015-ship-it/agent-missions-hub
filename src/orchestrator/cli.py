@@ -84,13 +84,16 @@ def call(
     typer.echo(f"api_up=true engine={engine} run_id={run_id}")
     typer.echo(f"workflow_run_ref={run_id}")
     typer.echo(f"workflow_run_ref logged to cli_runs/{run_id}.log")
-    try:
-        typer.echo(resp.json())
-    except Exception:
-        typer.echo(resp.text)
 
     _write_cli_run_log(run_id, engine, endpoint, resp.status_code, duration)
     typer.echo(f"cli_run_log=cli_runs/{run_id}.log")
+
+    try:
+        payload = resp.json()
+        typer.echo(json.dumps(payload, ensure_ascii=False))
+    except Exception:
+        typer.echo(resp.text)
+
     _log_cli_call_evidence(
         url, endpoint, method_norm, resp.status_code, duration, engine, run_id
     )
