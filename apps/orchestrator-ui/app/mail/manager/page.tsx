@@ -162,7 +162,7 @@ export default function ManagerPage({
   const t = useI18n(lang)
   const featureOn = (process.env.NEXT_PUBLIC_FEATURE_MANAGER_UI || 'true').toLowerCase() === 'true'
 
-  const [missions, setMissions] = useState<Mission[]>(MOCK_MISSIONS)
+  const [missions, setMissions] = useState<Mission[]>([])
   const [loading, setLoading] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
   const [fromApi, setFromApi] = useState(false)
@@ -219,11 +219,16 @@ export default function ManagerPage({
 
   const [selectedMission] = missions
   const groups = useMemo(
-    () => MOCK_GROUPS.filter((g) => g.mission_id === selectedMission.id).sort((a, b) => a.order - b.order),
-    [selectedMission.id]
+    () =>
+      selectedMission
+        ? MOCK_GROUPS.filter((g) => g.mission_id === selectedMission.id).sort((a, b) => a.order - b.order)
+        : [],
+    [selectedMission?.id]
   )
-  const tasks = MOCK_TASKS.filter((t) => groups.some((g) => g.id === t.group_id))
-  const artifacts = MOCK_ARTIFACTS.filter((a) => tasks.some((t) => t.id === a.task_id))
+  const tasks = selectedMission ? MOCK_TASKS.filter((t) => groups.some((g) => g.id === t.group_id)) : []
+  const artifacts = selectedMission
+    ? MOCK_ARTIFACTS.filter((a) => tasks.some((t) => t.id === a.task_id))
+    : []
 
   const messages: Message[] = missions.slice(0, 3).map((m, i) => ({
     id: `msg-${m.id}-${i}`,
@@ -255,21 +260,57 @@ export default function ManagerPage({
   )
   const showApiAlert = fetched && (!fromApi || apiError !== null || missions.length === 0)
   const alertDetail = apiError && apiError !== 'empty' ? ` (${apiError})` : ''
+  const navItems = [
+    { key: 'plan', label: t.navPlan },
+    { key: 'test', label: t.navTest },
+    { key: 'review', label: t.navReview },
+    { key: 'release', label: t.navRelease }
+  ]
+  const runningCount = missions.filter((m) => m.status === 'running').length
+  const pendingCount = missions.filter((m) => m.status === 'pending').length
+  const completedCount = missions.filter((m) => m.status === 'completed').length
+  const statusBadge = {
+    running: 'bg-emerald-500/20 text-emerald-100',
+    pending: 'bg-amber-500/20 text-amber-100',
+    completed: 'bg-slate-200/20 text-slate-900',
+    failed: 'bg-rose-500/20 text-rose-50'
+  } as const
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 lg:p-6">
+    <div className="min-h-screen bg-slate-950 text-slate-50">
+      <div className="mx-auto max-w-7xl p-4 lg:p-6">
+      <div className="flex flex-col gap-4 xl:flex-row">
+        <aside className="hidden w-52 flex-shrink-0 flex-col gap-2 border-r border-slate-800 bg-slate-900/80 p-3 xl:flex">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t.navSection}</div>
+          {navItems.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className="w-full rounded border border-slate-800 bg-slate-900 px-3 py-2 text-left text-sm font-medium text-slate-100 hover:border-indigo-500"
+            >
+              {item.label}
+            </button>
+          ))}
+        </aside>
+        <main className="flex-1 space-y-4">
       <header className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900" data-testid="manager-title">
+          <h1 className="text-2xl font-semibold text-slate-50" data-testid="manager-title">
             {t.pageTitle}
           </h1>
-          <p className="text-xs text-slate-600">
+          <p className="text-xs text-slate-300">
             {loading
               ? 'Loading…'
               : showApiAlert
                 ? `${t.apiAlertTitle}${alertDetail}`
                 : `${missions.length} missions`}
           </p>
+          <div className="text-[11px] font-medium uppercase tracking-wide text-slate-300">
+            Data:{' '}
+            <span className="rounded-full bg-slate-800 px-2 py-1 text-[10px] font-semibold text-slate-100 ring-1 ring-slate-700">
+              {fromApi ? 'API' : 'mock'}
+            </span>
+          </div>
         </div>
         <Link
           href={toggleHref}
@@ -279,18 +320,48 @@ export default function ManagerPage({
           {t.langToggle}: {toggleLang.toUpperCase()}
         </Link>
       </header>
+      <div className="mb-4 flex flex-wrap gap-2">
+        {navItems.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-medium text-slate-50 shadow-sm ring-1 ring-slate-700"
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+      <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-lg bg-slate-900/80 px-3 py-2 text-sm shadow-sm ring-1 ring-slate-800">
+          <div className="text-xs font-semibold uppercase text-slate-300">Running</div>
+          <div className="text-base font-semibold text-emerald-100">{runningCount}</div>
+        </div>
+        <div className="rounded-lg bg-slate-900/80 px-3 py-2 text-sm shadow-sm ring-1 ring-slate-800">
+          <div className="text-xs font-semibold uppercase text-slate-300">Pending</div>
+          <div className="text-base font-semibold text-amber-100">{pendingCount}</div>
+        </div>
+        <div className="rounded-lg bg-slate-900/80 px-3 py-2 text-sm shadow-sm ring-1 ring-slate-800">
+          <div className="text-xs font-semibold uppercase text-slate-300">Completed</div>
+          <div className="text-base font-semibold text-slate-50">{completedCount}</div>
+        </div>
+        <div className="rounded-lg bg-slate-900/80 px-3 py-2 text-sm shadow-sm ring-1 ring-slate-800">
+          <div className="text-xs font-semibold uppercase text-slate-300">Signals</div>
+          <div className="text-base font-semibold text-sky-100">{signals.length}</div>
+        </div>
+      </div>
       {showApiAlert && (
-        <div className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900" role="alert">
-          <div className="font-semibold">{t.apiAlertTitle}</div>
+        <div className="mb-4 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-50" role="alert">
+          <div className="font-semibold text-rose-50">{t.apiAlertTitle}</div>
           <div>
             {t.apiAlertBody}
             {alertDetail}
           </div>
+          <div className="text-xs text-rose-100/80">{t.apiAlertHint}</div>
         </div>
       )}
 
       <div className="grid gap-4 xl:grid-cols-4">
-        <section className="rounded-lg bg-white p-4 shadow-sm xl:col-span-1" aria-label={t.liveMissions}>
+        <section className="rounded-lg bg-white p-4 shadow-sm ring-1 ring-slate-100 xl:col-span-1" aria-label={t.liveMissions}>
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-900">{t.liveMissions}</h2>
             <span className="text-[11px] text-slate-600">{fromApi ? 'API' : 'mock'}</span>
@@ -311,7 +382,7 @@ export default function ManagerPage({
           </div>
         </section>
 
-        <section className="rounded-lg bg-white p-4 shadow-sm xl:col-span-1" aria-label={t.missions}>
+        <section className="rounded-lg bg-white p-4 shadow-sm ring-1 ring-slate-100 xl:col-span-1" aria-label={t.missions}>
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-900">{t.missions}</h2>
           </div>
@@ -332,7 +403,9 @@ export default function ManagerPage({
                       {t.owner}: {m.owner} · {t.runMode}: {t.runModes[m.run_mode]}
                     </p>
                   </div>
-                  <span className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-800">
+                  <span
+                    className={`rounded px-2 py-1 text-xs font-semibold ${statusBadge[m.status] || 'bg-slate-800 text-slate-100'}`}
+                  >
                     {t.statuses[m.status]}
                   </span>
                 </div>
@@ -471,6 +544,45 @@ export default function ManagerPage({
             {signals.length === 0 && <p className="text-sm text-slate-600">No signals yet</p>}
           </div>
         </section>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        <section className="rounded-lg bg-white p-4 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-amber-600">{t.dangerousCommands}</div>
+          <p className="text-sm text-slate-700">{t.noRecent}</p>
+        </section>
+        <section className="rounded-lg bg-white p-4 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-emerald-600">{t.approvals}</div>
+          <p className="text-sm text-slate-700">{t.noApprovals}</p>
+        </section>
+        <section className="rounded-lg bg-white p-4 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-sky-600">{t.externalSignals}</div>
+          <p className="text-sm text-slate-700">
+            {signals.length === 0 ? t.noSignals : `${signals.length} ${t.latest}`}
+          </p>
+        </section>
+      </div>
+        </main>
+        <aside className="hidden w-72 flex-shrink-0 flex-col gap-3 border-l border-slate-800 bg-slate-900/70 p-3 xl:flex">
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-amber-100">{t.dangerousCommands}</div>
+            <p className="text-sm text-amber-50/90">{t.noRecent}</p>
+            <p className="text-xs text-amber-100/80">{t.rightDangerNote}</p>
+          </div>
+          <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-emerald-100">{t.approvals}</div>
+            <p className="text-sm text-emerald-50/90">{t.noApprovals}</p>
+            <p className="text-xs text-emerald-100/80">{t.rightApprovalsNote}</p>
+          </div>
+          <div className="rounded-lg border border-sky-500/40 bg-sky-500/10 p-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-sky-100">{t.externalSignals}</div>
+            <p className="text-sm text-sky-50/90">
+              {signals.length === 0 ? t.noSignals : `${signals.length} ${t.latest}`}
+            </p>
+            <p className="text-xs text-sky-100/80">{t.rightSignalsNote}</p>
+          </div>
+        </aside>
+      </div>
       </div>
     </div>
   )

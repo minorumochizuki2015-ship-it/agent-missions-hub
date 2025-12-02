@@ -441,7 +441,7 @@
       "evidence": [
         "observability/policy/ci_evidence.jsonl"
       ],
-      "notes": "Manager UIを実装し i18n/Jest/Playwright/axe=0 まで改善。UI Audit EN/JA で vitals_missing=true を警告許容とし、checklist/milestones に方針追記。ci_evidence に ui_audit_executed/ui_gate_pass_* (page=manager/unified_inbox) を記録。"
+      "notes": "Manager UIを実装し i18n/Jest/Playwright/axe=0 まで改善。UI Audit EN/JA で vitals_missing=true を警告許容とし、checklist/milestones に方針追記。ci_evidence に ui_audit_executed/ui_gate_pass_* (page=manager/unified_inbox) を記録。/api/missions 実データ表示を維持し、backend up + seed 前提で UI Gate EN/JA を再実行して ci_evidence に記録する計画（次バッチで実施可能）。"
     },
     {
       "id": "phase2d-cli-e2e",
@@ -455,7 +455,7 @@
       "evidence": [
         "observability/policy/ci_evidence.jsonl"
       ],
-      "notes": "CLI serve/call を Typer で実装し、/api/missions への call を E2E で検証。ci_evidence に cli_call / cli_e2e_run を記録し、LOCK を PHASE2D-CLI-E2E へ更新。"
+      "notes": "CLI serve+call E2E 計画: /health=200 ＆ /api/missions seeded を前提に `python src/orchestrator/cli.py serve` → `call --engine codex_cli|claude_cli --endpoint /api/missions` を実行し、ci_evidence に cli_call/cli_e2e_run（api_up=true, missions_seeded=true, engine=codex|claude）を記録。spawn_agent_cli は cli_runs/{run_id}.log を必ず生成し、workflow_runs.run_id と紐付ける。engines.yaml から command/workdir を解決し、欠如時は fallback コマンド許容。テスト計画（実施は別バッチ）: pytest -q tests/test_workflow_engine.py、必要に応じて conpty_wrapper 短縮 pytest、CLI serve+call smoke を記録。Shadow Audit: 各バッチで PLAN→PATCH→TEST→APPLY を emit し verify_chain PASS を完了条件に含める。pytest flush OSError は scripts/test_workflow_engine_wrapper.py によりファイル出力で回避し、2025-12-02 ログ上 4 passed を確認。cli_runs の run_id/path を call ログでも echo 済み (2025-12-02)。serve 起動時の /health ログを cli_runs/<run_id>_health.log に記録済み (2025-12-02)。Phase2D のログ補強は完了し、次は Phase2C 実データUIに着手する。"
     },
     {
       "id": "phase3-p0-design-sync",
@@ -526,7 +526,7 @@
       "evidence": [
         "observability/policy/ci_evidence.jsonl"
       ],
-      "notes": "初手は 3ファイル/50行以内で実データカードを追加し、npm test --runInBand と必要なら UI Gate を実施。"
+      "notes": "初手は 3ファイル/50行以内で実データカードを追加し、npm test --runInBand と必要なら UI Gate を実施。2025-12-01 時点で engines.yaml を外部化し load_engine_config で loader 統合済み（pytest tests/test_workflow_engine.py 4/4 PASS 確認）。"
     },
     {
       "id": "engines-yaml-externalization",

@@ -9,13 +9,33 @@
   - 判定エラーや巨大 diff（閾値超過）、`main`/`release/*` へのマージ、`label: run-ui-gate` が付いた PR では強制実行（decision=run/force_run）。
   - 対象パス例: `apps/orchestrator-ui/**`, `src/**/templates/**`, `**/*.css|scss|ts|tsx`, `playwright.config*`, `scripts/ui_audit*.py`, `package*.json`。
   - UI Gate 実行時は従来どおり `npm run ui:audit:ci`（または `scripts/ui_audit_run.py`）を実行し、summary/screenshot/HTML の SHA を `ui_audit_executed` / `ui_gate_pass_*` として ci_evidence に追記。
-- 最新状況: 2025-11-30 に `/mail` `/mail/manager` を EN/JA で ui_audit_run.py 実行し Gate=PASS（vitals_missing 許容）。Auto Gate 判定は引き続き no-ui-change=skip だが手動で実施済み。
+- 最新状況: 2025-11-30 に `/mail` `/mail/manager` を EN/JA で ui_audit_run.py 実行し Gate=PASS（vitals_missing 許容）。2025-12-01 再実行は EN/JA とも手動再実行で成功（生成物は Git 外・ci_evidence 未更新、追記予定）。Auto Gate 判定は引き続き no-ui-change=skip だが手動で実施する。
 - Web Vitals が取得できない場合（vitals_missing=true）は警告扱いで許容し、axe=0 であれば Gate=PASS と見なす。取得できた場合は LCP<=2.5s / CLS<=0.10 / FID<=100ms の予算で判定する。
 - ローカルでの手動実行が必要な場合は従来手順を踏むこと:
   1. `npm run lint && npm run test && npm run test:e2e --prefix apps/orchestrator-ui`
   2. `python scripts/ui_audit_run.py`（JA/EN 両方）
   3. `artifacts/ui_audit/summary*.json`・`screens/*.png`・`report.html` の SHA を `observability/policy/ci_evidence.jsonl` に追記
   4. Gate=PASS を確認後、本チェックリストと docs/multi_agent_terminal_milestones_v2.md を同期更新
+- Phase2D: call で run_id/path/api_up を echo 済み、serve の /health を `cli_runs/<run_id>_health.log` に記録済み（2025-12-02 wrapper pytest 4 passed）。次は Phase2C 実データ UI へ移行。
+- Phase2C: /api/missions 実データ表示を再有効化し、backend up+seed 前提で UI Gate EN/JA を再実行予定（計画策定済み、実装は別バッチ）。UI移植の段階ゴール: ①旧UIレイアウト移植完了 ②Signals/Approvals など新機能追加 ③バックエンド完全統合（/api/missions 等を安定表示） ④UI/UX高度化と Gate 再実行。
+- Legacy parity リマインダ: 旧UI（`C:\Users\User\Trae\Codex-CLImutipule-CMD`、Flask/Alpine/Tailwind拡張）で提供していた言語リンク伝搬・ダークモード持続・トースト/チュートリアル等は未移植。各UIバッチ開始時に legacy を参照し、差分を埋めるタスクを plan_diff/milestones に反映すること。
+
+### 旧UI → 現行React 移植状況（抜け漏れ防止）
+- Agent登録フォーム（プログラム/モデル/スキルセット/APIキー入力、登録ボタン）: 未移植 | DoD: 入力検証+登録成功+UI Gate記録
+- メッセージ送信フォーム（宛先選択/件名/本文、送信ボタン、予約送信/添付）: 未移植 | DoD: 送信成功+予約/添付が動作+UI Gate記録
+- メッセージ検索・一覧（フィルター、Splitビュー）: 未移植 | DoD: 検索結果表示+Split切替+UI Gate記録
+- プロジェクト一覧カード（ステータス・アクション付きグリッド）: 未移植 | DoD: 一覧表示+アクション1つ動作
+- Unified Inbox（左リスト＋右詳細）: 未移植 | DoD: リスト/詳細同期表示
+- Signals/Approvals 右パネル（実データ連動）: 骨組みのみ | DoD: 実データ表示+状態遷移1件
+- トースト/チュートリアル/通知: 未移植 | DoD: 主要アクションでトースト発火
+- lang/dark 持続（localStorage 連携・?lang自動付与）: 未移植 | DoD: リロード/リンク遷移後も lang/dark が保持
+- 拡張テーマ（カスタム色/影/グラデ/フォント）: 未移植 | DoD: 主要カードにテーマ適用+UI Gateで視覚確認
+
+### ゴール管理ルール（脱線防止）
+- 1バッチ=1 goal_id（legacy_feature_ref）を必須。PLAN に `closes:<goal_id>` と DoD項目を列挙すること。
+- Active goal は常に1つ（WIP=1）。別goalに着手する場合は必ず `PARKED(goal_id)` を記録後に新PLAN。
+- out_of_scope を PLAN に必須記載し、diff が paths外/out_of_scopeに触れた場合は Major とする。
+- interrupt は `interrupt_queue` へ記録し、即時対応は lane C・≤5行・1ファイルの例外のみ。
 
 ## PASS 維持フロー
 1. `artifacts/preview/` を更新して差分を記録（Plan→Test→Patch の範囲内）。
@@ -44,6 +64,7 @@
 - ui_audit: `artifacts/ui_audit/summary.json`（SHA256: 40233969...89C0, LCP=428ms / TTI=0.030s）・`summary_ja.json`（SHA256: 241C2B14...9715, LCP=448ms / TTI=0.052s）と `screens/unified_inbox.png` / `screens/unified_inbox_ja.png`（4CFF8863...5DDD）。`axe_result.json`/`report.html` に加え HTML ダンプ `artifacts/ui_audit/html/route_unified_inbox.html` を再生成。HTML レポートは `artifacts/ui_audit_report/20251120-0930` を参照。
 - JS tests: `npm run lint --prefix apps/orchestrator-ui` / `CI=1 npm run test --prefix apps/orchestrator-ui` / `npm run test:e2e --prefix apps/orchestrator-ui` を 11/20 09:25–09:30 に実行し、いずれも PASS（Jest は Dashboard ヘッダ期待値更新後、Playwright 13/13）。
 - coverage: 2025/11/17 16:47:42 に `coverage_updated`（lines_valid=6522 / lines_covered=252 / line_coverage=0.03864）を記録（UI Gate より前の時刻）。
+- エンジン設定: `config/engines.yaml` を外部化し load_engine_config で loader 統合済み（2025-12-01 pytest tests/test_workflow_engine.py 4/4 PASS で確認）。設計書・マイルストンにも反映済み。
 
 ## Mission/Workflow 拡張チェック
 - データモデル: missions/task_groups/tasks/artifacts/knowledge のスキーマとマイグレーションを定義し、ER 差分を `plans/diff-plan.json` に反映する
