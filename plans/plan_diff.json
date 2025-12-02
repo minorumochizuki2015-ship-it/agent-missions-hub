@@ -155,6 +155,24 @@
       "notes": "Phase 2A の実装タスクを管理。workflow_engine self-heal 系 pytest を 2025/11/30 に再実行し、success/failure 両方の workflow_run イベントを ci_evidence に追記。UI 資産移植後に npm lint/test/e2e と ui_audit を再実行し、pytest/ruff/UI 証跡を ci_evidence/reports に追記済み。残タスク: 追加異常系・フル allowlist pytest・UI Gate 最新結果の反映継続。"
     },
     {
+      "id": "cli-multi-agent-v1",
+      "status": "completed",
+      "description": "CLI run に role プロファイル適用・message bus handoff・workflow フック（ベストエフォート）・並列エラー集約を追加し、tlog skip で署名検証済みにする。",
+      "entries": [
+        "src/orchestrator/cli.py",
+        "src/orchestrator/conpty_wrapper.py",
+        "src/orchestrator/message_bus.py",
+        "tests/test_orchestrator_cli_parallel.py",
+        "docs/multi_agent_terminal_checklist_v2.md"
+      ],
+      "evidence": [
+        "observability/policy/ci_evidence.jsonl",
+        "data/logs/current/audit/cli_runs",
+        "observability/policy/shadow_audit/manifest.jsonl"
+      ],
+      "notes": "署名は cosign.pub + manifest.sig.bundle で Verified OK (tlog skip)。必要に応じ tlog 有効で再署名可能。"
+    },
+    {
       "id": "data-model-mission-task",
       "status": "completed",
       "description": "missions/task_groups/tasks/artifacts/knowledge スキーマ追加とマイグレーションを作成し、ER 差分と API 定義を docs に同期する（モデル定義＋ SQLite へのフィールド追加を実施）",

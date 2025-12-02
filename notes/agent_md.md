@@ -19,6 +19,7 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 - orchestrator CLI run に `--parallel` / `--max-workers` を追加し、ThreadPoolExecutor で複数ロールを同時起動できるようにした（既定は従来どおりシーケンシャル）。
 - run に role プロファイル適用（config/roles.json をベストエフォートで読み込み、workdir/prompt を反映）と message_bus handoff（JSON 追記）、workflow_endpoint オプションを追加。並列エラーは role 単位で集約し exit する。
 - conpty_wrapper で trace_dir を必ず mkdir し、ログ出力失敗を防止。
+- tlog 方針: 現状は cosign verify-blob で tlog skip 検証。運用で透明性が必要な場合は tlog 有効で再署名・再検証する計画を別バッチで実施予定。
 
 # Decisions
 
