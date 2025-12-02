@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Optional
 from uuid import UUID, uuid4
@@ -116,8 +118,14 @@ def run(
     trace_dir: Path = typer.Option(
         Path("data/logs/current/audit/cli_runs"), help="ログ保存先"
     ),
+    parallel: bool = typer.Option(
+        False, help="役割ごとにエージェント CLI を並列起動するかどうか"
+    ),
+    max_workers: Optional[int] = typer.Option(
+        None, help="並列起動時のスレッド数(省略時 roles 数)"
+    ),
 ) -> None:
-    """指定した roles を順次起動し、run_id+index でログを分離する。"""
+    """指定した roles を起動し、run_id+index でログを分離する(必要に応じ並列)。"""
 
     role_list = [r.strip() for r in roles.split(",") if r.strip()]
     if not role_list:
@@ -132,18 +140,33 @@ def run(
         typer.echo(f"engine config invalid: {engine}", err=True)
         raise typer.Exit(code=2)
 
-    for idx, role in enumerate(role_list):
-        proc = spawn_agent_cli(
+    def _run_single(idx: int, role_name: str) -> subprocess.CompletedProcess[str]:
+        return spawn_agent_cli(
             command=list(command),
             mission_id=mission_id,
             run_id=run_id,
             trace_dir=trace_dir,
             timeout=timeout,
             command_index=idx,
-            role=role,
+            role=role_name,
         )
-        if proc.returncode != 0:
-            raise typer.Exit(code=1)
+
+    if parallel:
+        worker_count = max_workers or len(role_list)
+        with ThreadPoolExecutor(max_workers=worker_count) as executor:
+            futures = [
+                executor.submit(_run_single, idx, role_name)
+                for idx, role_name in enumerate(role_list)
+            ]
+            for fut in as_completed(futures):
+                proc = fut.result()
+                if proc.returncode != 0:
+                    raise typer.Exit(code=1)
+    else:
+        for idx, role in enumerate(role_list):
+            proc = _run_single(idx, role)
+            if proc.returncode != 0:
+                raise typer.Exit(code=1)
 
 
 def _write_cli_run_log(

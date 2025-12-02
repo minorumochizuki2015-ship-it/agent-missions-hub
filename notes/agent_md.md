@@ -16,6 +16,7 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 - storage.py の差分未被覆 11 行に対しモックテスト（tests/test_storage_cov.py）を追加し、diff-cover ブロックを解消。best-effort suppress には pragma: no cover を付与。
 - Shadow Audit manifest/sha256 は verify_chain で整合確認済み（2025-12-03 直近）。cosign verify-blob（cosign.pub + manifest.sig.bundle、--insecure-ignore-tlog）で Verified OK を確認（署名=OK）。tlog はスキップしているため、必要に応じて tlog 付き再検証を検討。
 - orchestrator CLI serve→call E2E は PYTHONPATH=src＋WINDOWS_TEST_ALLOWLIST_APPEND=tests/test_cli_e2e.py を付与すると実行可能で、レスポンス JSON が JSON 文字列として出力される状態に修正済み。cli_runs ログ行は JSON より前に出力される。
+- orchestrator CLI run に `--parallel` / `--max-workers` を追加し、ThreadPoolExecutor で複数ロールを同時起動できるようにした（既定は従来どおりシーケンシャル）。
 
 # Decisions
 
@@ -59,6 +60,7 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 - pyproject.toml: mypy exclude/ignore を拡張（notes/legacy/scripts/test_api_smoke 等を除外、http/db/workflow_engine ほかを ignore_errors として暫定許容）。
 - detect-secrets/bandit 対応: ci_evidence.jsonl を削除し .gitignore 追加、ci_evidence.sample.jsonl の sha をプレースホルダ化、tailwind.cdn.js を削除して各テンプレートを CDN script へ切替。migrations/versions/* に allowlist 追記、tests/test_missions_api.py の sha 値をダミー化。storage.py の SHA1 に usedforsecurity=False を付与し random 系を secrets に置換、pass-only except を contextlib.suppress やログ出力へ変更。http.py の SQL f-string に nosec コメントを付記し、redis/token-bucket などの pass を suppress/log に修正。db.py の jitter を secrets ベースにし assert を RuntimeError に置換。utils.py の名前生成を secrets.choice 化。
 - src/orchestrator/cli.py: `call` コマンドで cli_runs ログ行を先に出力し、レスポンスを `json.dumps` で JSON 文字列として出力するよう調整（E2E で JSON decode 可能に）。
+- tests/test_orchestrator_cli_parallel.py: run の並列オプションが実行時間を短縮することを確認するテストを追加。
 
 # TODO (priority order)
 
@@ -97,6 +99,7 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 - `python -m pytest -q tests/test_storage_* tests/test_http_liveness_min.py` → `reports/test/pytest_phase2a_storage_run.txt` に記録（Pass）。
 - `python -m pytest -vv tests/test_workflow_engine.py tests/test_missions_api.py` → `reports/test/pytest_phase2b_run.txt` に記録（Pass, run API/self-heal/knowledge 失敗系を含む）。
 - `PYTHONPATH=src WINDOWS_TEST_ALLOWLIST_APPEND=tests/test_cli_e2e.py .venv/Scripts/python.exe -m pytest -q tests/test_cli_e2e.py` → Pass（serve→call `/api/missions` E2E を再確認、JSON decode 可）
+- `PYTHONPATH=src WINDOWS_TEST_ALLOWLIST_APPEND=tests/test_cli_e2e.py,tests/test_orchestrator_cli_parallel.py .venv/Scripts/python.exe -m pytest -q tests/test_orchestrator_cli_parallel.py tests/test_cli_e2e.py` → Pass（並列オプションと既存 E2E を再確認）
 - `python -m ruff check src tests scripts` → `reports/test/ruff_phase2a_run.txt` に記録（出力なし／pass）。現行環境で `ruff` は Python モジュール経由で実行。
 - `npm run lint && npm run test && npm run test:e2e --prefix apps/orchestrator-ui` → `reports/test/npm_orchestrator_ui.txt` に記録。`apps/orchestrator-ui` フォルダが存在しないため実行できず（legacy worktree に移行予定）。
 - `python scripts/ui_audit_run.py` → `reports/test/ui_audit_run.txt` に記録（placeholder UI Audit run）。
