@@ -34,6 +34,7 @@
 ### CLI単体運用ゴール（UI未完成でもマルチエージェントを回す）
 - goal_id: cli-v1-orchestrator
 - DoD: `orchestrator run --roles planner,coder,tester --mission <id>` で SequentialWorkflow が完走し、ConPTY子プロセスでCodex/Claudeを起動、必要時 `:attach <agent>` で人間介入可能。ログ/ci_evidence/Shadow Audit が記録されること。
+- 進捗: fileベースの message_bus を導入し、demoエンジンで roles=planner,coder の短縮E2E（run → *_cmd0/1.log 生成）を tests/test_message_bus.py で確認済み。次は codex/claude 実エンジンと Agent Mail 通知を検討。
 
 ### 補足メモ
 - Signals: 現状は右カラムUI枠のみ。Backend wired: NO（P2実装時に YES へ更新）。

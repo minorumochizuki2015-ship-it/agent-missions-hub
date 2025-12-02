@@ -27,8 +27,16 @@ def load_engine_config(engine_name: str = "demo") -> dict[str, Any]:
             data = yaml.safe_load(f) or {}
         engines = data.get("engines", {}) if isinstance(data, dict) else {}
         engine = engines.get(engine_name, {}) if isinstance(engines, dict) else {}
-        command = engine.get("command", fallback["command"]) if isinstance(engine, dict) else fallback["command"]
-        workdir = engine.get("workdir", fallback["workdir"]) if isinstance(engine, dict) else fallback["workdir"]
+        command = (
+            engine.get("command", fallback["command"])
+            if isinstance(engine, dict)
+            else fallback["command"]
+        )
+        workdir = (
+            engine.get("workdir", fallback["workdir"])
+            if isinstance(engine, dict)
+            else fallback["workdir"]
+        )
         return {"command": command, "workdir": workdir}
     except Exception:
         return fallback
@@ -40,32 +48,32 @@ def spawn_agent_cli(
     run_id: UUID,
     trace_dir: Path | None = None,
     timeout: float = 300.0,
+    command_index: int | None = None,
+    role: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """
-    Spawn agent CLI (CodexCLI/Claude Code CLI) as subprocess with ConPTY support.
+    エージェント CLI を ConPTY で起動し、run_id 単位でトレースを残す。
 
     Args:
-        command: CLI command to execute (e.g., ["codex", "chat", "mission.txt"])
-        mission_id: Mission UUID for logging
+        command: 実行する CLI コマンド
+        mission_id: ログ用 Mission UUID
         run_id: Workflow run UUID
-        trace_dir: Directory to save output logs (default: data/logs/current/audit/cli_runs)
-        timeout: Maximum execution time in seconds (default: 300s / 5 min)
-
-    Returns:
-        CompletedProcess with stdout/stderr captured
-
-    Raises:
-        subprocess.TimeoutExpired: If command exceeds timeout
-        FileNotFoundError: If command executable not found
+        trace_dir: ログ保存先(省略時 data/logs/current/audit/cli_runs)
+        timeout: タイムアウト(秒)
+        command_index: 複数起動時のインデックス(ログ分離用)
+        role: ロール名(任意、ログ用)
     """
     # Prepare trace directory and file
     target_dir = trace_dir or Path("data/logs/current/audit/cli_runs")
     target_dir.mkdir(parents=True, exist_ok=True)
-    trace_path = target_dir / f"{run_id}.log"
+    suffix = f"_cmd{command_index}" if command_index is not None else ""
+    trace_path = target_dir / f"{run_id}{suffix}.log"
 
     # Windows ConPTY support via CREATE_NEW_PROCESS_GROUP
     # On Linux/Mac, this flag is ignored
-    creation_flags = subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform.startswith("win") else 0
+    creation_flags = (
+        subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform.startswith("win") else 0
+    )
 
     try:
         result = subprocess.run(
@@ -77,13 +85,31 @@ def spawn_agent_cli(
         )
 
         # Save execution trace to log file
-        _write_trace_log(trace_path, mission_id, run_id, command, result, None)
+        _write_trace_log(
+            trace_path,
+            mission_id,
+            run_id,
+            command,
+            result,
+            None,
+            command_index=command_index,
+            role=role,
+        )
 
         return result
 
     except Exception as e:
         # Log failure details
-        _write_trace_log(trace_path, mission_id, run_id, command, None, e)
+        _write_trace_log(
+            trace_path,
+            mission_id,
+            run_id,
+            command,
+            None,
+            e,
+            command_index=command_index,
+            role=role,
+        )
         raise
 
 
@@ -94,12 +120,18 @@ def _write_trace_log(
     command: list[str],
     result: subprocess.CompletedProcess[str] | None,
     error: Exception | None,
+    command_index: int | None = None,
+    role: str | None = None,
 ) -> None:
-    """Write CLI execution trace to log file."""
+    """CLI 実行トレースをログに出力する。"""
     with trace_path.open("w", encoding="utf-8") as f:
         f.write(f"# Timestamp: {datetime.now(timezone.utc).isoformat()}\n")
         f.write(f"# Mission ID: {mission_id}\n")
         f.write(f"# Run ID: {run_id}\n")
+        if command_index is not None:
+            f.write(f"# Command Index: {command_index}\n")
+        if role:
+            f.write(f"# Role: {role}\n")
         f.write(f"# Command: {' '.join(command)}\n\n")
 
         if error:

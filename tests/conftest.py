@@ -211,7 +211,7 @@ def pytest_collection_modifyitems(
             "tests/test_integration_showcase_unit.py",
             "tests/test_ci_smoke_min.py",
             "tests/test_cli.py::test_cli_help",
-            "tests/test_cli_run_roles.py",
+            "tests/test_message_bus.py",
             "tests/test_config_unit_min.py",
             "tests/test_models_unit_min.py",
             "tests/test_storage_write_unit_min.py",
