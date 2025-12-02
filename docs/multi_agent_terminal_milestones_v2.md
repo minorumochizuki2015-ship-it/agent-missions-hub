@@ -11,6 +11,7 @@
 - serve 起動時に /health の結果を `cli_runs/<run_id>_health.log` に記録し、call 側で api_up/run_id/path を echo 済み（2025-12-02 wrapper pytest 4 passed）。
 - Phase2D ログ補強は完了し、次は Phase2C 実データ UI への移行を進める。
 - Phase2C: /api/missions 実データ表示を再有効化し、backend up+seed 前提で UI Gate EN/JA を再実行する計画を策定（次バッチで実装着手）。
+- 次バッチで UI Gate EN/JA を再実行し、ci_evidence (Git外) に `ui_audit_executed`/`ui_gate_pass_*` を追記予定（backend up+seed 前提）。既存 right パネル骨組みは完了済み。
 
 ## ロードマップ（P0〜P4：Phase3 以降を含む）
 - **P0 設計同期**: v1 スコープ（Sequential＋Windows/PS7＋ConPTY、CodexCLI+Claudeのみ、CodeMachineは外部扱い）、mcp_agent_mail 中核化、役割プリセット・Signals 方針を設計・checklist・plan_diff に反映。
