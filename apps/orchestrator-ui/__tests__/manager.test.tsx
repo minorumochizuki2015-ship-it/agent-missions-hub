@@ -18,6 +18,8 @@ const mockSignals = {
   ]
 }
 
+let consoleErrorSpy: jest.SpyInstance
+
 beforeEach(() => {
   global.fetch = jest.fn((url: string) => {
     if (url.includes('/api/missions')) {
@@ -28,10 +30,12 @@ beforeEach(() => {
     }
     return Promise.resolve({ ok: false, json: () => Promise.resolve({}) }) as unknown as Response
   })
+  consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
 })
 
 afterEach(() => {
   jest.resetAllMocks()
+  consoleErrorSpy?.mockRestore()
 })
 
 const renderPage = (lang?: string, feature = 'true') => {
