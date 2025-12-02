@@ -299,6 +299,9 @@ export default function ManagerPage({
                 ? `${t.apiAlertTitle}${alertDetail}`
                 : `${missions.length} missions`}
           </p>
+          <p className="text-[11px] uppercase tracking-wide text-slate-400">
+            Data: {fromApi ? 'API' : 'mock'}
+          </p>
         </div>
         <Link
           href={toggleHref}
