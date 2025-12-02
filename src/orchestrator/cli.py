@@ -5,10 +5,13 @@ import os
 import time
 from pathlib import Path
 from typing import Optional
+from uuid import UUID, uuid4
 
 import httpx
 import typer
 import uvicorn
+
+from orchestrator.conpty_wrapper import load_engine_config, spawn_agent_cli
 
 DEFAULT_BASE = os.getenv("MISSIONS_HUB_API_BASE", "http://127.0.0.1:8000")
 
@@ -94,6 +97,42 @@ def call(
     if resp.status_code >= 400:
         typer.echo(f"api_up=false engine={engine} run_id={run_id}")
         raise typer.Exit(code=1)
+
+
+@app.command()
+def run(
+    roles: str = typer.Option("planner,coder,tester", help="起動する役割をカンマ区切りで指定"),
+    engine: str = typer.Option("codex_cli", help="engines.yaml に定義されたエンジン名"),
+    mission: Optional[str] = typer.Option(None, help="Mission UUID。未指定なら自動生成"),
+    timeout: float = typer.Option(300.0, help="各CLIのタイムアウト（秒）"),
+    trace_dir: Path = typer.Option(Path("data/logs/current/audit/cli_runs"), help="ログ保存先"),
+) -> None:
+    """指定した roles を順次起動し、run_id+index でログを分離する。"""
+
+    role_list = [r.strip() for r in roles.split(",") if r.strip()]
+    if not role_list:
+        typer.echo("roles が空です", err=True)
+        raise typer.Exit(code=2)
+
+    mission_id = UUID(mission) if mission else uuid4()
+    run_id = uuid4()
+    engine_cfg = load_engine_config(engine)
+    command = engine_cfg.get("command")
+    if not isinstance(command, list) or not command:
+        typer.echo(f"engine config invalid: {engine}", err=True)
+        raise typer.Exit(code=2)
+
+    for idx, _ in enumerate(role_list):
+        proc = spawn_agent_cli(
+            command=list(command),
+            mission_id=mission_id,
+            run_id=run_id,
+            trace_dir=trace_dir,
+            timeout=timeout,
+            command_index=idx,
+        )
+        if proc.returncode != 0:
+            raise typer.Exit(code=1)
 
 
 def _write_cli_run_log(
