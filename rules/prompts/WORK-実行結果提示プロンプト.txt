@@ -66,6 +66,12 @@ Branch: <対象ブランチ名>
 更新ファイル:
 - <今回のバッチで実際に変更したファイルのみ列挙>
 
+goalリンク / スコープ:
+- goal_id（legacy_feature_ref）: <必須>
+- closes: <goal_id> を reasoning_digest 等に含めたか: Yes/No
+- DoD（今回満たした項目）: <箇条書き>
+- out_of_scope: <本バッチで“やらない”と宣言した範囲>
+
 次の推奨ステップ（WORKによる自己評価）:
 - <次回やるべき作業を優先度順に簡潔に記載>
 
