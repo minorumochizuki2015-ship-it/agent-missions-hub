@@ -102,11 +102,17 @@ def call(
 
 @app.command()
 def run(
-    roles: str = typer.Option("planner,coder,tester", help="起動する役割をカンマ区切りで指定"),
+    roles: str = typer.Option(
+        "planner,coder,tester", help="起動する役割をカンマ区切りで指定"
+    ),
     engine: str = typer.Option("codex_cli", help="engines.yaml に定義されたエンジン名"),
-    mission: Optional[str] = typer.Option(None, help="Mission UUID。未指定なら自動生成"),
+    mission: Optional[str] = typer.Option(
+        None, help="Mission UUID。未指定なら自動生成"
+    ),
     timeout: float = typer.Option(300.0, help="各CLIのタイムアウト(秒)"),
-    trace_dir: Path = typer.Option(Path("data/logs/current/audit/cli_runs"), help="ログ保存先"),
+    trace_dir: Path = typer.Option(
+        Path("data/logs/current/audit/cli_runs"), help="ログ保存先"
+    ),
 ) -> None:
     """指定した roles を順次起動し、run_id+index でログを分離する。"""
 
