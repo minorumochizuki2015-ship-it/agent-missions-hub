@@ -272,7 +272,21 @@ export default function ManagerPage({
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50">
-    <div className="mx-auto max-w-7xl p-4 lg:p-6">
+      <div className="mx-auto max-w-7xl p-4 lg:p-6">
+      <div className="flex flex-col gap-4 xl:flex-row">
+        <aside className="hidden w-52 flex-shrink-0 flex-col gap-2 border-r border-slate-800 bg-slate-900/80 p-3 xl:flex">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t.navSection}</div>
+          {navItems.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className="w-full rounded border border-slate-800 bg-slate-900 px-3 py-2 text-left text-sm font-medium text-slate-100 hover:border-indigo-500"
+            >
+              {item.label}
+            </button>
+          ))}
+        </aside>
+        <main className="flex-1 space-y-4">
       <header className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-50" data-testid="manager-title">
@@ -534,7 +548,25 @@ export default function ManagerPage({
           </p>
         </section>
       </div>
-    </div>
+        </main>
+        <aside className="hidden w-72 flex-shrink-0 flex-col gap-3 border-l border-slate-800 bg-slate-900/70 p-3 xl:flex">
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-amber-100">{t.dangerousCommands}</div>
+            <p className="text-sm text-amber-50/90">{t.noRecent}</p>
+          </div>
+          <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-emerald-100">{t.approvals}</div>
+            <p className="text-sm text-emerald-50/90">{t.noApprovals}</p>
+          </div>
+          <div className="rounded-lg border border-sky-500/40 bg-sky-500/10 p-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-sky-100">{t.externalSignals}</div>
+            <p className="text-sm text-sky-50/90">
+              {signals.length === 0 ? t.noSignals : `${signals.length} ${t.latest}`}
+            </p>
+          </div>
+        </aside>
+      </div>
+      </div>
     </div>
   )
 }
