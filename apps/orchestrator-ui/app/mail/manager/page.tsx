@@ -553,16 +553,19 @@ export default function ManagerPage({
           <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
             <div className="text-xs font-semibold uppercase tracking-wide text-amber-100">{t.dangerousCommands}</div>
             <p className="text-sm text-amber-50/90">{t.noRecent}</p>
+            <p className="text-xs text-amber-100/80">{t.rightDangerNote}</p>
           </div>
           <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3">
             <div className="text-xs font-semibold uppercase tracking-wide text-emerald-100">{t.approvals}</div>
             <p className="text-sm text-emerald-50/90">{t.noApprovals}</p>
+            <p className="text-xs text-emerald-100/80">{t.rightApprovalsNote}</p>
           </div>
           <div className="rounded-lg border border-sky-500/40 bg-sky-500/10 p-3">
             <div className="text-xs font-semibold uppercase tracking-wide text-sky-100">{t.externalSignals}</div>
             <p className="text-sm text-sky-50/90">
               {signals.length === 0 ? t.noSignals : `${signals.length} ${t.latest}`}
             </p>
+            <p className="text-xs text-sky-100/80">{t.rightSignalsNote}</p>
           </div>
         </aside>
       </div>
