@@ -17,6 +17,8 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 - Shadow Audit manifest/sha256 は verify_chain で整合確認済み（2025-12-03 直近）。cosign verify-blob（cosign.pub + manifest.sig.bundle、--insecure-ignore-tlog）で Verified OK を確認（署名=OK）。tlog はスキップしているため、必要に応じて tlog 付き再検証を検討。
 - orchestrator CLI serve→call E2E は PYTHONPATH=src＋WINDOWS_TEST_ALLOWLIST_APPEND=tests/test_cli_e2e.py を付与すると実行可能で、レスポンス JSON が JSON 文字列として出力される状態に修正済み。cli_runs ログ行は JSON より前に出力される。
 - orchestrator CLI run に `--parallel` / `--max-workers` を追加し、ThreadPoolExecutor で複数ロールを同時起動できるようにした（既定は従来どおりシーケンシャル）。
+- run に role プロファイル適用（config/roles.json をベストエフォートで読み込み、workdir/prompt を反映）と message_bus handoff（JSON 追記）、workflow_endpoint オプションを追加。並列エラーは role 単位で集約し exit する。
+- conpty_wrapper で trace_dir を必ず mkdir し、ログ出力失敗を防止。
 
 # Decisions
 
@@ -72,6 +74,7 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 6. 未追跡ファイル（apps/, scripts/, package-lock.json など）の取り込み方針を決定し、必要分のみクリーン worktree へ移行する。
 7. cosign verify-blob（cosign.pub + manifest.sig.bundle、--insecure-ignore-tlog）で Verified OK。tlog スキップを許容するか、必要に応じ tlog 付き再検証を行う。
 8. ci_evidence への署名検証ログ追記と、必要に応じて tlog 検証方針をドキュメント化。
+9. Message Bus handoff と role プロファイルを実データに合わせて拡張し、/missions/{id}/run への接着を進める。
 
 # Assumptions
 
