@@ -834,6 +834,8 @@ Common variables you may set:
 | `LLM_DEFAULT_MODEL` | `gpt-5-mini` | Default LiteLLM model identifier |
 | `LLM_TEMPERATURE` | `0.2` | LLM temperature for text generation |
 | `LLM_MAX_TOKENS` | `512` | Max tokens for LLM completions |
+
+**運用メモ（DB分離）**: `DATABASE_URL` は本番／検証の永続データ用に `storage.sqlite3` を指定し、テスト実行時は `sqlite+aiosqlite:///./.pytest_tmp/<name>.sqlite3` など一時DBに切り替えることで `projects.slug` 等のユニーク制約衝突を防ぐ。テスト後は環境変数をクリアし、本番DBに戻すこと。
 | `LLM_CACHE_ENABLED` | `true` | Enable LLM response caching |
 | `LLM_CACHE_BACKEND` | `memory` | LLM cache backend (`memory` or `redis`) |
 | `LLM_CACHE_REDIS_URL` |  | Redis URL for LLM cache (if backend=redis) |
