@@ -7,7 +7,7 @@ import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, cast
 from uuid import UUID, uuid4
 
 import httpx
@@ -18,6 +18,7 @@ from orchestrator.conpty_wrapper import load_engine_config, spawn_agent_cli
 from orchestrator.message_bus import append_message, read_messages
 
 DEFAULT_BASE = os.getenv("MISSIONS_HUB_API_BASE", "http://127.0.0.1:8000")
+DEFAULT_SIGNALS_BASE = os.getenv("MISSIONS_HUB_SIGNALS_BASE", "http://127.0.0.1:3020")
 
 app = typer.Typer(help="CLI entrypoint for Missions Hub orchestrator.")
 
@@ -137,6 +138,12 @@ def run(
         Path("config/roles.json"),
         help="role プロファイル定義(プロンプト/許可コマンド/workdir)",
     ),
+    signals_project_id: Optional[int] = typer.Option(
+        None, help="signals 送信用 project_id(未指定なら送信しない)"
+    ),
+    signals_base_url: str = typer.Option(
+        DEFAULT_SIGNALS_BASE, help="signals POST 先の base URL"
+    ),
 ) -> None:
     """指定した roles を起動し、run_id+index でログを分離する(必要に応じ並列)。"""
 
@@ -180,7 +187,7 @@ def run(
         return command_list
 
     def _run_single(idx: int, role_name: str) -> subprocess.CompletedProcess[str]:
-        return spawn_agent_cli(
+        result = spawn_agent_cli(
             command=_apply_role(list(command), role_name),
             mission_id=mission_id,
             run_id=run_id,
@@ -189,6 +196,7 @@ def run(
             command_index=idx,
             role=role_name,
         )
+        return cast(subprocess.CompletedProcess[str], result)
 
     def _record_handoff(role_name: str, status: str) -> None:
         append_message(
@@ -246,6 +254,13 @@ def run(
     if role_list:
         _call_workflow_endpoint()
         read_messages(bus_path)
+    _post_signal_event(
+        signals_base_url=signals_base_url,
+        project_id=signals_project_id,
+        mission_id=str(mission_id),
+        run_id=str(run_id),
+        roles=role_list,
+    )
 
 
 def _write_cli_run_log(
@@ -300,6 +315,38 @@ def _log_cli_call_evidence(
             f.write("\n")
     except Exception:  # pragma: no cover - IO failures
         pass  # Best-effort logging, don't crash CLI on evidence write failure
+
+
+def _post_signal_event(
+    *,
+    signals_base_url: str,
+    project_id: Optional[int],
+    mission_id: str,
+    run_id: str,
+    roles: list[str],
+) -> None:
+    """run 終了を signals API にベストエフォートで送信する。"""
+    if project_id is None:
+        return
+    url = _compose_url(signals_base_url, "/api/signals")
+    mission_clean = mission_id.replace("-", "")
+    payload = {
+        "project_id": project_id,
+        "mission_id": mission_clean,
+        "type": "orchestrator_run",
+        "severity": "info",
+        "status": "pending",
+        "message": f"run_id={run_id} mission_id={mission_id} roles={','.join(roles)}",
+    }
+    try:
+        with httpx.Client(timeout=5.0) as client:
+            resp = client.post(url, json=payload)
+            if resp.status_code >= 400:
+                typer.echo(f"signals_post_failed status={resp.status_code}", err=True)
+            else:
+                typer.echo(f"signals_posted id={resp.json().get('id')} status=pending")
+    except Exception:
+        typer.echo("signals_post_failed exception", err=True)
 
 
 def _echo_health_check(host: str, port: int, run_id: str) -> None:

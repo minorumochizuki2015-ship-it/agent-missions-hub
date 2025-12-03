@@ -1,6 +1,6 @@
 # Purpose
 
-Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショートスイート導入と証跡整理、今後のフルスイート実行方針を明文化する。
+Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショートスイート導入と証跡整理、今後のフルスイート実行方針を明文化する。加えて Phase 2C/2D（cli-multi-agent-v1-runtime）を実データで完遂する。
 
 # Current State
 
@@ -26,6 +26,8 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 - `/missions/{id}/run` を TestClient 経由で実行し、mission=80fd826b-1e51-4e2b-88a2-3156cfbd7e17 で 202/completed（run_id=00180395-7e16-44ef-b59a-e45bddf36155）を取得。cli_runs にログ、ci_evidence に workflow_run を記録済み（tlog policy=skip 維持）。
 - black/isort/mypy は app/db/http/mail_client/missions を直近実行済み。pytest cli 系は環境スキップ（allowlist/waiver）で 3 skipped 維持。
 - Shadow Audit メトリクス: total_events=562、unsigned_events=550、explainability_rate=5.714%（reasoning_digest 200–600文字基準、exp_count=32）、rule_drift=0、approval_mismatch=0。chain_hash=manifest.sha256=1a7214a703603c21cd46343a4a86e645d1aa64ed19ddd6d336e4a3d63268ffcc で verify_chain=OK。tlog policy=skip、waiver=APPR-20251202-0001/0002。scripts/shadow_audit_emit.py 実行で PLAN イベントが自動追加されるため unsigned が 2 件増加（approvals_row_id 欠落は補完不可のため unsigned=550 を確定記録）。shadow_audit_verify を ci_evidence に追記（最終確認として記録）。verify_chain 実行時は関数直呼び出しを手順とし、PLAN 追加を発生させない。
+- mypy を PYTHONPATH=src + cache 指定 + follow-imports=skip で再実行し、src/orchestrator/cli.py / conpty_wrapper.py を PASS。ci_evidence.jsonl に成功・過去失敗 (exit=124) を記録。Shadow Audit TEST を追加し closes:cli-multi-agent-v1-runtime を明示。lane B はファイル数5・行数200以内を維持。
+ - ci_evidence.jsonl（SHA256=2FC73312F1DB1FD9B565448CA0F6690600CD67BC5BF1DE8064F7CDAC0F54BDD7）に pytest/linters/mypy/UI Gate 関連（auto_gate_decision run / ui_audit_executed pass, scripts/ui_audit_run.py）を記録。Shadow Audit は PLAN/TEST/PATCH/APPLY/TEST まで goal_id=cli-multi-agent-v1-runtime・closes 記載で verify_chain=OK。2025-12-03 PLAN を追加（Phase2C/2D 着手）。missions ページを /api/missions 実データ表示に更新（fallback あり）。
 
 # Decisions
 
@@ -73,22 +75,11 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 
 # TODO (priority order)
 
-1. 差分を lane=T（tests のみ）/B（本体変更）で分割し、コミット計画を提示してから push 可否を判断する（本バッチは tests/log 記録のみで T 維持予定）。
-2. unsigned=550（approvals_row_id 欠落）について、承認IDが入手できないため補完不可と確定記録し、今後補完可能なIDが得られた場合のみ再検討する方針を監査と共有する。
-3. verify_chain 実行は scripts/shadow_audit_emit.verify_chain の関数直呼び出しを標準手順とし、不要な PLAN イベントが生成されないよう運用手順を docs/notes に明記する。
-4. GitOps 証跡・SBOM/UI Gate: plans/diff-plan.json 作成、APPROVALS.md 二者承認、SafeOps ログと LOCK 記録を整備。SBOM 生成＋署名検証、UI 影響有無の判断と必要なら ui:audit:ci 実行・証跡保存。
-5. CI 残タスクの整備: coverage run + diff-cover（結果を reports/ 等へ保存）、detect-secrets/bandit の結果ログを observability/policy/ci_evidence*.jsonl の代替先へ記録。
-6. Phase 2A: workflow_engine v1 (Sequential + self-heal) 実装と missions/task_groups/tasks/artifacts/knowledge マイグレーション・テストを進め、ci_evidence へ Plan/Test/Patch を記録（plan_diff `workflow-engine-phase2a`）。設計書/mission plan/plan_diff を再読し、SQLModel定義＋マイグレーション＋SelfHealテストのスコープを Agent MD に明記する。
-7. API/SelfHeal の異常系テストをさらに拡充（422/400/失敗トレース追加分を allowlist pytest に編入）し、reports/test と ci_evidence を更新。
-8. Runner/CI 証跡: UI Gate/pytest/Jest/Playwright 実行結果を `observability/policy/ci_evidence.jsonl` と `reports/test/` に追記する運用を整備（UI Gate を実測値で更新）。
-9. 未追跡ファイル（apps/, scripts/, package-lock.json など）の取り込み方針を決定し、必要分のみクリーン worktree へ移行する。
-10. tlog skip 方針を監査と合意し、要件確定後に tlog 有効化＋再署名を行う PLAN（cosign+tlog 環境準備含む）を用意する。
-11. ci_evidence への署名検証ログ/doc_update を追記し、plan_diff/Agent MD に tlog 方針を明記した状態を維持する。
-12. Message Bus handoff と role プロファイルを実データに合わせて拡張し、/missions/{id}/run への接着を進める。
-13. /missions/{id}/run を実際に叩き、run_id/log を cli_runs・workflow_runs・ci_evidence（workflow_run）に記録する手順を docs/notes に追記し実測する（mcp_http_app.lifespan フォールバック＋get_session 依存・bleach を解消してから再試行）。
-14. pytest cli 系（tests/test_orchestrator_cli_parallel.py, tests/test_cli_e2e.py）の skip 解除再試行は不要。必要になった場合のみ専用 runner 設定を再利用し、結果を ci_evidence に記録する。
-15. Shadow Audit unsigned 圧縮: approvals_row_id 欠落イベントへの承認ID 付与可否を監査と合意の上で検討し、補完不可を現状確定として notes/ci_evidence に残す（正規ID取得時のみ再検討）。
-16. mypy: 影響範囲（今回変更ファイル＋依存）に対し mypy を実行し、結果を ci_evidence に追記する。
+1. Phase 2C: /api/missions 実データを Manager UI に表示し、UI Gate JA/EN を再実行（FastAPI 起動＋seed必須）。auto_gate_decision + ui_audit_executed/ui_gate_pass_* を ci_evidence に追記し、artifacts/ui_* を更新。legacy ギャップ（lang/dark 持続、トースト、検索/予約/Agent 登録フォーム等）から最低1項目を埋める計画を提示し、未実装は TODO に残す。（UI Gate 実行は scripts/ui_audit_run.py で実施済み、結果追記済み）
+2. Phase 2D: orchestrator run 実データ完走。run_id/session_id を cli_runs/workflow_runs/ci_evidence/Agent Mail に紐付け、signals/approvals を UI 右パネルで1件以上表示・遷移。ci_evidence に cli_call/cli_run/workflow_run/signals を記録。
+3. Shadow Audit/ci_evidence/Agent MD: 各バッチで PLAN/TEST/PATCH/APPLY（closes:cli-multi-agent-v1-runtime）を継続し、verify_chain=OK を維持。ci_evidence ハッシュも併記。
+4. GitOps/SBOM/LOCK/APPROVALS: lane B 上限を超える場合はバッチ分割または承認取得。必要に応じ plans/diff-plan.json、APPROVALS.md、LOCK を更新し、SafeOps/auto_gate_decision を記録。
+5. Phase 2A/B フォロー: workflow_engine マイグレーション/ER 差分を plan_diff に反映し、必要なら short suite で self-heal/DB テストを追加。pytest/Jest/Playwright/UI Gate 結果を reports/test + ci_evidence へ追記。
 
 # Assumptions
 
@@ -151,3 +142,17 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 - UI Gate: UI差分なし・Playwright未導入のため本PRではスキップ（observability/policy/ui_gate_run.jsonl に記録）。
 - `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 WINDOWS_TEST_ALLOWLIST=tests/test_orchestrator_cli_parallel.py,tests/test_cli_e2e.py ENABLE_FULL_SUITE=1 PYTHONPATH=src .venv/Scripts/python.exe -m pytest -q -o addopts= tests/test_orchestrator_cli_parallel.py tests/test_cli_e2e.py` → 3 passed（asyncio_mode 警告のみ）。
 - `.venv/Scripts/python.exe -c "from scripts.shadow_audit_emit import rebuild_chain, verify_chain; rebuild_chain(); verify_chain()"` → hash mismatch 解消後 verify_chain=OK。
+- `PYTHONPATH=src WINDOWS_TEST_ALLOWLIST_APPEND=tests/test_conpty_wrapper.py,tests/test_orchestrator_cli_parallel.py .venv/Scripts/python.exe -m pytest -q -o addopts= tests/test_conpty_wrapper.py tests/test_orchestrator_cli_parallel.py` → 7 passed。
+- `.venv/Scripts/python.exe -m mypy src/orchestrator/conpty_wrapper.py --show-error-codes --follow-imports=skip --no-site-packages --no-namespace-packages` → PASS。
+- `.venv/Scripts/python.exe -m mypy src/orchestrator/cli.py --show-error-codes --follow-imports=skip --no-site-packages --no-namespace-packages` → PASS。
+- `pip install bleach markdown2`（signals エンドポイント有効化のための依存追加、コード変更なし）。
+- `HTTP_LIGHTWEIGHT=0 PYTHONPATH=src .venv/Scripts/python.exe -m mcp_agent_mail.http --host 127.0.0.1 --port 3020` → /openapi.json に `/api/signals` が出現、POST `/api/signals` で seed（id=1, project_id=1, type=dangerous_command, session_id=demo-session/role_id=executor）→ GET `/api/signals` で 200/1件を確認。
+- `apply_patch` で `mcp_agent_mail.http` の `/api/signals` を `session.execute(...).scalars().all()` へ修正（AsyncSession.exec 不在の 500 を解消）。
+- `PYTHONPATH=src PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 WINDOWS_TEST_ALLOWLIST_APPEND=tests/test_signals_api.py::test_signal_create_and_list DATABASE_URL=sqlite+aiosqlite:///%CD%/.pytest_tmp/signals_test_single.sqlite3 .venv/Scripts/python.exe -c "import pytest,sys; sys.exit(pytest.main(['-q','tests/test_signals_api.py::test_signal_create_and_list','-o','addopts=']))"` → 1 passed（NoCssSanitizerWarning のみ）。
+- Shadow Audit 追記: PLAN/PATCH/APPLY/TEST (port=3020 signals seed + pytest) を emit 済み。ci_evidence hash=961d3c413c3660065be6658547e615a57769bf7621fb3240bf52dce58d784223 に server_start/signals_seed/pytest pass を追記。
+- `pip uninstall -y bleach markdown2`（軽量モード強制のため依存を外し、代わりに signals ルートを Mail UI 依存から分離）。
+- `mcp_agent_mail.http` で `/api/signals` 系ルートを Mail UI 初期化とは別に常時登録し、`PATCH /api/signals/{id}` で status 更新を追加。port=3020 で GET/POST/PATCH を実測（id=1 resolved, id=2 pending）。
+- `PYTHONPATH=src PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 WINDOWS_TEST_ALLOWLIST=tests/test_smoke_placeholder.py .venv/Scripts/python.exe -m pytest -q tests/test_smoke_placeholder.py -o addopts=` → 1 passed（警告のみ）。
+- ci_evidence を更新（server_start 3020 再起動・signals status 更新・pytest smoke・signals_post id=3）→ SHA256=cf08df12becc13c1750dc1aa4098a1a45953fbd12faa187d43cbebfc52045063。
+- Shadow Audit 追記: 07:23:03Z PLAN/PATCH/TEST（signals 常時化＋UI 状態遷移＋pytest smoke）、07:28:xxZ PATCH/TEST（CLI signals mission_id ハイフン除去と signals POST 200 id=3）を追加済み、verify_chain OK。
+- CLI run に signals POST を追加（signals_project_id オプション、signals_base_url 既定 3020）。mission_id は CHAR(32) 制約に合わせてハイフン除去して送信。
