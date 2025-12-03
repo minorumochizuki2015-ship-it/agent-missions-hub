@@ -176,15 +176,18 @@ def run(
             role_profiles = {}
 
     def _apply_role(command_list: list[str], role_name: str) -> list[str]:
+        """ロール名に応じてコマンドを置換し、プロンプト/作業ディレクトリを付与する。"""
+        updated_command = [arg.replace("{ROLE}", role_name) for arg in command_list]
         profile = role_profiles.get(role_name, {})
         workdir = profile.get("workdir")
         prompt_env = profile.get("prompt")
         if workdir:
-            command_list = command_list.copy()
-            command_list.insert(0, f"--workdir={workdir}")
+            updated_command = updated_command.copy()
+            updated_command.insert(0, f"--workdir={workdir}")
         if prompt_env:
-            os.environ[f"{role_name.upper()}_PROMPT"] = prompt_env
-        return command_list
+            prompt_text = f"[role={role_name}] {prompt_env}"
+            updated_command = [*updated_command, prompt_text]
+        return updated_command
 
     def _run_single(idx: int, role_name: str) -> subprocess.CompletedProcess[str]:
         result = spawn_agent_cli(

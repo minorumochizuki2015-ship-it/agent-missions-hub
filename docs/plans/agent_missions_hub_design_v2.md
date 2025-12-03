@@ -4,7 +4,7 @@
 - CodexCLI を親オーケストレータとし、複数 CLI エージェント（Claude/Gemini/自作 CLI など）を PTY（v1は Windows/PS7 + ConPTY 限定）経由で制御するマルチエージェント端末を構築する。
 - これらを Agent Missions Hub（データ・WorkflowEngine・UI・Observability）と統合し、Plan→Test→Patch の開発フローを直列＋並列で安全に自動化できる基盤にする。
 - 既存 UI Gate / UI Audit・テスト・observability を壊さず、Phase 2A〜2D のロードマップで順次完成させる。
-- 外部の従量制 LLM/SaaS API には依存せず、`engines.yaml` に列挙された CLI エンジンのみを許可する（例: `allow_external_api: false` を起動時バリデーション）。
+- 外部の従量制 LLM/SaaS API には依存せず、`engines.yaml` に列挙された CLI エンジンのみを許可する（例: `allow_external_api: false` を起動時バリデーション）。ただし、Aレーンや検証専用環境など「外部API利用を明示 opt-in したプロジェクト」に限り、別ファイル（例: `engines_external.yaml`）で `@openai/codex-sdk` などの HTTP エンジンを定義し、Orchestrator からは追加の engine として疎結合に呼び出す拡張を将来フェーズで許可する（コアv1の設計・DoDには含めない）。
 
 ### 0.1 v1 スコープ（確定事項）
 - 実行エンジンは **SequentialWorkflow＋TaskGroup 内の簡易並列** に限定する（DAG/AsyncThink/LangGraph は Phase 3 以降）。
@@ -12,6 +12,7 @@
 - 初期サポート CLI は **CodexCLI + Claude Code CLI** の 2 種。Gemini/Q/その他は `config/engines.yaml` にプレースホルダのみ。
 - CodeMachine は v1 では「外部コマンド」として扱い、内部のマルチエージェント機構には依存しない。
 - 並列定義は「CLI並列（子CLIの同時起動）」と「Workflow並列（TaskGraph/DAGの分岐）」を区別して扱い、Phase 3 以降で LangGraph 的な DAG 並列を拡張する。
+- チャット連携: 現状は非対話バッチ（`codex exec` 等）で完走する構成を優先し、`codex chat` 等の双方向対話は未対応。ConPTY ストリーミング＋attach 機能を Phase3+ のタスクとして追加する。
 
 ### 0.2 バックエンドの正（SSOT）
 - メッセージ（Inbox/Outbox）とファイル予約（lease）は **mcp_agent_mail を中核** とする。現行 FastAPI へ再実装せず、マウント＋薄いラッパーで統合する方針。
