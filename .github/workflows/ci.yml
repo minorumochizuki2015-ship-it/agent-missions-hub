@@ -221,6 +221,15 @@ jobs:
             pw-${{ runner.os }}-
       - name: Sync dependencies
         run: uv sync --dev
+      - name: Install Playwright (Python) if missing
+        run: |
+          uv run python - <<'PY'
+import importlib.util, sys
+sys.exit(0 if importlib.util.find_spec("playwright") else 1)
+PY
+          if [ $? -ne 0 ]; then
+            uv run python -m pip install playwright
+          fi
       - name: Install Playwright browsers (Python)
         run: uv run python -m playwright install chromium
       - name: Verify assets
