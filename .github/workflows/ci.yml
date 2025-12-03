@@ -230,7 +230,7 @@ jobs:
           VERIFY_RUN: ${{ inputs.verify_run }}
         run: uv run python scripts/ops/verify_ui_gate_assets.py
       - name: Append Phase 7 CI evidence (verify-ui-gate)
-        if: ${{ always() && (github.event_name == 'push' || github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.verify_run == '1')) }}
+        if: ${{ always() && hashFiles('scripts/append_phase7_ci_evidence.py') != '' && (github.event_name == 'push' || github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.verify_run == '1')) }}
         env:
           VERIFY_RUN: ${{ inputs.verify_run }}
         run: |
@@ -356,7 +356,7 @@ jobs:
           name: shadow-audit
           path: observability/policy/shadow_audit/**
       - name: Append Phase 7 CI evidence (test matrix)
-        if: ${{ success() && inputs.verify_run == '1' }}
+        if: ${{ success() && inputs.verify_run == '1' && hashFiles('scripts/append_phase7_ci_evidence.py') != '' }}
         env:
           VERIFY_RUN: ${{ inputs.verify_run }}
         run: uv run python scripts/append_phase7_ci_evidence.py --verify-run $VERIFY_RUN --no-pytest --pytest-summary-from observability/junit/junit.xml --label "test-matrix:${{ matrix.python-version }}"
