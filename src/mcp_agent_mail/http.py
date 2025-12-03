@@ -1,4 +1,5 @@
 """HTTP transport helpers wrapping FastMCP with FastAPI."""
+
 # ruff: noqa: I001
 
 from __future__ import annotations
@@ -56,8 +57,8 @@ from .storage import (
     write_file_reservation_record,
 )
 
-
 mail_client = MailClient()
+
 
 async def _project_slug_from_id(pid: int | None) -> str | None:
     if pid is None:
@@ -1136,8 +1137,11 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
 
     # ----- Simple SSR Mail UI -----
     def _register_mail_ui() -> None:
-        import bleach  # type: ignore
-        import markdown2  # type: ignore
+        try:
+            import bleach  # type: ignore
+            import markdown2  # type: ignore
+        except ImportError:
+            return
 
         try:
             from bleach.css_sanitizer import CSSSanitizer  # type: ignore
@@ -2614,7 +2618,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 settings_local = get_settings()
                 if settings_local.environment == "test":
                     client = MailClient()
-                    msg = await client.send_message(project, "HumanOverseer", subject, full_body)
+                    msg = await client.send_message(
+                        project, "HumanOverseer", subject, full_body
+                    )
                     listed = await client.list_messages(project)
                     return JSONResponse(
                         {
@@ -3214,9 +3220,7 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             async with get_session() as session:
                 items = (
                     await session.exec(
-                        select(Signal)
-                        .order_by(Signal.created_at.desc())
-                        .limit(capped)
+                        select(Signal).order_by(Signal.created_at.desc()).limit(capped)
                     )
                 ).all()
             return JSONResponse(
@@ -3240,14 +3244,23 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
         @fastapi_app.post("/api/signals/import/dangerous")
         async def api_import_dangerous_signals(payload: dict) -> JSONResponse:
             """Import dangerous_command / approval_required / failing_test / retry / timeout log lines as signals."""
-            path = payload.get("path") or "data/logs/current/audit/dangerous_command_events.jsonl"
+            path = (
+                payload.get("path")
+                or "data/logs/current/audit/dangerous_command_events.jsonl"
+            )
             project_key = payload.get("project")
             project_id_raw = payload.get("project_id")
             max_rows = int(payload.get("max_rows", 200))
             p = Path(path)
             if not p.exists():
                 raise HTTPException(status_code=404, detail="log file not found")
-            allowed_events = {"dangerous_command", "approval_required", "failing_test", "retry", "timeout"}
+            allowed_events = {
+                "dangerous_command",
+                "approval_required",
+                "failing_test",
+                "retry",
+                "timeout",
+            }
             severity_map = {
                 "dangerous_command": "warning",
                 "approval_required": "info",
@@ -3256,7 +3269,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 "timeout": "warning",
             }
             rows = []
-            for line in p.read_text(encoding="utf-8").splitlines()[: max_rows if max_rows > 0 else None]:
+            for line in p.read_text(encoding="utf-8").splitlines()[
+                : max_rows if max_rows > 0 else None
+            ]:
                 line = line.strip()
                 if not line:
                     continue
@@ -3271,16 +3286,24 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             imported = 0
             skipped = 0
             async with get_session() as session:
+
                 async def _resolve_project_id(row: dict) -> int | None:
                     pid = row.get("project_id") or project_id_raw
                     if pid is not None:
                         return int(pid)
-                    key = row.get("project") or row.get("project_slug") or row.get("project_key") or project_key
+                    key = (
+                        row.get("project")
+                        or row.get("project_slug")
+                        or row.get("project_key")
+                        or project_key
+                    )
                     if not key:
                         return None
                     res = (
                         await session.execute(
-                            text("SELECT id FROM projects WHERE slug = :k OR human_key = :k"),
+                            text(
+                                "SELECT id FROM projects WHERE slug = :k OR human_key = :k"
+                            ),
                             {"k": key},
                         )
                     ).fetchone()
@@ -3315,7 +3338,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             message = (payload.get("message") or "").strip() or None
             severity = (payload.get("severity") or "info").strip()
             if not project_id or not sig_type:
-                raise HTTPException(status_code=400, detail="project_id and type are required")
+                raise HTTPException(
+                    status_code=400, detail="project_id and type are required"
+                )
             await ensure_schema()
             async with get_session() as session:
                 signal = Signal(
@@ -3328,7 +3353,9 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 session.add(signal)
                 await session.commit()
                 await session.refresh(signal)
-            return JSONResponse({"id": signal.id, "created_at": signal.created_at.isoformat()})
+            return JSONResponse(
+                {"id": signal.id, "created_at": signal.created_at.isoformat()}
+            )
 
         @fastapi_app.post("/api/mail/send")
         async def api_mail_send(payload: dict) -> JSONResponse:
@@ -3337,9 +3364,13 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             subject = payload.get("subject", "").strip()
             body_md = payload.get("body_md", "").strip()
             if not project or not agent or not subject:
-                raise HTTPException(status_code=400, detail="project/agent/subject required")
+                raise HTTPException(
+                    status_code=400, detail="project/agent/subject required"
+                )
             msg = await mail_client.send_message(project, agent, subject, body_md)
-            return JSONResponse({"message_id": msg.id, "created_ts": msg.created_ts.isoformat()})
+            return JSONResponse(
+                {"message_id": msg.id, "created_ts": msg.created_ts.isoformat()}
+            )
 
         @fastapi_app.get("/api/mail/messages")
         async def api_mail_messages(project: str) -> JSONResponse:
@@ -3347,7 +3378,11 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             return JSONResponse(
                 {
                     "messages": [
-                        {"id": m.id, "subject": m.subject, "created_ts": m.created_ts.isoformat()}
+                        {
+                            "id": m.id,
+                            "subject": m.subject,
+                            "created_ts": m.created_ts.isoformat(),
+                        }
                         for m in items
                     ]
                 }
@@ -3359,9 +3394,13 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             agent = payload.get("agent")
             path = payload.get("path_pattern")
             if not project or not agent or not path:
-                raise HTTPException(status_code=400, detail="project/agent/path_pattern required")
+                raise HTTPException(
+                    status_code=400, detail="project/agent/path_pattern required"
+                )
             lease = await mail_client.create_lease(project, agent, path)
-            return JSONResponse({"lease_id": lease.id, "expires_ts": lease.expires_ts.isoformat()})
+            return JSONResponse(
+                {"lease_id": lease.id, "expires_ts": lease.expires_ts.isoformat()}
+            )
 
         @fastapi_app.post("/api/leases/{lease_id}/release")
         async def api_release_lease(lease_id: int) -> JSONResponse:

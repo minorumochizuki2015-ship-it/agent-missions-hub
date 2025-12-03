@@ -71,7 +71,9 @@ async def list_missions(
         select(  # type: ignore[call-overload]
             TaskGroup.__table__.c.mission_id,  # type: ignore[arg-type]
             func.count(TaskGroup.__table__.c.id),  # type: ignore[arg-type]
-        ).group_by(TaskGroup.__table__.c.mission_id)  # type: ignore[arg-type]
+        ).group_by(
+            TaskGroup.__table__.c.mission_id
+        )  # type: ignore[arg-type]
     )
     tg_map = {row[0]: row[1] for row in tg_counts}
 
@@ -79,7 +81,9 @@ async def list_missions(
         select(  # type: ignore[call-overload]
             Artifact.__table__.c.mission_id,  # type: ignore[arg-type]
             func.count(Artifact.__table__.c.id),  # type: ignore[arg-type]
-        ).group_by(Artifact.__table__.c.mission_id)  # type: ignore[arg-type]
+        ).group_by(
+            Artifact.__table__.c.mission_id
+        )  # type: ignore[arg-type]
     )
     artifact_map = {row[0]: row[1] for row in artifact_counts}
 
@@ -218,6 +222,12 @@ async def run_mission(
     allow_self_heal: bool = True,
 ) -> MissionRunResponse:
     mission = await session.get(Mission, mission_id)
+    if mission is None:
+        mission = (
+            await session.execute(
+                select(Mission).where(Mission.__table__.c.id == str(mission_id))  # type: ignore[arg-type]
+            )
+        ).scalar_one_or_none()
     if not mission:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="MISSION_NOT_FOUND"
