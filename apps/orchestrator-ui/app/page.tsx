@@ -201,7 +201,6 @@ export default function Dashboard() {
     if (typeof window === 'undefined') return
     const original = window.PerformanceObserver
     // Playwright LCP 計測を安定化させるため、dev/e2e 環境では即時の LCP 値を返す
-    // @ts-expect-error custom patch for tests
     window.PerformanceObserver = class FakePO {
       private cb: PerformanceObserverCallback
       constructor(cb: PerformanceObserverCallback) {
