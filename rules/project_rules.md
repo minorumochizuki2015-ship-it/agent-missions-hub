@@ -109,6 +109,13 @@ governance:
     min_approvers: 2
     audit_log: "observability/policy/waivers.jsonl"
 
+lanes:
+  definitions:
+    - {name: "A", scope: "security/auth/infra/config/migration/external_api", max_files: 3, max_lines: 50}
+    - {name: "B", scope: "feature/ui/bugfix/crud/state/business_logic", max_files: 5, max_lines: 200, preferred_max_lines: 130}
+    - {name: "C", scope: "mechanical (rename/formatter/autogen/import/order/comment, no logic change)", max_files: null, max_lines: null}
+    - {name: "T", scope: "tests/** and test data only; no src/config/policy changes", max_files: 20, max_lines: 800, on_failure: "test failure => rollback + evidence; mixing src/config triggers A/B violation"}
+
 agents:
   registry:
     orchestrator: "MCP-Orchestrator"
@@ -194,6 +201,7 @@ pipeline:                       # enforced gates
       outputs:
         - "TEST_REPORT.json"
         - "artifacts/<task_id>/ui/baseline/  # if UI"
+      on_failure: "lane=T (tests-only) requires rollback tests-only changes (no-commit) + append evidence; mixing src/config triggers A/B violation; other lanes follow standard failure handling"
 
     APPROVALS:
       ledger: "APPROVALS.md"

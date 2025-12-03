@@ -53,6 +53,7 @@ def _sign_manifest(manifest: Path, sig: Path, key_env: str = "COSIGN_KEY") -> st
 
 
 def emit_event(record: dict, root: Path = ROOT, *, sign: bool = False) -> str:
+    """Shadow Audit イベントを追記し、hash chain を更新する。rule_ids が空なら WORK_rules を自動付与する。"""
     root.mkdir(parents=True, exist_ok=True)
     manifest = root / "manifest.jsonl"
     chain = root / "manifest.sha256"
@@ -61,6 +62,8 @@ def emit_event(record: dict, root: Path = ROOT, *, sign: bool = False) -> str:
     if manifest.exists():
         lines = manifest.read_text(encoding="utf-8").splitlines()
     prev = chain.read_text(encoding="utf-8").strip() if chain.exists() else ""
+    if not record.get("rule_ids"):
+        record["rule_ids"] = ["WORK_rules"]
     new_line = json.dumps(record, ensure_ascii=False)
     new_hash = _sha256(prev + "\n" + new_line if prev else new_line)
     _atomic_write(manifest, "\n".join([*lines, new_line]), validate_jsonl=True)

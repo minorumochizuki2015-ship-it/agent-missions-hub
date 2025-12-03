@@ -1,9 +1,11 @@
 import asyncio
 
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from mcp_agent_mail.config import get_settings
-from mcp_agent_mail.db import ensure_schema, get_session, reset_database_state
+from mcp_agent_mail.db import ensure_schema, reset_database_state, session_context
 from mcp_agent_mail.http import build_http_app
 from mcp_agent_mail.models import Project
 
@@ -11,7 +13,7 @@ from mcp_agent_mail.models import Project
 async def _setup_project() -> int:
     reset_database_state()
     await ensure_schema()
-    async with get_session() as session:
+    async with session_context() as session:
         proj = Project(slug="p-signals", human_key="p-signals")
         session.add(proj)
         await session.commit()
@@ -40,7 +42,7 @@ def test_signal_create_and_list() -> None:
     assert signal_id in ids
 
 
-def test_signal_import_dangerous(tmp_path) -> None:
+def test_signal_import_dangerous(tmp_path: Path) -> None:
     asyncio.run(_setup_project())
     log = tmp_path / "dangerous_command_events.jsonl"
     log.write_text(

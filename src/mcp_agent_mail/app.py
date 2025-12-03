@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from typing import Any
 from uuid import UUID
 
@@ -65,10 +66,15 @@ class _DummyMcpServer:
 
         mcp_app = FastAPI(title="mcp_agent_mail_mcp_stub")
 
+        @asynccontextmanager
+        async def lifespan(_app: FastAPI) -> Any:
+            yield
+
         @mcp_app.get("/")
         async def _root() -> dict[str, str]:
             return {"status": "ok"}
 
+        mcp_app.lifespan = lifespan  # type: ignore[attr-defined]
         return mcp_app
 
 

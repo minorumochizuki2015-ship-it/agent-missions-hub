@@ -1,6 +1,6 @@
 import pytest
 
-from mcp_agent_mail.db import ensure_schema, get_session, reset_database_state
+from mcp_agent_mail.db import ensure_schema, reset_database_state, session_context
 from mcp_agent_mail.mail_client import MailClient
 from mcp_agent_mail.models import Agent, Project
 
@@ -9,7 +9,7 @@ from mcp_agent_mail.models import Agent, Project
 async def test_mail_client_smoke() -> None:
     reset_database_state()
     await ensure_schema()
-    async with get_session() as session:
+    async with session_context() as session:
         proj = Project(slug="proj1", human_key="proj1")
         agent = Agent(project_id=1, name="HumanOverseer", program="ops", model="system")
         session.add(proj)

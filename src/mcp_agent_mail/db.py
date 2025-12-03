@@ -227,9 +227,15 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 
 
 @asynccontextmanager
-async def get_session() -> AsyncIterator[AsyncSession]:
+async def session_context() -> AsyncIterator[AsyncSession]:
     factory = get_session_factory()
     async with factory() as session:
+        yield session
+
+
+@asynccontextmanager
+async def get_session() -> AsyncIterator[AsyncSession]:
+    async with session_context() as session:
         yield session
 
 
