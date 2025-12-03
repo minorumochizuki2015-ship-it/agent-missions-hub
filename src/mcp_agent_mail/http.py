@@ -1,7 +1,5 @@
 """HTTP transport helpers wrapping FastMCP with FastAPI."""
 
-# ruff: noqa: I001
-
 from __future__ import annotations
 
 import argparse

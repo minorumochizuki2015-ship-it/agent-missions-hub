@@ -68,22 +68,16 @@ async def list_missions(
     missions = (await session.execute(stmt)).scalars().all()
 
     tg_counts = await session.execute(
-        select(  # type: ignore[call-overload]
-            TaskGroup.__table__.c.mission_id,  # type: ignore[arg-type]
-            func.count(TaskGroup.__table__.c.id),  # type: ignore[arg-type]
-        ).group_by(
-            TaskGroup.__table__.c.mission_id
-        )  # type: ignore[arg-type]
+        select(TaskGroup.mission_id, func.count(TaskGroup.id)).group_by(
+            TaskGroup.mission_id
+        )
     )
     tg_map = {row[0]: row[1] for row in tg_counts}
 
     artifact_counts = await session.execute(
-        select(  # type: ignore[call-overload]
-            Artifact.__table__.c.mission_id,  # type: ignore[arg-type]
-            func.count(Artifact.__table__.c.id),  # type: ignore[arg-type]
-        ).group_by(
-            Artifact.__table__.c.mission_id
-        )  # type: ignore[arg-type]
+        select(Artifact.mission_id, func.count(Artifact.id)).group_by(
+            Artifact.mission_id
+        )
     )
     artifact_map = {row[0]: row[1] for row in artifact_counts}
 
@@ -111,10 +105,8 @@ async def list_artifacts(
             status_code=status.HTTP_404_NOT_FOUND, detail="MISSION_NOT_FOUND"
         )
 
-    stmt = (
-        select(Artifact)
-        .where(Artifact.__table__.c.mission_id == mission_id)  # type: ignore[arg-type]
-        .order_by(Artifact.__table__.c.path)  # type: ignore[arg-type]
+    stmt = select(Artifact).where(Artifact.mission_id == mission_id).order_by(
+        Artifact.path
     )
     artifacts = (await session.execute(stmt)).scalars().all()
 

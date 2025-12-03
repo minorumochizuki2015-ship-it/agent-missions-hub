@@ -233,6 +233,7 @@ async def session_context() -> AsyncIterator[AsyncSession]:
         yield session
 
 
+@asynccontextmanager
 async def get_session() -> AsyncIterator[AsyncSession]:
     async with session_context() as session:
         yield session
