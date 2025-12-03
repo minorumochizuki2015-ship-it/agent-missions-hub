@@ -14,6 +14,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, cast
+from uuid import UUID
 
 import structlog
 import uvicorn
@@ -1255,7 +1256,7 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
         """シグナルを新規作成する。"""
 
         project_id = payload.get("project_id")
-        mission_id = payload.get("mission_id")
+        mission_raw = payload.get("mission_id")
         sig_type = (payload.get("type") or "").strip()
         message = (payload.get("message") or "").strip() or None
         severity = (payload.get("severity") or "info").strip()
@@ -1263,6 +1264,14 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
             raise HTTPException(
                 status_code=400, detail="project_id and type are required"
             )
+        mission_id = None
+        if mission_raw:
+            try:
+                mission_id = UUID(str(mission_raw))
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=400, detail="invalid mission_id format"
+                ) from exc
         await ensure_schema()
         async with get_session() as session:
             signal = Signal(
