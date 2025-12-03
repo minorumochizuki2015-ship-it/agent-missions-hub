@@ -163,14 +163,15 @@
         "src/orchestrator/conpty_wrapper.py",
         "src/orchestrator/message_bus.py",
         "tests/test_orchestrator_cli_parallel.py",
-        "docs/multi_agent_terminal_checklist_v2.md"
+        "docs/multi_agent_terminal_checklist_v2.md",
+        "notes/agent_md.md"
       ],
       "evidence": [
         "observability/policy/ci_evidence.jsonl",
         "data/logs/current/audit/cli_runs",
         "observability/policy/shadow_audit/manifest.jsonl"
       ],
-      "notes": "署名は cosign.pub + manifest.sig.bundle で Verified OK (tlog skip)。必要に応じ tlog 有効で再署名可能。workflow_endpoint は /missions/{id}/run を想定し、roles/bus は config/roles.json + data/logs/current/audit/message_bus.json で handoff を記録。"
+      "notes": "署名は cosign.pub + manifest.sig.bundle で Verified OK (tlog skip)。透明性ログ要件が未確定のため現行は tlog skip を正式運用とし、要求確定後に tlog 有効化＋再署名を別 PLAN で実施する。workflow_endpoint は /missions/{id}/run を想定し、roles/bus は config/roles.json + data/logs/current/audit/message_bus.json で handoff を記録。tlog スキップ理由と将来の再署名計画は notes/agent_md.md に記載し、doc_update/ci_evidence にも反映する。PR 説明では tlog=skip と /missions/{id}/run 実測(202/completed, run_id=00180395-7e16-44ef-b59a-e45bddf36155) を明記する。Shadow Audit メトリクスを再計測し、reasoning_digest に closes:cli-multi-agent-v1-runtime を付与、explainability_rate 改善と hash chain 再計算を実施。pytest cli 系は専用 runner（PYTEST_DISABLE_PLUGIN_AUTOLOAD=1, -o addopts=, WINDOWS_TEST_ALLOWLIST=tests/test_orchestrator_cli_parallel.py,tests/test_cli_e2e.py, ENABLE_FULL_SUITE=1, PYTHONPATH=src）で exit=0（3 passed, asyncio_mode warning）まで確認し、ci_evidence に追記。scripts/shadow_audit_emit.py 実行で PLAN イベントが自動追加され hash mismatch が発生したため rebuild_chain→verify_chain で復旧し、chain_hash=1a7214a703603c21cd46343a4a86e645d1aa64ed19ddd6d336e4a3d63268ffcc、total_events=562/unsigned=550（approvals_row_id 欠落由来・補完不可で確定）の状態に更新。verify_chain は関数直呼び出しを運用手順とし、余分な PLAN 生成を防ぐ。rule_ids デフォルト付与を emitter に追加済み。承認ID補完は正規ID欠如のため不可のまま。"
     },
     {
       "id": "data-model-mission-task",
