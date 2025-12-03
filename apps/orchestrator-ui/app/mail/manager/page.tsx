@@ -161,6 +161,7 @@ export default function ManagerPage({
   const lang: Lang = langParam === 'ja' ? 'ja' : 'en'
   const t = useI18n(lang)
   const featureOn = (process.env.NEXT_PUBLIC_FEATURE_MANAGER_UI || 'true').toLowerCase() === 'true'
+  const apiBase = process.env.NEXT_PUBLIC_MISSIONS_API_BASE || 'http://127.0.0.1:8000'
 
   const [missions, setMissions] = useState<Mission[]>([])
   const [loading, setLoading] = useState(false)
@@ -169,15 +170,15 @@ export default function ManagerPage({
   const [fetched, setFetched] = useState(false)
   const [query, setQuery] = useState('')
   const [signals, setSignals] = useState<Signal[]>([])
+  const [updatingSignalId, setUpdatingSignalId] = useState<string | null>(null)
 
   useEffect(() => {
-    const base = process.env.NEXT_PUBLIC_MISSIONS_API_BASE || 'http://127.0.0.1:8000'
     const controller = new AbortController()
     const fetchMissions = async () => {
       setLoading(true)
       setApiError(null)
       try {
-        const resp = await fetch(`${base}/api/missions`, { signal: controller.signal })
+        const resp = await fetch(`${apiBase}/api/missions`, { signal: controller.signal })
         if (!resp.ok) throw new Error(`status ${resp.status}`)
         const data = (await resp.json()) as Mission[]
         if (Array.isArray(data) && data.length > 0) {
@@ -205,7 +206,7 @@ export default function ManagerPage({
     fetchMissions()
     const fetchSignals = async () => {
       try {
-        const resp = await fetch(`${base}/api/signals?limit=20`, { signal: controller.signal })
+        const resp = await fetch(`${apiBase}/api/signals?limit=20`, { signal: controller.signal })
         if (!resp.ok) return
         const data = (await resp.json()) as { signals?: Signal[] }
         if (data.signals) setSignals(data.signals)
@@ -215,7 +216,26 @@ export default function ManagerPage({
     }
     fetchSignals()
     return () => controller.abort()
-  }, [])
+  }, [apiBase])
+
+  const updateSignalStatus = async (signalId: string, next: 'acknowledged' | 'resolved') => {
+    setUpdatingSignalId(signalId)
+    setApiError(null)
+    try {
+      const resp = await fetch(`${apiBase}/api/signals/${signalId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: next })
+      })
+      if (!resp.ok) throw new Error(`status ${resp.status}`)
+      const data = (await resp.json()) as { status: string }
+      setSignals((prev) => prev.map((s) => (s.id === signalId ? { ...s, status: data.status } : s)))
+    } catch (e) {
+      setApiError((e as Error).message)
+    } finally {
+      setUpdatingSignalId(null)
+    }
+  }
 
   const [selectedMission] = missions
   const groups = useMemo(
@@ -223,7 +243,7 @@ export default function ManagerPage({
       selectedMission
         ? MOCK_GROUPS.filter((g) => g.mission_id === selectedMission.id).sort((a, b) => a.order - b.order)
         : [],
-    [selectedMission?.id]
+    [selectedMission]
   )
   const tasks = selectedMission ? MOCK_TASKS.filter((t) => groups.some((g) => g.id === t.group_id)) : []
   const artifacts = selectedMission
@@ -538,7 +558,27 @@ export default function ManagerPage({
                 </div>
                 <p className="text-xs text-slate-600">{formatIso(s.created_at)}</p>
                 <p className="text-sm text-slate-700">{s.message || '—'}</p>
-                <p className="text-[11px] text-slate-600">status: {s.status}</p>
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="text-[11px] text-slate-600">status: {s.status}</span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className="rounded bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white"
+                      disabled={updatingSignalId === s.id}
+                      onClick={() => updateSignalStatus(s.id, 'acknowledged')}
+                    >
+                      Ack
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded bg-emerald-600 px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-50"
+                      disabled={updatingSignalId === s.id}
+                      onClick={() => updateSignalStatus(s.id, 'resolved')}
+                    >
+                      Resolve
+                    </button>
+                  </div>
+                </div>
               </article>
             ))}
             {signals.length === 0 && <p className="text-sm text-slate-600">No signals yet</p>}

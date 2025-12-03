@@ -1133,6 +1133,183 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
     # Include Missions API Router (Phase 2)
     fastapi_app.include_router(missions.router)
 
+    # Signals API (Mail UI に依存しない軽量ルート)
+    @fastapi_app.get("/api/signals")
+    async def api_signals(limit: int = 100) -> JSONResponse:
+        capped = min(max(limit, 1), 500)
+        await ensure_schema()
+        async with get_session() as session:
+            result = await session.execute(
+                select(Signal).order_by(Signal.created_at.desc()).limit(capped)
+            )
+            items = result.scalars().all()
+        return JSONResponse(
+            {
+                "signals": [
+                    {
+                        "id": s.id,
+                        "type": s.type,
+                        "severity": s.severity,
+                        "status": s.status,
+                        "project_id": s.project_id,
+                        "mission_id": str(s.mission_id) if s.mission_id else None,
+                        "created_at": s.created_at.isoformat(),
+                        "message": s.message,
+                    }
+                    for s in items
+                ]
+            }
+        )
+
+    @fastapi_app.post("/api/signals/import/dangerous")
+    async def api_import_dangerous_signals(payload: dict) -> JSONResponse:
+        """dangerous_command 等のログをシグナルとして取り込む。"""
+
+        path = (
+            payload.get("path")
+            or "data/logs/current/audit/dangerous_command_events.jsonl"
+        )
+        project_key = payload.get("project")
+        project_id_raw = payload.get("project_id")
+        max_rows = int(payload.get("max_rows", 200))
+        p = Path(path)
+        if not p.exists():
+            raise HTTPException(status_code=404, detail="log file not found")
+        allowed_events = {
+            "dangerous_command",
+            "approval_required",
+            "failing_test",
+            "retry",
+            "timeout",
+        }
+        severity_map = {
+            "dangerous_command": "warning",
+            "approval_required": "info",
+            "failing_test": "warning",
+            "retry": "info",
+            "timeout": "warning",
+        }
+        rows = []
+        for line in p.read_text(encoding="utf-8").splitlines()[
+            : max_rows if max_rows > 0 else None
+        ]:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except Exception:
+                continue
+            if obj.get("event") not in allowed_events:
+                continue
+            rows.append(obj)
+        await ensure_schema()
+        imported = 0
+        skipped = 0
+        async with get_session() as session:
+
+            async def _resolve_project_id(row: dict) -> int | None:
+                pid = row.get("project_id") or project_id_raw
+                if pid is not None:
+                    return int(pid)
+                key = (
+                    row.get("project")
+                    or row.get("project_slug")
+                    or row.get("project_key")
+                    or project_key
+                )
+                if not key:
+                    return None
+                res = (
+                    await session.execute(
+                        text(
+                            "SELECT id FROM projects WHERE slug = :k OR human_key = :k"
+                        ),
+                        {"k": key},
+                    )
+                ).fetchone()
+                return int(res[0]) if res else None
+
+            for row in rows:
+                sig_type = (row.get("event") or "dangerous_command").strip()
+                severity = severity_map.get(sig_type, "info")
+                pid = await _resolve_project_id(row)
+                if pid is None:
+                    skipped += 1
+                    continue
+                signal = Signal(
+                    project_id=pid,
+                    mission_id=None,
+                    type=sig_type,
+                    severity=severity,
+                    status="pending",
+                    message=row.get("command") or row.get("note"),
+                )
+                session.add(signal)
+                imported += 1
+            await session.commit()
+        return JSONResponse({"imported": imported, "skipped": skipped})
+
+    @fastapi_app.post("/api/signals")
+    async def api_signal_create(payload: dict) -> JSONResponse:
+        """シグナルを新規作成する。"""
+
+        project_id = payload.get("project_id")
+        mission_id = payload.get("mission_id")
+        sig_type = (payload.get("type") or "").strip()
+        message = (payload.get("message") or "").strip() or None
+        severity = (payload.get("severity") or "info").strip()
+        if not project_id or not sig_type:
+            raise HTTPException(
+                status_code=400, detail="project_id and type are required"
+            )
+        await ensure_schema()
+        async with get_session() as session:
+            signal = Signal(
+                project_id=int(project_id),
+                mission_id=mission_id,
+                type=sig_type,
+                severity=severity,
+                message=message,
+            )
+            session.add(signal)
+            await session.commit()
+            await session.refresh(signal)
+        return JSONResponse(
+            {"id": signal.id, "created_at": signal.created_at.isoformat()}
+        )
+
+    @fastapi_app.patch("/api/signals/{signal_id}")
+    async def api_signal_update(signal_id: int, payload: dict) -> JSONResponse:
+        """シグナルの状態を更新する。"""
+
+        new_status = (payload.get("status") or "").strip().lower()
+        allowed = {"pending", "acknowledged", "resolved"}
+        if new_status not in allowed:
+            raise HTTPException(status_code=400, detail="invalid status")
+
+        await ensure_schema()
+        async with get_session() as session:
+            result = await session.execute(select(Signal).where(Signal.id == signal_id))
+            signal = result.scalar_one_or_none()
+            if not signal:
+                raise HTTPException(status_code=404, detail="signal not found")
+
+            signal.status = new_status
+            session.add(signal)
+            await session.commit()
+            await session.refresh(signal)
+
+        return JSONResponse(
+            {
+                "id": signal.id,
+                "status": signal.status,
+                "project_id": signal.project_id,
+                "mission_id": str(signal.mission_id) if signal.mission_id else None,
+                "updated_at": signal.created_at.isoformat(),
+            }
+        )
+
     # ----- Simple SSR Mail UI -----
     def _register_mail_ui() -> None:
         try:
@@ -3210,150 +3387,6 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 agents = [r[0] for r in agents_result.fetchall()]
 
             return JSONResponse({"agents": agents})
-
-        @fastapi_app.get("/api/signals")
-        async def api_signals(limit: int = 100) -> JSONResponse:
-            capped = min(max(limit, 1), 500)
-            await ensure_schema()
-            async with get_session() as session:
-                items = (
-                    await session.exec(
-                        select(Signal).order_by(Signal.created_at.desc()).limit(capped)
-                    )
-                ).all()
-            return JSONResponse(
-                {
-                    "signals": [
-                        {
-                            "id": s.id,
-                            "type": s.type,
-                            "severity": s.severity,
-                            "status": s.status,
-                            "project_id": s.project_id,
-                            "mission_id": str(s.mission_id) if s.mission_id else None,
-                            "created_at": s.created_at.isoformat(),
-                            "message": s.message,
-                        }
-                        for s in items
-                    ]
-                }
-            )
-
-        @fastapi_app.post("/api/signals/import/dangerous")
-        async def api_import_dangerous_signals(payload: dict) -> JSONResponse:
-            """Import dangerous_command / approval_required / failing_test / retry / timeout log lines as signals."""
-            path = (
-                payload.get("path")
-                or "data/logs/current/audit/dangerous_command_events.jsonl"
-            )
-            project_key = payload.get("project")
-            project_id_raw = payload.get("project_id")
-            max_rows = int(payload.get("max_rows", 200))
-            p = Path(path)
-            if not p.exists():
-                raise HTTPException(status_code=404, detail="log file not found")
-            allowed_events = {
-                "dangerous_command",
-                "approval_required",
-                "failing_test",
-                "retry",
-                "timeout",
-            }
-            severity_map = {
-                "dangerous_command": "warning",
-                "approval_required": "info",
-                "failing_test": "warning",
-                "retry": "info",
-                "timeout": "warning",
-            }
-            rows = []
-            for line in p.read_text(encoding="utf-8").splitlines()[
-                : max_rows if max_rows > 0 else None
-            ]:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    obj = json.loads(line)
-                except Exception:
-                    continue
-                if obj.get("event") not in allowed_events:
-                    continue
-                rows.append(obj)
-            await ensure_schema()
-            imported = 0
-            skipped = 0
-            async with get_session() as session:
-
-                async def _resolve_project_id(row: dict) -> int | None:
-                    pid = row.get("project_id") or project_id_raw
-                    if pid is not None:
-                        return int(pid)
-                    key = (
-                        row.get("project")
-                        or row.get("project_slug")
-                        or row.get("project_key")
-                        or project_key
-                    )
-                    if not key:
-                        return None
-                    res = (
-                        await session.execute(
-                            text(
-                                "SELECT id FROM projects WHERE slug = :k OR human_key = :k"
-                            ),
-                            {"k": key},
-                        )
-                    ).fetchone()
-                    return int(res[0]) if res else None
-
-                for row in rows:
-                    sig_type = (row.get("event") or "dangerous_command").strip()
-                    severity = severity_map.get(sig_type, "info")
-                    pid = await _resolve_project_id(row)
-                    if pid is None:
-                        skipped += 1
-                        continue
-                    signal = Signal(
-                        project_id=pid,
-                        mission_id=None,
-                        type=sig_type,
-                        severity=severity,
-                        status="pending",
-                        message=row.get("command") or row.get("note"),
-                    )
-                    session.add(signal)
-                    imported += 1
-                await session.commit()
-            return JSONResponse({"imported": imported, "skipped": skipped})
-
-        @fastapi_app.post("/api/signals")
-        async def api_signal_create(payload: dict) -> JSONResponse:
-            """Create a signal entry."""
-            project_id = payload.get("project_id")
-            mission_id = payload.get("mission_id")
-            sig_type = (payload.get("type") or "").strip()
-            message = (payload.get("message") or "").strip() or None
-            severity = (payload.get("severity") or "info").strip()
-            if not project_id or not sig_type:
-                raise HTTPException(
-                    status_code=400, detail="project_id and type are required"
-                )
-            await ensure_schema()
-            async with get_session() as session:
-                signal = Signal(
-                    project_id=int(project_id),
-                    mission_id=mission_id,
-                    type=sig_type,
-                    severity=severity,
-                    message=message,
-                )
-                session.add(signal)
-                await session.commit()
-                await session.refresh(signal)
-            return JSONResponse(
-                {"id": signal.id, "created_at": signal.created_at.isoformat()}
-            )
 
         @fastapi_app.post("/api/mail/send")
         async def api_mail_send(payload: dict) -> JSONResponse:
