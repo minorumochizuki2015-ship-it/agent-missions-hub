@@ -1,7 +1,14 @@
 # Agent CLI Engine Configurations
 engines:
   codex_cli:
-    command: ["codex", "chat"]
+    # 現状は非対話バッチ（codex exec）で運用。チャット対話に戻す場合は
+    # command を ["codex","chat", ...] に変更し、ConPTY ストリーミング実装後に使用すること。
+    command:
+      - "codex"
+      - "exec"
+      - "-c"
+      - "model_reasoning_effort=high"
+      - "--json"
     workdir: null
 
   demo:

@@ -25,6 +25,8 @@
 - **P3 Dashboard/Inbox 拡充**: 旧 `/mail` の Smoke Test/メッセージ/プロジェクトカード/検索・フィルタを実データで復元し、UI Gate/テスト/UI Audit を再実行。
 - **P4 Mission/Task/Artifact/Knowledge**: 中期スキーマを追加し、Manager/Graph/Knowledge の基盤を整備。
 - **UI移植ゴール（段階）**: ①旧UIレイアウト移植完了（ナビ/右パネル/赤帯/カードをReact化）、②新機能追加（Signals/Approvals等の実データ連携）、③既存バックエンドとの完全統合（/api/missions 等を安定表示・UI Gate PASS）、④その上でUI/UXの高度化（パフォーマンス・アクセシビリティ・操作性強化）。
+ - **External Engine オプション**: コア v1 は CLI エンジンのみ（`allow_external_api: false`）で完走可能にする。一方、Phase3 以降のAレーンや検証専用環境では `engines_external.yaml` などに `@openai/codex-sdk` 等の外部APIエンジンを定義し、Orchestrator から「追加 engine」として呼び出すオプションを検討する（既定のマイルストン/DoDには含めない）。
+ - **チャット連携タスク（Phase3+）**: 現状は非対話バッチ（codex exec 等）で運用。`codex chat` など双方向対話を支えるため、ConPTY ストリーミング＋attach 機能を追加し、roles 間の会話・人間の介入が可能なモードを実装する。
 
 -## Phase 3（UI ダッシュボード刷新）※計画
 - 旧 `/mail` ダッシュボード要素（Smoke Test / メッセージ / プロジェクトカード等）を統合し、実データ（MISSIONS_HUB_API_BASE + `/api/missions`）を表示する新レイアウトを実装する。UI Gate/Playwright 実行時は FastAPI 起動中（/health 200）かつ `/api/missions` 非空を必須条件とし、未起動・空レスポンスは Gate=FAIL とする。

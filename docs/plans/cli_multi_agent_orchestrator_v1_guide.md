@@ -3,7 +3,8 @@
 ## 1. v1 ゴールとスコープ（実装サマリ）
 - ゴール: 親 Orchestrator CLI から複数 CLI エージェント（Codex/Claude）を ConPTY 経由で起動し、Mission/Task を Sequential + 簡易並列(TaskGroup)で完走させる。
 - v1 スコープ: OS=Windows、Shell=PowerShell 7、親CLI=`.\.venv\Scripts\python.exe src\orchestrator\cli.py`、子CLI=CodexCLI/Claude Code CLI（ConPTY + subprocess）。DAG/LangGraph は Phase3+。
-- 外部API: `allow_external_api: false` を起動時バリデーション。HTTPベース従量LLM/SaaSは禁止。`config/engines.yaml` には kind=cli のみ列挙。
+- 外部API: コアv1では `allow_external_api: false` を起動時バリデーションとし、HTTPベース従量LLM/SaaSは禁止する。`config/engines.yaml` には kind=cli のみ列挙する。一方で、Aレーンや検証専用プロジェクトでは `allow_external_api: true` ＋ `engines_external.yaml` のような別設定を用意し、`@openai/codex-sdk` 等を利用した外部APIエンジンを「オプションの拡張」として接続する余地を残す（コアDoDには含めない）。
+- チャット連携: 現状は非対話バッチ（`codex exec`）で完走を確認済み。`codex chat` を用いた双方向連携は未実装で、ConPTY ストリーミング＋attach 機能を追加する Phase3+ タスクとして扱う。
 
 ## 2. 必須設定（抜粋）
 ```yaml

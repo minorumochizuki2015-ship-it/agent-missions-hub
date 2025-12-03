@@ -77,10 +77,12 @@
 ## Mission/Workflow 拡張チェック
 - データモデル: missions/task_groups/tasks/artifacts/knowledge のスキーマとマイグレーションを定義し、ER 差分を `plans/diff-plan.json` に反映する
 - WorkflowEngine: Sequential 実行＋self-heal フックと `workflow_runs` トレースを実装する
-- Artifacts/Knowledge: sha/version/tags を保持し、promote API で Knowledge に昇格できる
-- Manager UI: Mission 一覧／TaskGroup タイムライン／Artifact タイルを表示し、Playwright/Jest で検証する
-- Graph/Inbox: Graph View は Phase 3 で TODO、Inbox は Mission スレッド化の計画を docs に記載する
-- 観測と記録: `ci_evidence.jsonl` に workflow_engine/manager_view イベント、Auto Gate の run/skip（event=auto_gate_decision, component=ui_gate/sbom/secret_scan/bandit/gitops_*）を残し、`data/logs/current/audit/` にマイグレーション・実行ログを残す
+  - Artifacts/Knowledge: sha/version/tags を保持し、promote API で Knowledge に昇格できる
+  - Manager UI: Mission 一覧／TaskGroup タイムライン／Artifact タイルを表示し、Playwright/Jest で検証する
+  - Graph/Inbox: Graph View は Phase 3 で TODO、Inbox は Mission スレッド化の計画を docs に記載する
+  - 観測と記録: `ci_evidence.jsonl` に workflow_engine/manager_view イベント、Auto Gate の run/skip（event=auto_gate_decision, component=ui_gate/sbom/secret_scan/bandit/gitops_*）を残し、`data/logs/current/audit/` にマイグレーション・実行ログを残す
+  - 外部API方針: コア v1 では `allow_external_api: false` を既定とし、`config/engines.yaml` には CLI エンジンのみを列挙する。一方で、Aレーンや検証プロジェクトなど外部API利用を明示した場合に限り、`engines_external.yaml` 等で `@openai/codex-sdk` などの HTTP エンジンを定義し、Orchestrator から追加 engine として呼び出す拡張を Phase3+ のオプションとして許可する（通常のCI/DoDには含めない）。
+  - チャット連携: v1 は非対話バッチ（`codex exec` 等）で完走する構成を採用。`codex chat` など双方向対話は未対応のため、ConPTY ストリーミング＋attach 機能を Phase3+ の TODO として追加する。
 - v1 スコープ: Workflow は Sequential＋TaskGroup 内の簡易並列に限定し、DAG/AsyncThink/LangGraph など高度並列は Phase 3 以降。CLI 実行は Windows/PS7＋ConPTY で親 CLI（`.\.venv\Scripts\python.exe src\orchestrator\cli.py`）から `subprocess.Popen` 経由で起動。初期サポート CLI は CodexCLI＋Claude Code CLI のみ（その他はプレースホルダ）。WSL+tmux/CAO はオプション扱いで v1 の対象外。
 - Mail/Lease SSOT: MailClient API（/api/mail send/list, /api/leases create/release）で統一済み。ci_evidence に smoke OK (2025-11-30) を記録。
 - Signals UI: Manager 右カラムに Signals パネル実装済み。2025/11/30 UI Gate（EN/JA）で表示確認済み。
