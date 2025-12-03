@@ -1,20 +1,22 @@
 # Agent Missions Hub / マルチエージェント端末 統合設計書 v2
 
 ## 0. ゴールとスコープ
-- CodexCLI を親オーケストレータとし、複数 CLI エージェント（Claude/Gemini/自作 CLI など）を PTY 経由で制御するマルチエージェント端末を構築する。
+- CodexCLI を親オーケストレータとし、複数 CLI エージェント（Claude/Gemini/自作 CLI など）を PTY（v1は Windows/PS7 + ConPTY 限定）経由で制御するマルチエージェント端末を構築する。
 - これらを Agent Missions Hub（データ・WorkflowEngine・UI・Observability）と統合し、Plan→Test→Patch の開発フローを直列＋並列で安全に自動化できる基盤にする。
 - 既存 UI Gate / UI Audit・テスト・observability を壊さず、Phase 2A〜2D のロードマップで順次完成させる。
+- 外部の従量制 LLM/SaaS API には依存せず、`engines.yaml` に列挙された CLI エンジンのみを許可する（例: `allow_external_api: false` を起動時バリデーション）。
 
 ### 0.1 v1 スコープ（確定事項）
 - 実行エンジンは **SequentialWorkflow＋TaskGroup 内の簡易並列** に限定する（DAG/AsyncThink/LangGraph は Phase 3 以降）。
 - OS/CLI 前提は **Windows + PowerShell 7**、親 CLI は `.\.venv\Scripts\python.exe src\orchestrator\cli.py` のみを正とし、子 CLI は **ConPTY 付き subprocess.Popen** で起動する。
 - 初期サポート CLI は **CodexCLI + Claude Code CLI** の 2 種。Gemini/Q/その他は `config/engines.yaml` にプレースホルダのみ。
 - CodeMachine は v1 では「外部コマンド」として扱い、内部のマルチエージェント機構には依存しない。
+- 並列定義は「CLI並列（子CLIの同時起動）」と「Workflow並列（TaskGraph/DAGの分岐）」を区別して扱い、Phase 3 以降で LangGraph 的な DAG 並列を拡張する。
 
 ### 0.2 バックエンドの正（SSOT）
 - メッセージ（Inbox/Outbox）とファイル予約（lease）は **mcp_agent_mail を中核** とする。現行 FastAPI へ再実装せず、マウント＋薄いラッパーで統合する方針。
 - DB の SSOT: projects / agents / messages / leases（将来追加: missions / tasks / artifacts / knowledge）。
-- ci_evidence.jsonl と workflow_runs を observability の正とし、CLI/E2E/Signals をここに記録する。
+- ci_evidence.jsonl と workflow_runs を observability の正とし、CLI/E2E/Signals をここに記録する。Shadow Audit / Signals は `session_id` / `role_id` を共通キーとして持ち、並列ターミナルの各セッションを横断的に追跡できるようにする。runner の raw logs は `data/logs/current/runner/**`、監査は Shadow Audit、CI 証跡は ci_evidence.jsonl へ統一保存する。
 
 ### 0.3 ロードマップ（P0〜P4）
 - **P0 設計同期**: 本設計に v1 スコープ・mcp_agent_mail 中核化・役割プリセット・Signals 方針を明記し、checklist/milestones/plan_diff に反映する。
@@ -51,7 +53,8 @@
 - Core Domain / Storage: `missions/task_groups/tasks/artifacts/knowledge` テーブル、`data/` ストレージ、`observability/policy/ci_evidence.jsonl` ログツリー。  
 - Workflow / Orchestrator: SequentialWorkflow（Mission→TaskGroup→Task）、self-heal フック、`workflow_runs` トレース。  
 - UI: Unified Inbox（現行 UI Gate PASS）、Manager View（Mission/TaskGroup/Artifact）、Agent Mail（協調 UI）。  
-- CLI / Multi-Agent Terminal: 親 CodexCLI が Workflow API を叩き、各エージェント CLI を PTY 経由で起動。役割ごとにセッション分離。
+- CLI / Multi-Agent Terminal: 親 CodexCLI が Workflow API を叩き、各エージェント CLI を PTY 経由で起動。役割ごとにセッション分離。並列定義は「CLI並列（子CLIの同時起動）」と「Workflow並列（TaskGraph/DAG の分岐）」を区別し、LangGraph 的 DAG 並列は Phase3+ で拡張する。
+- ログ/証跡: runner の raw logs は `data/logs/current/runner/**`、監査は Shadow Audit（manifest/hash/署名）、CI 証跡は `ci_evidence.jsonl` に保存し、Signals/Shadow Audit には `session_id` / `role_id` を必ず記録する。
 
 ### Overseer ロール（Human-in-the-Loop）
 - Overseer は v1 では人間が担当する監督/承認ロールとし、Dangerous Commands / Approvals Required / Signals の最終承認者となる。
