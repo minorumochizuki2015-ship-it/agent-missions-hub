@@ -83,9 +83,8 @@
   - Graph/Inbox: Graph View は Phase 3 で TODO、Inbox は Mission スレッド化の計画を docs に記載する
   - 観測と記録: `ci_evidence.jsonl` に workflow_engine/manager_view イベント、Auto Gate の run/skip（event=auto_gate_decision, component=ui_gate/sbom/secret_scan/bandit/gitops_*）を残し、`data/logs/current/audit/` にマイグレーション・実行ログを残す
   - 外部API方針: コア v1 では `allow_external_api: false` を既定とし、`config/engines.yaml` には CLI エンジンのみを列挙する。一方で、Aレーンや検証プロジェクトなど外部API利用を明示した場合に限り、`engines_external.yaml` 等で `@openai/codex-sdk` などの HTTP エンジンを定義し、Orchestrator から追加 engine として呼び出す拡張を Phase3+ のオプションとして許可する（通常のCI/DoDには含めない）。
-  - チャット連携: v1 は非対話バッチ（`codex exec` 等）で完走する構成を採用。`codex chat` など双方向対話は未対応のため、ConPTY ストリーミング＋attach 機能を Phase3+ の TODO として追加する。
-  - 本ブランチ（chat/ConPTY/attach PoC）は v1 DoD に含めない。DoD (PoC 最小): 単一ロールの chat セッションが stream モードで起動し、入出力が `cli_runs` に記録され、ci_evidence に `orchestrator_chat_run_*`（仮）イベントが残ること。Message Bus / :attach は skeleton/TODO とし、後続ブランチで実装。
-  - テスト項目（追加案）: `tests/test_conpty_stream.py`（echo CLI を子プロセスとして起動し stdin→stdout 往復を確認）を Phase3+ で追加する。
+  - チャット連携: v1 は非対話バッチ（`codex exec` 等）で完走する構成を採用。Phase3+ で ConPTY ストリーミング＋attach を拡張する方針。最小 attach（人間が既存 chat セッションに TTY で入り、ci_evidence に `orchestrator_chat_attach` を記録）は完了。ロール間ハンドオフ拡張・複数ロール chat は後続。
+  - テスト項目: `tests/test_conpty_stream.py`（単一ロールの stdin/out 往復）、`tests/test_chat_attach.py`（attach で stdin/out・evidence 記録を確認）。
 - v1 スコープ: Workflow は Sequential＋TaskGroup 内の簡易並列に限定し、DAG/AsyncThink/LangGraph など高度並列は Phase 3 以降。CLI 実行は Windows/PS7＋ConPTY で親 CLI（`.\.venv\Scripts\python.exe src\orchestrator\cli.py`）から `subprocess.Popen` 経由で起動。初期サポート CLI は CodexCLI＋Claude Code CLI のみ（その他はプレースホルダ）。WSL+tmux/CAO はオプション扱いで v1 の対象外。
 - Mail/Lease SSOT: MailClient API（/api/mail send/list, /api/leases create/release）で統一済み。ci_evidence に smoke OK (2025-11-30) を記録。
 - Signals UI: Manager 右カラムに Signals パネル実装済み。2025/11/30 UI Gate（EN/JA）で表示確認済み。

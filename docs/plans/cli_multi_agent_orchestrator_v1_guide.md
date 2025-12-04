@@ -4,9 +4,9 @@
 - ゴール: 親 Orchestrator CLI から複数 CLI エージェント（Codex/Claude）を ConPTY 経由で起動し、Mission/Task を Sequential + 簡易並列(TaskGroup)で完走させる。
 - v1 スコープ: OS=Windows、Shell=PowerShell 7、親CLI=`.\.venv\Scripts\python.exe src\orchestrator\cli.py`、子CLI=CodexCLI/Claude Code CLI（ConPTY + subprocess）。DAG/LangGraph は Phase3+。
 - 外部API: コアv1では `allow_external_api: false` を起動時バリデーションとし、HTTPベース従量LLM/SaaSは禁止する。`config/engines.yaml` には kind=cli のみ列挙する。一方で、Aレーンや検証専用プロジェクトでは `allow_external_api: true` ＋ `engines_external.yaml` のような別設定を用意し、`@openai/codex-sdk` 等を利用した外部APIエンジンを「オプションの拡張」として接続する余地を残す（コアDoDには含めない）。
-- チャット連携: 現状は非対話バッチ（`codex exec`）で完走を確認済み。`codex chat` を用いた双方向連携は未実装で、ConPTY ストリーミング＋attach 機能を追加する Phase3+ タスクとして扱う。
-- 本ブランチは Phase3+（chat/ConPTY/attach）の先行 PoC であり、v1 DoD（非対話 exec 完走）には含めない。
-- Phase3+ の進め方（推奨）: attach/複数ロールチャットは新規ブランチ `feature/chat-attach`（Bレーン）で着手し、最小ゴールを「人間が既存 chat セッションへ TTY attach できる」に限定する。ロール間ハンドオフは Message Bus 拡張で別管理とし、テストは Tレーン（tests/**）に分離する。
+- チャット連携: 非対話バッチ（`codex exec`）は v1 で完走済み。Phase3+ として ConPTY ストリーミング＋人間 TTY attach を実装し、`orchestrator_chat_run` / `orchestrator_chat_attach` を ci_evidence に記録する PoC を完了。複数ロール chat とロール間ハンドオフ（Message Bus 拡張）は後続タスク。
+- 状態: chat/attach PoC は統合済みだが、v1 DoD（非対話 exec 完走）の範囲は変更しない。chat/attach は Phase3+ の拡張機能として扱う。
+- Phase3+ の進め方（推奨）: 複数ロールチャットは新規ブランチ（例: `feature/chat-multirole`、Bレーン）で Sequential から着手し、ロール間ハンドオフは Message Bus 拡張で別管理する。テストは Tレーン（tests/**）に分離。
 
 ## 2. 必須設定（抜粋）
 ```yaml
