@@ -109,6 +109,8 @@ governance:
     min_approvers: 2
     audit_log: "observability/policy/waivers.jsonl"
 
+automation_level: "manual"        # default for dangerous commands (manual=default deny + APPROVALS required)
+
 lanes:
   definitions:
     - {name: "A", scope: "security/auth/infra/config/migration/external_api", max_files: 3, max_lines: 50}
