@@ -7,7 +7,7 @@ def should_auto_approve_dangerous(
     command: str,
     mission_id: Optional[str],
     *,
-    automation_level: str = "manual",
+    automation_level: Optional[str] = "manual",
 ) -> bool:
     """危険コマンドを自動承認すべきかどうかを判定するプレースホルダ関数。
 

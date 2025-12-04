@@ -276,7 +276,7 @@ def run(
             command_index=idx,
             role=role_name,
         )
-        return cast(subprocess.CompletedProcess[str], result)
+        return result
 
     def _record_handoff(role_name: str, status: str) -> None:
         append_message(
