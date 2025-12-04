@@ -5,6 +5,7 @@ import json
 import os
 import subprocess
 import time
+from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Dict, Optional, cast
@@ -14,6 +15,11 @@ import httpx
 import typer
 import uvicorn
 
+from orchestrator.conpty_stream import (
+    spawn_stream_session,
+    terminate_stream_session,
+    wait_stream_session,
+)
 from orchestrator.conpty_wrapper import load_engine_config, spawn_agent_cli
 from orchestrator.message_bus import append_message, read_messages
 
@@ -27,7 +33,6 @@ def _compose_url(base: str, endpoint: str) -> str:
     base = base.rstrip("/")
     endpoint = endpoint if endpoint.startswith("/") else f"/{endpoint}"
     return f"{base}{endpoint}"
-
 
 @app.command()
 def serve(
@@ -130,6 +135,7 @@ def run(
         None,
         help="WorkflowEngine に run を連携するエンドポイント(例: /missions/{id}/run)",
     ),
+    chat_mode: bool = typer.Option(False, help="chat/stream モードの PoC を有効化する"),
     message_bus_path: Path = typer.Option(
         Path("data/logs/current/audit/message_bus.json"),
         help="role 間 handoff に使用するメッセージバス JSON",
@@ -229,6 +235,54 @@ def run(
         except Exception:
             pass
 
+    if chat_mode and len(role_list) != 1:
+        typer.echo("chat-mode は単一ロール専用です", err=True)
+        raise typer.Exit(code=2)
+    if chat_mode and parallel:
+        typer.echo("chat-mode では parallel オプションを使用できません", err=True)
+        raise typer.Exit(code=2)
+
+    if chat_mode:
+        role_name = role_list[0]
+        session = spawn_stream_session(
+            command=_apply_role(list(command), role_name),
+            mission_id=mission_id,
+            run_id=run_id,
+            trace_dir=trace_dir,
+            timeout=timeout,
+            command_index=0,
+            role=role_name,
+        )
+        typer.echo(f"chat_run_id={run_id}")
+        process, trace_path = session
+        typer.echo(f"cli_run_log={trace_path}")
+        status_text = "ok"
+        try:
+            exit_code = wait_stream_session(session, timeout=timeout)
+            status_text = "ok" if exit_code == 0 else "failed"
+        except subprocess.TimeoutExpired:
+            status_text = "timeout"
+            exit_code = terminate_stream_session(session, timeout=5.0)
+        _record_handoff(role_name, "completed" if exit_code == 0 else "failed")
+        _log_chat_run_evidence(
+            run_id=str(run_id),
+            engine=engine,
+            roles=role_list,
+            status=status_text,
+            mission_id=str(mission_id),
+            log_path=trace_path,
+        )
+        if exit_code != 0:
+            raise typer.Exit(code=1)
+        _post_signal_event(
+            signals_base_url=signals_base_url,
+            project_id=signals_project_id,
+            mission_id=str(mission_id),
+            run_id=str(run_id),
+            roles=role_list,
+        )
+        return
+
     if parallel:
         worker_count = max_workers or len(role_list)
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
@@ -318,6 +372,58 @@ def _log_cli_call_evidence(
             f.write("\n")
     except Exception:  # pragma: no cover - IO failures
         pass  # Best-effort logging, don't crash CLI on evidence write failure
+
+
+def _log_chat_run_evidence(
+    *,
+    run_id: str,
+    engine: str,
+    roles: list[str],
+    status: str,
+    mission_id: str,
+    log_path: Path,
+) -> None:
+    """chat/stream 実行を ci_evidence.jsonl に記録する。"""
+    import hashlib
+
+    evidence_path = Path("observability/policy/ci_evidence.jsonl")
+    if not evidence_path.exists():
+        return
+
+    log_path_str = log_path.as_posix()
+    log_hash = hashlib.sha256(log_path_str.encode("utf-8")).hexdigest()[:16]
+
+    git_sha = os.environ.get("GITHUB_SHA")
+    if git_sha is None:
+        try:
+            git_sha = (
+                subprocess.check_output(["git", "rev-parse", "HEAD"], text=True)
+                .strip()
+                or None
+            )
+        except Exception:
+            git_sha = None
+
+    event = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "event": "orchestrator_chat_run",
+        "run_id": run_id,
+        "mission_id": mission_id,
+        "engine": engine,
+        "roles": roles,
+        "status": status,
+        "log_path": log_path_str,
+        "log_path_hash": log_hash,
+    }
+    if git_sha:
+        event["git_sha"] = git_sha
+
+    try:
+        with evidence_path.open("a", encoding="utf-8") as f:
+            json.dump(event, f, ensure_ascii=False)
+            f.write("\n")
+    except Exception:  # pragma: no cover - IO failures
+        pass
 
 
 def _post_signal_event(

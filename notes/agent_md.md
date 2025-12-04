@@ -2,6 +2,13 @@
 
 Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショートスイート導入と証跡整理、今後のフルスイート実行方針を明文化する。加えて Phase 2C/2D（cli-multi-agent-v1-runtime）を実データで完遂する。
 
+## Current State (2025-12-04 chat/stream)
+- branch=feature/chat-stream-pty。Bレーン: cli.py+conpty_stream.py 200行/2ファイル、Tレーン: tests/test_conpty_stream.py 25行。
+- chat/stream PoC は ci_evidence に pytest_run / orchestrator_chat_run / shadow_audit_verify を記録済み（git_sha=1751b2b...）。Shadow Audit verify_chain=True、PLAN/TEST/PATCH/APPLY emit 済み。
+- pytest: WINDOWS_TEST_ALLOWLIST_APPEND=tests/test_conpty_stream.py .venv/Scripts/python.exe -m pytest -q tests/test_conpty_stream.py → 1 passed。
+- ci_evidence log_path_hash=3272cf3875e2031c（dummy log）、manifest=observability/policy/shadow_audit/manifest.jsonl を確認。plans/diff-plan.json を B/T レーン進捗で更新。
+- push/PR: Agent MD・diff-plan 更新後に判断。attach/message bus/engines.yaml は未変更。
+
 # Current State
 
 - UI Gate（EN/JA）・lint・Jest・Playwright は PASS を維持。pytest はショートスイート（allowlist）中心に実行しており、ack/macro/attachment/HTTP-heavy/DB-lock 系は denylist で skip。
@@ -39,6 +46,7 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 
 # Applied Changes (summary + key diff points)
 
+- chat/stream PoC: conpty_stream.py を stream 専用ヘルパーとして追加し、cli.py の chat-mode 証跡（log_path_hash/git_sha）を整備。tests/test_conpty_stream.py を T レーンで再追加し、ci_evidence に pytest_run/orchestrator_chat_run/shadow_audit_verify を追記。
 - tests/conftest.py: allowlist/denylist 制御と TMP/TEMP 固定、ENABLE_FULL_SUITE による解除ロジック。cachedir は pyproject.toml で .pytest_cache_local に変更。
 - tests/test_http_liveness_min.py: app() を毎回生成する形に修正（TypeError 解消）。
 - tests/test_ack_views_details*.py / tests/test_attachments_extended.py: Windows では module-level skip を追加し、ロック遅延テストを除外。
@@ -103,6 +111,7 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 
 # Tests
 
+- `WINDOWS_TEST_ALLOWLIST_APPEND=tests/test_conpty_stream.py .venv/Scripts/python.exe -m pytest -q tests/test_conpty_stream.py` → 1 passed（chat/stream PoC）。
 - `python -m pytest -q tests/test_missions_api.py tests/test_workflow_engine.py tests/test_http_liveness_min.py` → `reports/test/pytest_phase2a_run.txt` に記録（Pass, CLI 出力はこの環境で画面に現れず）。
 - `python -m pytest -q tests/test_storage_* tests/test_http_liveness_min.py` → `reports/test/pytest_phase2a_storage_run.txt` に記録（Pass）。
 - `python -m pytest -vv tests/test_workflow_engine.py tests/test_missions_api.py` → `reports/test/pytest_phase2b_run.txt` に記録（Pass, run API/self-heal/knowledge 失敗系を含む）。
