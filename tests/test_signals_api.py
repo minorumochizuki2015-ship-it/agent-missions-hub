@@ -1,6 +1,6 @@
 import asyncio
-
 from pathlib import Path
+from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
@@ -10,22 +10,23 @@ from mcp_agent_mail.http import build_http_app
 from mcp_agent_mail.models import Project
 
 
-async def _setup_project() -> int:
+async def _setup_project(slug: str | None = None) -> tuple[int, str]:
     reset_database_state()
     await ensure_schema()
+    slug_value = slug or f"p-signals-{uuid4().hex}"
     async with session_context() as session:
-        proj = Project(slug="p-signals", human_key="p-signals")
+        proj = Project(slug=slug_value, human_key=slug_value)
         session.add(proj)
         await session.commit()
         await session.refresh(proj)
         proj_id = proj.id
         if proj_id is None:
             raise RuntimeError("project id was not persisted")
-        return int(proj_id)
+        return int(proj_id), slug_value
 
 
 def test_signal_create_and_list() -> None:
-    pid = asyncio.run(_setup_project())
+    pid, _ = asyncio.run(_setup_project())
     app = build_http_app(get_settings())
     client = TestClient(app)
 
@@ -43,7 +44,7 @@ def test_signal_create_and_list() -> None:
 
 
 def test_signal_import_dangerous(tmp_path: Path) -> None:
-    asyncio.run(_setup_project())
+    pid, slug = asyncio.run(_setup_project())
     log = tmp_path / "dangerous_command_events.jsonl"
     log.write_text(
         "\n".join(
@@ -59,7 +60,7 @@ def test_signal_import_dangerous(tmp_path: Path) -> None:
     client = TestClient(app)
     res = client.post(
         "/api/signals/import/dangerous",
-        json={"path": str(log), "project": "p-signals", "max_rows": 10},
+        json={"path": str(log), "project": slug, "max_rows": 10},
     )
     assert res.status_code == 200
     assert res.json()["imported"] == 3

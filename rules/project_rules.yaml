@@ -109,7 +109,7 @@ governance:
     min_approvers: 2
     audit_log: "observability/policy/waivers.jsonl"
 
-automation_level: "manual"        # default for dangerous commands (manual=default deny + APPROVALS required)
+automation_level: "manual"        # 危険コマンド既定=手動承認（default deny、APPROVALS必須。将来値: auto-safeops/auto-all）
 
 lanes:
   definitions:
