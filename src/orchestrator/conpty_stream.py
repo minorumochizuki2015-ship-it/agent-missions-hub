@@ -10,6 +10,7 @@ from typing import TextIO
 from uuid import UUID
 
 StreamSession = tuple[subprocess.Popen[str], Path]
+_STREAM_REGISTRY: dict[str, tuple[StreamSession, str | None, str]] = {}
 
 
 def _append(trace_path: Path, label: str, content: str) -> None:
@@ -27,6 +28,7 @@ def spawn_stream_session(
     command_index: int | None,
     role: str | None,
     timeout: float | None = None,
+    register: bool = True,
 ) -> StreamSession:
     """ストリームモードで CLI を起動し、ヘッダ付きログを作成する。"""
     target_dir = trace_dir or Path("data/logs/current/audit/cli_runs")
@@ -65,7 +67,26 @@ def spawn_stream_session(
     for stream, label in ((proc.stdout, "STDOUT"), (proc.stderr, "STDERR")):
         if stream:
             threading.Thread(target=_pump, args=(stream, label), daemon=True).start()
-    return proc, trace_path
+    session = (proc, trace_path)
+    if register:
+        _STREAM_REGISTRY[str(run_id)] = (session, role, str(mission_id))
+    return session
+
+
+def get_stream_session(run_id: UUID | str) -> StreamSession:
+    """run_id をキーにセッションを取得する。"""
+    handle = _STREAM_REGISTRY.get(str(run_id))
+    if handle is None:
+        raise KeyError(f"run_id not found: {run_id}")
+    return handle[0]
+
+
+def get_stream_session_meta(run_id: UUID | str) -> tuple[StreamSession, str | None, str]:
+    """セッションと role, mission_id を取得する。"""
+    handle = _STREAM_REGISTRY.get(str(run_id))
+    if handle is None:
+        raise KeyError(f"run_id not found: {run_id}")
+    return handle
 
 
 def wait_stream_session(session: StreamSession, timeout: float | None = None) -> int:
@@ -90,3 +111,14 @@ def terminate_stream_session(session: StreamSession, timeout: float | None = Non
         code = proc.wait()
     _append(trace_path, "RETURN", f"{code}\n")
     return code
+
+
+def send_stream_line(session: StreamSession, text: str) -> None:
+    """stdin に1行を書き込み、ログにも残す。"""
+    proc, trace_path = session
+    if proc.stdin is None or proc.stdin.closed:
+        raise RuntimeError("stdin が利用できません")
+    line = text if text.endswith("\n") else f"{text}\n"
+    proc.stdin.write(line)
+    proc.stdin.flush()
+    _append(trace_path, "STDIN", line)

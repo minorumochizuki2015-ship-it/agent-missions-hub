@@ -28,6 +28,7 @@
 - **External Engine オプション**: コア v1 は CLI エンジンのみ（`allow_external_api: false`）で完走可能にする。一方、Phase3 以降のAレーンや検証専用環境では `engines_external.yaml` などに `@openai/codex-sdk` 等の外部APIエンジンを定義し、Orchestrator から「追加 engine」として呼び出すオプションを検討する（既定のマイルストン/DoDには含めない）。
 - **チャット連携タスク（Phase3+）**: 本ブランチは chat/ConPTY/attach の先行 PoC とし、v1 DoD（非対話 exec 完走）には含めない。最小 DoD: 単一ロールの chat セッションを stream モードで起動し、入出力を `cli_runs` に記録、ci_evidence に chat run イベントを残すこと。Message Bus / :attach は後続フェーズで実装する。テスト例: echo CLI を子プロセスとして stdin→stdout 往復を検証する `tests/test_conpty_stream.py` を Phase3+ で追加。
  - **チャット連携タスク（Phase3+）**: 現状は非対話バッチ（codex exec 等）で運用。`codex chat` など双方向対話を支えるため、ConPTY ストリーミング＋attach 機能を追加し、roles 間の会話・人間の介入が可能なモードを実装する。
+ - **attach/multi-role 拡張方針（Phase3+）**: 新規ブランチ `feature/chat-attach`（Bレーン）で「人間が既存 chat セッションへ TTY attach できる」最小機能を先行実装し、ロール間ハンドオフは Message Bus 拡張で別管理とする。1バッチ≤5ファイル・130行目安（最大200行）、テストは Tレーン（tests/**）で分割して追加。multi-role chat は Sequential から着手し、並列チャットは後続バッチに送る。
 
 -## Phase 3（UI ダッシュボード刷新）※計画
 - 旧 `/mail` ダッシュボード要素（Smoke Test / メッセージ / プロジェクトカード等）を統合し、実データ（MISSIONS_HUB_API_BASE + `/api/missions`）を表示する新レイアウトを実装する。UI Gate/Playwright 実行時は FastAPI 起動中（/health 200）かつ `/api/missions` 非空を必須条件とし、未起動・空レスポンスは Gate=FAIL とする。

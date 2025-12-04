@@ -6,6 +6,7 @@
 - 外部API: コアv1では `allow_external_api: false` を起動時バリデーションとし、HTTPベース従量LLM/SaaSは禁止する。`config/engines.yaml` には kind=cli のみ列挙する。一方で、Aレーンや検証専用プロジェクトでは `allow_external_api: true` ＋ `engines_external.yaml` のような別設定を用意し、`@openai/codex-sdk` 等を利用した外部APIエンジンを「オプションの拡張」として接続する余地を残す（コアDoDには含めない）。
 - チャット連携: 現状は非対話バッチ（`codex exec`）で完走を確認済み。`codex chat` を用いた双方向連携は未実装で、ConPTY ストリーミング＋attach 機能を追加する Phase3+ タスクとして扱う。
 - 本ブランチは Phase3+（chat/ConPTY/attach）の先行 PoC であり、v1 DoD（非対話 exec 完走）には含めない。
+- Phase3+ の進め方（推奨）: attach/複数ロールチャットは新規ブランチ `feature/chat-attach`（Bレーン）で着手し、最小ゴールを「人間が既存 chat セッションへ TTY attach できる」に限定する。ロール間ハンドオフは Message Bus 拡張で別管理とし、テストは Tレーン（tests/**）に分離する。
 
 ## 2. 必須設定（抜粋）
 ```yaml

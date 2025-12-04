@@ -8,13 +8,16 @@ AIモデル：<使用モデル名>
 - codexcli_git_ops_policy.md
 - AUDIT_rules.yaml
 - Shadow Audit Layer（manifest/hash/signature/metrics）
-- GitOps 制約（diff ≤3 files / ≤50 lines）
+- GitOps 制約（レーン別: A=3files/50lines, B=5files/200lines, T=tests専用, C=機械的のみ）
 - Plan→Test→Patch / SafeOps / LOCK / APPROVALS
 
 ────────────────────────────
 【Git情報】
 Target Commit: <監査対象コミットSHA>
 Branch: <対象ブランチ名>
+Rules version: <rules_version hash>
+Rules check: <verified|skip:*|error:*>
+Agent version: <policy_bundle_hash|prompt_hash|model_id または skip理由>
 
 ────────────────────────────
 【コンテキスト（任意）】
@@ -53,7 +56,7 @@ Branch: <対象ブランチ名>
 再テスト結果:
 - ruff check <対象ファイル> → PASS/FAIL
 - isort --check-only <対象ファイル> → PASS/FAIL
-- black --check <対象ファイル> → PASS/FAIL
+- black --check <対象ファイル> → PASS/FAIL（未実施なら理由を記載）
 - pytest <対象テスト> → PASS/FAIL
 - （必要なら）pytest -q → Pass/Skip/Warn の総括
 - UI Gate：差分なし = スキップ理由を ci_evidence.jsonl に記録
@@ -83,11 +86,12 @@ goalリンク / スコープ:
 
 - manifest.jsonl 存在：OK / NG / N/A（テスト用 tmp のみ）
 - hash chain：OK / NG（全行整合の可否）
-- signature：OK / NG / N/A（Batch2 では N/A）
-- explainability_rate：<0–100%>
+- signature：OK / NG / N/A（未実装なら理由を記載）
+- explainability_rate：<0–100% または N/A＋理由>
 - unsigned_events：<数値>
-- rule_drift：<数値>
-- approval_mismatch：<数値>
+- rule_drift：<数値 または N/A＋理由>
+- approval_mismatch：<数値 または N/A＋理由>
+- event_signature_policy：<signed|N/A>（N/A の場合は理由を記載）
 
 ────────────────────────────
 【Shadow Audit Events（WORK 自身の PLAN/TEST/PATCH/APPLY ログ）】
@@ -168,7 +172,7 @@ Goal：<今回バッチの目標（例：Batch3 / PS hook）>
 - <ファイルパス> … <目的/理由>
 
 【修正指示】
-- diff ≤3 files / ≤50 lines を厳守
+- diff はレーン上限順守（A=3files/50lines、B=5files/200lines、T=tests専用、C=機械的のみ）
 - Plan→Test→Patch を必ず plans/diff-plan.json に記録
 - SafeOps/LOCK を維持
 - manifest* は Git 管理外のまま（tmp での生成/検証のみ）

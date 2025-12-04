@@ -15,13 +15,16 @@ AIモデル：<使用モデル名>
 - codexcli_git_ops_policy.md
 - 監査・テスト方法.md
 - Shadow Audit Layer（manifest/hash/signature/KPI 検証）
-- GitOps 制約（diff ≤3 files / ≤50 lines）
+- GitOps 制約（レーン別: A=3files/50lines, B=5files/200lines, T=tests専用, C=機械的のみ）
 - Plan→Test→Patch / SafeOps / LOCK / APPROVALS
 
 ────────────────────────────
 【Git情報】
 Target Commit: <再掲>
 Branch: <再掲>
+Rules version: <rules_version hash>
+Rules check: <verified|skip:*|error:*>
+Agent version: <policy_bundle_hash|prompt_hash|model_id または skip理由>
 
 ────────────────────────────
 【コンテキスト】
@@ -53,11 +56,12 @@ Branch: <再掲>
 
 - manifest.jsonl 存在: OK / NG / N/A  
 - hash chain 整合性: OK / NG  
-- signature（cosign）: OK / NG / N/A（署名未実装時は N/A）  
-- explainability_rate: <0〜100%>  
+- signature（cosign）: OK / NG / N/A（署名未実装時は N/A＋理由）  
+- explainability_rate: <0〜100% または N/A＋理由>  
 - unsigned_events: <n>  
-- rule_drift: <n>  
-- approval_mismatch: <n>  
+- rule_drift: <n または N/A＋理由>  
+- approval_mismatch: <n または N/A＋理由>  
+- event_signature_policy: <signed|N/A>（N/A の場合は理由を記載）  
 
 問題がある場合、Status は原則 Block または Proceed with fixes。
 
@@ -133,7 +137,7 @@ Goal：<今回サイクルの最小ゴール（例：Batch3 PS hook）>
  - <ファイルパス> … <目的/理由>
 
 【修正指示（WORK が行うべき具体タスク）】
-- diff ≤3 files / ≤50 lines を厳守
+- diff はレーン上限順守（A=3files/50lines、B=5files/200lines、T=tests専用、C=機械的のみ）
 - Plan→Test→Patch を必ず plans/diff-plan.json に記録
 - SafeOps/LOCK を維持、APPROVALS 二者承認遵守
 - manifest* は Git 管理外（生成は tmp / artifacts のみ）
