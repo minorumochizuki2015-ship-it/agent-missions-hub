@@ -221,6 +221,8 @@ jobs:
             pw-${{ runner.os }}-
       - name: Sync dependencies
         run: uv sync --dev
+      - name: Ensure pip in uv environment
+        run: uv run python -m ensurepip --upgrade
       - name: Install Playwright (Python) if missing
         run: |
           if uv run python -c "import importlib.util; import sys; sys.exit(0 if importlib.util.find_spec('playwright') else 1)"; then
