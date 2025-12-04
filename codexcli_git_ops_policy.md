@@ -41,6 +41,17 @@ CodexCLI エージェントがリポジトリに対して行う **Git 操作（e
 **「CodexCLI に push / PR 自動化を許可する」** と明示された場合にのみ有効となる。
 明示許可がないミッションでは、`CODEX_GIT_MODE` の値にかかわらず `local-only` として扱う。
 
+### 0.3 プロジェクト完了フェーズにおける完全自動化の目標
+
+本プロジェクトの最終目標は、強いゲート（Shadow Audit / APPROVALS / lanes / Push・PRポリシー）を前提に、AI（WORK / AUDIT / CMDロール）が push / PR / （将来の）auto-merge まで自律的に実行し、人間はルール・APPROVALS・waiver 設計に専念できる状態を実現することである。  
+その際、自動 push / 将来の auto-merge が許可されるのは、少なくとも次の条件をすべて満たす場合に限る：  
+- 対象ブランチが許可ブランチ（例: `feature/*`）であり、lane 制約（A=3files/50lines, B=5files/≤200lines, T=tests専用, C=機械的のみ）および Diff Integrity Check を満たしていること  
+- Shadow Audit manifest/hash/signature が verify_chain=OK であり、PLAN/TEST/PATCH/APPLY/APPROVALS の各イベントが揃っていること  
+- 対象 HEAD について最新の監査AIレポートが存在し、`Status: Proceed`（少なくとも Blocking なし）であること  
+- `APPROVALS.md` に scope=auto-push または scope=auto-merge の行が存在し、two-person rule（WORK 要求 / CMD または AUDIT 承認）が満たされていること  
+- `CODEX_GIT_MODE` が `auto-push` / `auto-push-pr`（将来は `auto-merge` プロファイル）であり、`REMOTE_WRITE_ALLOWED=1` が有効であること  
+これらの条件を満たさない場合、CodexCLI は自動 push / auto-merge を行わず、既定どおり `local-only` 相当として扱う。
+
 ---
 
 ## 1. ロール・ワークスペース・権限境界
