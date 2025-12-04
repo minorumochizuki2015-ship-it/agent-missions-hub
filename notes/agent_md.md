@@ -2,6 +2,12 @@
 
 Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショートスイート導入と証跡整理、今後のフルスイート実行方針を明文化する。加えて Phase 2C/2D（cli-multi-agent-v1-runtime）を実データで完遂する。
 
+## Current State (2025-12-04 chat/stream)
+- branch=feature/chat-stream-pty。Bレーン: cli.py+conpty_stream.py 200行/2ファイル、Tレーン: tests/test_conpty_stream.py 25行。
+- chat/stream PoC は ci_evidence に pytest_run / orchestrator_chat_run / shadow_audit_verify を記録済み（git_sha=1751b2b...）。Shadow Audit verify_chain=True、PLAN/TEST/PATCH/APPLY emit 済み。
+- pytest: WINDOWS_TEST_ALLOWLIST_APPEND=tests/test_conpty_stream.py .venv/Scripts/python.exe -m pytest -q tests/test_conpty_stream.py → 1 passed。
+- push/PR: Agent MD・diff-plan 更新後に判断。attach/message bus/engines.yaml は未変更。
+
 # Current State
 
 - UI Gate（EN/JA）・lint・Jest・Playwright は PASS を維持。pytest はショートスイート（allowlist）中心に実行しており、ack/macro/attachment/HTTP-heavy/DB-lock 系は denylist で skip。
