@@ -362,7 +362,7 @@ jobs:
         if: ${{ hashFiles('observability/policy/shadow_audit/manifest.jsonl') != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: shadow-audit-${{ github.run_attempt }}
+          name: shadow-audit-${{ matrix.python-version }}-${{ github.run_attempt }}
           path: observability/policy/shadow_audit/**
       - name: Append Phase 7 CI evidence (test matrix)
         if: ${{ success() && inputs.verify_run == '1' && hashFiles('scripts/append_phase7_ci_evidence.py') != '' }}
