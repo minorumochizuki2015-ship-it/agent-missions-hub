@@ -18,6 +18,12 @@
 - 新規ゴール: CLI単体でマルチエージェント実行を完了させる（goal_id=cli-v1-orchestrator）。DoD: `orchestrator run --roles planner,coder,tester --mission <id>` が ConPTY 経由で Codex/Claude を起動・完走し、Shadow Audit/ci_evidence に記録が残ること（`:attach <agent>` は Phase3+ で追加予定、v1 DoD には含めない）。
 - Phase2B完了条件に cli-v1-orchestrator DoD 達成を含める（CLI先行で実用化し、UIは後続で段階移植）。
 
+### 補足: 自動化レベルと Git ポリシーの関係
+- `CODEX_GIT_MODE` は Git 操作専用の自動化レベル（`local-only` / `auto-push` / `auto-push-pr`）であり、既定は `local-only`。Phase2 では `auto-push` / `auto-push-pr` を使っても **merge は常に人間/保護ルール側** が行う。
+- 危険コマンド向けの `automation_level`（`manual` / `auto-safeops` / `auto-all`）は現時点では概念のみで、今後 SafeOps＋APPROVALS と組み合わせて導入する。Phase2 では実質 `manual`（すべて default deny＋APPROVALS 必須）として扱い、「明示がない場合の既定値も manual」とする。
+- 実装時は WORK_rules.yaml による Dangerous command guard / Signals API / `APPROVALS.md` の三者を参照して分岐し、automation_level に応じて「自動承認して進む」か「pending として人間承認待ちにする」かを決める予定。
+- `auto-all`（push/PR/merge まで完全自動）は最終フェーズの目標とし、self-merge禁止・main/release直接禁止など現行の Git ポリシーを将来の専用PRで見直したうえで段階的に解禁する。
+
 ## ロードマップ（P0〜P4：Phase3 以降を含む）
 - **P0 設計同期**: v1 スコープ（Sequential＋Windows/PS7＋ConPTY、CodexCLI+Claudeのみ、CodeMachineは外部扱い）、mcp_agent_mail 中核化、役割プリセット・Signals 方針を設計・checklist・plan_diff に反映。
 - **P1 Mail/Lease 統合**: mcp_agent_mail をマウントし Inbox/Outbox/予約 API を UI/CLI で利用、ci_evidence に mail/lease イベントを追記。

@@ -36,6 +36,9 @@
 - DoD: `orchestrator run --roles planner,coder,tester --mission <id>` で SequentialWorkflow が完走し、ConPTY子プロセスでCodex/Claudeを起動、ログ/ci_evidence/Shadow Audit が記録されること（人間介入用の `:attach <agent>` は Phase3+ で追加予定、v1 DoD には含めない）。
 - 進捗: run v1 で role プロファイル適用（config/roles.json）、message bus handoff(JSON) 記録、workflow_endpoint フック（ベストエフォート）、並列エラー集約を実装。`tests/test_orchestrator_cli_parallel.py` で並列時間短縮と handoff 記録を確認済み。次はチャット/ConPTY ストリームの PoC（attach は後続）と Agent Mail 通知・WorkflowEngine 接着の強化。
 - Phase3+（対話拡張）計画: chat/stream PoC 完了後は新規ブランチ `feature/chat-attach`（Bレーン）で進める。最小ゴールは「人間が既存 chat セッションに TTY attach できる」ことで、ロール間ハンドオフは Message Bus 拡張として別扱い。1バッチ≤5ファイル・130行目安（最大200行）、attach テストは Tレーン（tests/** 限定）で分割する。
+- 自動化レベルチェック（Git/危険コマンド）
+  - `CODEX_GIT_MODE` は `local-only` / `auto-push` / `auto-push-pr` のいずれかで設定されていること（現行ルールでは merge 自動化は行わない）。Phase2 では auto-push/auto-push-pr を使う場合も、merge は GitHub 保護ルール＋人間/監査側で行う。
+  - 危険コマンドについては、現時点では `automation_level` を概念的に `manual` とみなし、SafeOps ログ＋`APPROVALS.md` 二者承認が揃っていない限り自動承認しない（明示がない場合の既定値も manual）。将来 `auto-safeops` / `auto-all` を導入する場合も lanes/diff 上限と Git ポリシーを越えないことを前提とし、WORK_rules.yaml の Dangerous command guard / Signals / APPROVALS を見て分岐する実装とする。
 
 ### 補足メモ
 - Signals: 現状は右カラムUI枠のみ。Backend wired: NO（P2実装時に YES へ更新）。
