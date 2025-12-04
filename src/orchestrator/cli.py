@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 import time
 from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -16,6 +17,8 @@ import typer
 import uvicorn
 
 from orchestrator.conpty_stream import (
+    get_stream_session_meta,
+    send_stream_line,
     spawn_stream_session,
     terminate_stream_session,
     wait_stream_session,
@@ -412,6 +415,87 @@ def _log_chat_run_evidence(
         "engine": engine,
         "roles": roles,
         "status": status,
+        "log_path": log_path_str,
+        "log_path_hash": log_hash,
+    }
+    if git_sha:
+        event["git_sha"] = git_sha
+
+    try:
+        with evidence_path.open("a", encoding="utf-8") as f:
+            json.dump(event, f, ensure_ascii=False)
+            f.write("\n")
+    except Exception:  # pragma: no cover - IO failures
+        pass
+
+
+@app.command()
+def attach(
+    run_id: str = typer.Option(..., help="chat/stream セッションの run_id"),
+    line: Optional[str] = typer.Option(
+        None, help="1 行だけ送信する場合に指定（省略時は標準入力から送信）"
+    ),
+) -> None:
+    """既存 chat/stream セッションへ TTY でアタッチする。"""
+    try:
+        session, role, mission_id = get_stream_session_meta(run_id)
+    except KeyError:
+        typer.echo(f"run_id={run_id} のセッションが見つかりません", err=True)
+        raise typer.Exit(code=1)
+
+    _, trace_path = session
+    typer.echo(f"attach run_id={run_id} log={trace_path}")
+    if line:
+        send_stream_line(session, line)
+    else:
+        typer.echo("標準入力からの行を送信します。Ctrl+D/Ctrl+Z で終了。")
+        try:
+            for stdin_line in sys.stdin:
+                send_stream_line(session, stdin_line.rstrip("\n"))
+        except KeyboardInterrupt:
+            pass
+    _log_chat_attach_evidence(
+        run_id=run_id,
+        mission_id=mission_id,
+        role=role,
+        log_path=trace_path,
+    )
+
+
+def _log_chat_attach_evidence(
+    *,
+    run_id: str,
+    mission_id: str,
+    role: str | None,
+    log_path: Path,
+) -> None:
+    """chat/stream attach を ci_evidence.jsonl に記録する。"""
+    import hashlib
+
+    evidence_path = Path("observability/policy/ci_evidence.jsonl")
+    if not evidence_path.exists():
+        return
+
+    log_path_str = log_path.as_posix()
+    log_hash = hashlib.sha256(log_path_str.encode("utf-8")).hexdigest()[:16]
+
+    git_sha = os.environ.get("GITHUB_SHA")
+    if git_sha is None:
+        try:
+            git_sha = (
+                subprocess.check_output(["git", "rev-parse", "HEAD"], text=True)
+                .strip()
+                or None
+            )
+        except Exception:
+            git_sha = None
+
+    event = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "event": "orchestrator_chat_attach",
+        "run_id": run_id,
+        "mission_id": mission_id,
+        "role": role,
         "log_path": log_path_str,
         "log_path_hash": log_hash,
     }

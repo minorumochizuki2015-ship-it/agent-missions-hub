@@ -8,6 +8,7 @@ Windows 環境での UI Gate / CI 運用を安定させるため、pytest ショ
 - pytest: WINDOWS_TEST_ALLOWLIST_APPEND=tests/test_conpty_stream.py .venv/Scripts/python.exe -m pytest -q tests/test_conpty_stream.py → 1 passed。
 - ci_evidence log_path_hash=3272cf3875e2031c（dummy log）、manifest=observability/policy/shadow_audit/manifest.jsonl を確認。plans/diff-plan.json を B/T レーン進捗で更新。
 - push/PR: Agent MD・diff-plan 更新後に判断。attach/message bus/engines.yaml は未変更。
+- branch=feature/chat-attach。Bレーン: cli.py+conpty_stream.py 199行/2ファイル、Tレーン: tests/test_chat_attach.py 1ファイル。attach サブコマンドとセッションレジストリを追加し、ci_evidence に orchestrator_chat_attach を記録。pytest (chat_attach) 1 passed（PYTEST_DISABLE_PLUGIN_AUTOLOAD=1, addopts=）。Shadow Audit PLAN/TEST/PATCH/APPLY emit＋verify_chain=True。
 
 # Current State
 
