@@ -12,6 +12,7 @@ def should_auto_approve_dangerous(
     """危険コマンドを自動承認すべきかどうかを判定するプレースホルダ関数。
 
     現時点では automation_level=manual を前提とし、常に False（自動承認しない）を返す。
+    project_rules.yaml の automation_level（既定 manual）を参照して呼び出す想定。
     将来は WORK_rules.yaml の Dangerous command guard・Signals API・APPROVALS.md を参照し、
     automation_level（manual / auto-safeops / auto-all）に応じて分岐する実装へ差し替える。
     """
@@ -23,4 +24,3 @@ def should_auto_approve_dangerous(
         return False
     # auto-safeops / auto-all などの将来拡張は別バッチで実装する
     return False
-

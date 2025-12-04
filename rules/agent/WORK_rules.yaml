@@ -186,6 +186,7 @@ procedures:
       - "Capture git status -sb and git diff --stat before and after; store snapshots in paths.safeops_dangerous_log."
       - "Ensure backups/pre_change/<task_id>/manifest.sha256 exists; record hash in log before Apply."
       - "Require APPROVALS.md entry referencing the safeops log entry before executing the actual command."
+      - "将来は automation_level（manual/auto-safeops/auto-all）を参照し、SafeOpsログ＋APPROVALS＋Signals で分岐予定（現状は manual のみ）。"
 
   - name: "Patch phase (atomic write)"
     steps:
