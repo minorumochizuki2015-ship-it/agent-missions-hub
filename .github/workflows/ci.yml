@@ -250,7 +250,7 @@ jobs:
         if: ${{ always() && (github.event_name == 'push' || github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.verify_run == '1')) }}
         uses: actions/upload-artifact@v4
         with:
-          name: ci-evidence-verify-ui-gate
+          name: ci-evidence-verify-ui-gate-${{ github.run_attempt }}
           path: |
             observability/coverage/ci_phase7_evidence.jsonl
             reports/ci_evidence.jsonl
@@ -258,7 +258,7 @@ jobs:
         if: ${{ hashFiles('artifacts/ui_audit/summary.json') != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: ui-audit
+          name: ui-audit-${{ github.run_attempt }}
           path: artifacts/ui_audit
 
   ty:
@@ -348,13 +348,13 @@ jobs:
         if: ${{ hashFiles('observability/junit/junit.xml') != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: junit-${{ matrix.python-version }}
+          name: junit-${{ matrix.python-version }}-${{ github.run_attempt }}
           path: observability/junit/junit.xml
       - name: Upload coverage reports
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_run != '1' }}
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-${{ matrix.python-version }}
+          name: coverage-${{ matrix.python-version }}-${{ github.run_attempt }}
           path: |
             coverage.xml
             htmlcov/
@@ -362,7 +362,7 @@ jobs:
         if: ${{ hashFiles('observability/policy/shadow_audit/manifest.jsonl') != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: shadow-audit
+          name: shadow-audit-${{ matrix.python-version }}-${{ github.run_attempt }}
           path: observability/policy/shadow_audit/**
       - name: Append Phase 7 CI evidence (test matrix)
         if: ${{ success() && inputs.verify_run == '1' && hashFiles('scripts/append_phase7_ci_evidence.py') != '' }}
@@ -373,7 +373,7 @@ jobs:
         if: ${{ success() && inputs.verify_run == '1' }}
         uses: actions/upload-artifact@v4
         with:
-          name: ci-evidence-test-matrix-${{ matrix.python-version }}
+          name: ci-evidence-test-matrix-${{ matrix.python-version }}-${{ github.run_attempt }}
           path: |
             observability/coverage/ci_phase7_evidence.jsonl
             reports/ci_evidence.jsonl
