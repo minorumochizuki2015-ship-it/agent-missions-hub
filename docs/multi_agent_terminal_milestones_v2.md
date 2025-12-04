@@ -15,7 +15,7 @@
 - Legacy UI 差分（要追従）: 旧UI（`C:\Users\User\Trae\Codex-CLImutipule-CMD`, Flask/Alpine/Tailwind拡張）で実装していた lang クエリ自動付与、ダークモード持続、トースト/チュートリアル等の共通コンポーネントは未移植。Phase2C〜P3で段階移植し、各バッチ開始時に legacy を参照してギャップを潰すこと。
 - 移植優先順位（Phase2C〜P3）: ①lang/dark 持続＋トースト基盤 ②Agent登録/送信フォーム ③メッセージ検索・予約・添付 ④プロジェクト一覧・Unified Inbox ⑤ Signals/Approvals 実データ連動 ⑥ テーマ拡張（色/影/グラデ/フォント）
 - ゴール管理: PLANに必ず goal_id/closes を記載し、1バッチ=1 goal_id・WIP=1を徹底。DoD達成時のみ `goal_completed` を発行し、PARKEDで中断を明示する。
-- 新規ゴール: CLI単体でマルチエージェント実行を完了させる（goal_id=cli-v1-orchestrator）。DoD: `orchestrator run --roles planner,coder,tester --mission <id>` が ConPTY 経由で Codex/Claude を起動・完走し、必要時に `:attach <agent>` で介入でき、Shadow Audit/ci_evidence に記録が残ること。
+- 新規ゴール: CLI単体でマルチエージェント実行を完了させる（goal_id=cli-v1-orchestrator）。DoD: `orchestrator run --roles planner,coder,tester --mission <id>` が ConPTY 経由で Codex/Claude を起動・完走し、Shadow Audit/ci_evidence に記録が残ること（`:attach <agent>` は Phase3+ で追加予定、v1 DoD には含めない）。
 - Phase2B完了条件に cli-v1-orchestrator DoD 達成を含める（CLI先行で実用化し、UIは後続で段階移植）。
 
 ## ロードマップ（P0〜P4：Phase3 以降を含む）
@@ -25,7 +25,8 @@
 - **P3 Dashboard/Inbox 拡充**: 旧 `/mail` の Smoke Test/メッセージ/プロジェクトカード/検索・フィルタを実データで復元し、UI Gate/テスト/UI Audit を再実行。
 - **P4 Mission/Task/Artifact/Knowledge**: 中期スキーマを追加し、Manager/Graph/Knowledge の基盤を整備。
 - **UI移植ゴール（段階）**: ①旧UIレイアウト移植完了（ナビ/右パネル/赤帯/カードをReact化）、②新機能追加（Signals/Approvals等の実データ連携）、③既存バックエンドとの完全統合（/api/missions 等を安定表示・UI Gate PASS）、④その上でUI/UXの高度化（パフォーマンス・アクセシビリティ・操作性強化）。
- - **External Engine オプション**: コア v1 は CLI エンジンのみ（`allow_external_api: false`）で完走可能にする。一方、Phase3 以降のAレーンや検証専用環境では `engines_external.yaml` などに `@openai/codex-sdk` 等の外部APIエンジンを定義し、Orchestrator から「追加 engine」として呼び出すオプションを検討する（既定のマイルストン/DoDには含めない）。
+- **External Engine オプション**: コア v1 は CLI エンジンのみ（`allow_external_api: false`）で完走可能にする。一方、Phase3 以降のAレーンや検証専用環境では `engines_external.yaml` などに `@openai/codex-sdk` 等の外部APIエンジンを定義し、Orchestrator から「追加 engine」として呼び出すオプションを検討する（既定のマイルストン/DoDには含めない）。
+- **チャット連携タスク（Phase3+）**: 本ブランチは chat/ConPTY/attach の先行 PoC とし、v1 DoD（非対話 exec 完走）には含めない。最小 DoD: 単一ロールの chat セッションを stream モードで起動し、入出力を `cli_runs` に記録、ci_evidence に chat run イベントを残すこと。Message Bus / :attach は後続フェーズで実装する。テスト例: echo CLI を子プロセスとして stdin→stdout 往復を検証する `tests/test_conpty_stream.py` を Phase3+ で追加。
  - **チャット連携タスク（Phase3+）**: 現状は非対話バッチ（codex exec 等）で運用。`codex chat` など双方向対話を支えるため、ConPTY ストリーミング＋attach 機能を追加し、roles 間の会話・人間の介入が可能なモードを実装する。
 
 -## Phase 3（UI ダッシュボード刷新）※計画
