@@ -1,13 +1,14 @@
 # ruff: noqa: B008
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Optional, cast
 from uuid import UUID, uuid4
@@ -58,10 +59,8 @@ def _emit_shadow_audit_event(
         "approvals_row_id": "",
         "metadata": {"roles": roles, "status": status},
     }
-    try:
+    with contextlib.suppress(Exception):
         emit_event(record)
-    except Exception:
-        pass
 
 
 def _post_dangerous_signal(
@@ -73,7 +72,7 @@ def _post_dangerous_signal(
     roles: list[str],
     description: str,
 ) -> None:
-    """危険コマンドの pending シグナルを送信する（自動承認なしの場合）。"""
+    """危険コマンドの pending シグナルを送信する (自動承認なしの場合)。"""
     if project_id is None:
         return
     url = _compose_url(signals_base_url, "/api/signals")
@@ -330,11 +329,11 @@ def run(
         _post_dangerous_signal(
             signals_base_url=signals_base_url,
             project_id=signals_project_id,
-            mission_id=mission_id,
-            run_id=run_id,
-            roles=role_list,
-            description="orchestrator run 実行は manual 承認待ち",
-        )
+        mission_id=mission_id,
+        run_id=run_id,
+        roles=role_list,
+        description="orchestrator run 実行は manual 承認待ち",
+    )
 
     if chat_mode and len(role_list) != 1:
         typer.echo("chat-mode は単一ロール専用です", err=True)
@@ -343,92 +342,88 @@ def run(
         typer.echo("chat-mode では parallel オプションを使用できません", err=True)
         raise typer.Exit(code=2)
 
-    try:
-        if chat_mode:
-            role_name = role_list[0]
-            session = spawn_stream_session(
-                command=_apply_role(list(command), role_name),
-                mission_id=mission_id,
-                run_id=run_id,
-                trace_dir=trace_dir,
-                timeout=timeout,
-                command_index=0,
-                role=role_name,
-            )
-            typer.echo(f"chat_run_id={run_id}")
-            _, trace_path = session
-            typer.echo(f"cli_run_log={trace_path}")
-            try:
-                exit_code = wait_stream_session(session, timeout=timeout)
-                run_status = "ok" if exit_code == 0 else "failed"
-            except subprocess.TimeoutExpired:
-                run_status = "timeout"
-                exit_code = terminate_stream_session(session, timeout=5.0)
-            _record_handoff(role_name, "completed" if exit_code == 0 else "failed")
-            _log_chat_run_evidence(
-                run_id=str(run_id),
-                engine=engine,
-                roles=role_list,
-                status=run_status,
-                mission_id=str(mission_id),
-                log_path=trace_path,
-            )
-            _post_signal_event(
-                signals_base_url=signals_base_url,
-                project_id=signals_project_id,
-                mission_id=str(mission_id),
-                run_id=str(run_id),
-                roles=role_list,
-            )
-            if exit_code != 0:
-                raise typer.Exit(code=1)
-        else:
-            if parallel:
-                worker_count = max_workers or len(role_list)
-                with ThreadPoolExecutor(max_workers=worker_count) as executor:
-                    futures = {
-                        executor.submit(_run_single, idx, role_name): role_name
-                        for idx, role_name in enumerate(role_list)
-                    }
-                    failed_roles: list[str] = []
-                    for fut in as_completed(futures):
-                        role_name = futures[fut]
-                        proc = fut.result()
-                        _record_handoff(
-                            role_name, "completed" if proc.returncode == 0 else "failed"
-                        )
-                        if proc.returncode != 0:
-                            failed_roles.append(role_name)
-                    if failed_roles:
-                        run_status = "failed"
-                        raise typer.Exit(code=1)
-            else:
-                for idx, role in enumerate(role_list):
-                    proc = _run_single(idx, role)
-                    _record_handoff(role, "completed" if proc.returncode == 0 else "failed")
-                    if proc.returncode != 0:
-                        run_status = "failed"
-                        raise typer.Exit(code=1)
-            run_status = "ok"
-            if role_list:
-                _call_workflow_endpoint()
-                read_messages(bus_path)
-            _post_signal_event(
-                signals_base_url=signals_base_url,
-                project_id=signals_project_id,
-                mission_id=str(mission_id),
-                run_id=str(run_id),
-                roles=role_list,
-            )
-    except typer.Exit:
-        if run_status == "pending":
-            run_status = "failed"
-        raise
-    except Exception:
-        run_status = "failed"
-        raise
-    finally:
+    if chat_mode:
+        role_name = role_list[0]
+        session = spawn_stream_session(
+            command=_apply_role(list(command), role_name),
+            mission_id=mission_id,
+            run_id=run_id,
+            trace_dir=trace_dir,
+            timeout=timeout,
+            command_index=0,
+            role=role_name,
+        )
+        typer.echo(f"chat_run_id={run_id}")
+        _, trace_path = session
+        typer.echo(f"cli_run_log={trace_path}")
+        try:
+            exit_code = wait_stream_session(session, timeout=timeout)
+            run_status = "ok" if exit_code == 0 else "failed"
+        except subprocess.TimeoutExpired:
+            run_status = "timeout"
+            exit_code = terminate_stream_session(session, timeout=5.0)
+        _record_handoff(role_name, "completed" if exit_code == 0 else "failed")
+        _log_chat_run_evidence(
+            run_id=str(run_id),
+            engine=engine,
+            roles=role_list,
+            status=run_status,
+            mission_id=str(mission_id),
+            log_path=trace_path,
+        )
+        _post_signal_event(
+            signals_base_url=signals_base_url,
+            project_id=signals_project_id,
+            mission_id=str(mission_id),
+            run_id=str(run_id),
+            roles=role_list,
+        )
         _finalize_trace(run_status)
+        if exit_code != 0:
+            raise typer.Exit(code=1)
+        return
+
+    if parallel:
+        worker_count = max_workers or len(role_list)
+        with ThreadPoolExecutor(max_workers=worker_count) as executor:
+            futures = {
+                executor.submit(_run_single, idx, role_name): role_name
+                for idx, role_name in enumerate(role_list)
+            }
+            failed_roles: list[str] = []
+            for fut in as_completed(futures):
+                role_name = futures[fut]
+                proc = fut.result()
+                _record_handoff(
+                    role_name, "completed" if proc.returncode == 0 else "failed"
+                )
+                if proc.returncode != 0:
+                    failed_roles.append(role_name)
+            if failed_roles:
+                run_status = "failed"
+                _finalize_trace(run_status)
+                raise typer.Exit(code=1)
+    else:
+        for idx, role in enumerate(role_list):
+            proc = _run_single(idx, role)
+            _record_handoff(role, "completed" if proc.returncode == 0 else "failed")
+            if proc.returncode != 0:
+                run_status = "failed"
+                _finalize_trace(run_status)
+                raise typer.Exit(code=1)
+
+    run_status = "ok" if run_status == "pending" else run_status
+    if role_list:
+        _call_workflow_endpoint()
+        read_messages(bus_path)
+    _post_signal_event(
+        signals_base_url=signals_base_url,
+        project_id=signals_project_id,
+        mission_id=str(mission_id),
+        run_id=str(run_id),
+        roles=role_list,
+    )
+    _finalize_trace(run_status)
 
 
 def _write_cli_run_log(
@@ -541,15 +536,15 @@ def _log_chat_run_evidence(
 def attach(
     run_id: str = typer.Option(..., help="chat/stream セッションの run_id"),
     line: Optional[str] = typer.Option(
-        None, help="1 行だけ送信する場合に指定（省略時は標準入力から送信）"
+        None, help="1 行だけ送信する場合に指定 (省略時は標準入力から送信)"
     ),
 ) -> None:
     """既存 chat/stream セッションへ TTY でアタッチする。"""
     try:
         session, role, mission_id = get_stream_session_meta(run_id)
-    except KeyError:
+    except KeyError as err:
         typer.echo(f"run_id={run_id} のセッションが見つかりません", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from err
 
     _, trace_path = session
     typer.echo(f"attach run_id={run_id} log={trace_path}")
