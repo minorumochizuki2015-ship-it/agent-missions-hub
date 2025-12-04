@@ -114,6 +114,7 @@ Agent version: <policy_bundle_hash|prompt_hash|model_id または skip理由>
 【GitOps 判定（push/PR）】
 
 - push/PR: 許可 / 非許可
+- 条件（codexcli_git_ops_policy.md / lanes / Shadow Audit verify_chain=OK / AUDIT Status=Proceed / `APPROVALS.md` scope=auto-push・auto-merge / `CODEX_GIT_MODE` が `auto-push` または `auto-push-pr` で `REMOTE_WRITE_ALLOWED=1`）をすべて満たす場合に限り、CMD/WORK に対して `git push origin <branch>` や `gh pr create`（将来は `gh pr merge --auto` 相当）などの自動化を指示してよい（Self-merge や main/release 直接 merge は常に禁止）。
 - 理由:
   - <テスト状況>
   - <Shadow Audit Evidence の整合性>
