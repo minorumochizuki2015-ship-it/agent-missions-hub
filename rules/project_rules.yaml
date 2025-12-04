@@ -175,6 +175,7 @@ pipeline:                       # enforced gates
       outputs:
         - "PLAN.json {scope, minimal_diff, impacted_files, risks, rollback}"
         - "backups/pre_change/<task_id>/manifest.sha256"
+        - "docs sync: checklist / milestones / plans を最新の作業状態に反映（レーンのファイル数制約とは別に毎サイクル必須）"
       rules:
         - "Emit dry-run patch proposal only"
         - "Record safeops.rule_bootstrap hashes/log entries before executing destructive commands or CLI Apply."

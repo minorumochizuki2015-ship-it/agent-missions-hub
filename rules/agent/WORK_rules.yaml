@@ -187,6 +187,9 @@ procedures:
       - "Ensure backups/pre_change/<task_id>/manifest.sha256 exists; record hash in log before Apply."
       - "Require APPROVALS.md entry referencing the safeops log entry before executing the actual command."
       - "将来は automation_level（manual/auto-safeops/auto-all）を参照し、SafeOpsログ＋APPROVALS＋Signals で分岐予定（現状は manual のみ）。"
+  - name: "Docs sync"
+    steps:
+      - "各サイクルで checklist/milestones/plans（設計書含む）を最新の作業状態に更新し、Shadow Audit/ci_evidence と整合させる（レーンのファイル数制約とは別枠で必須）。"
 
   - name: "Patch phase (atomic write)"
     steps:
