@@ -35,6 +35,7 @@
 - goal_id: cli-v1-orchestrator
 - DoD: `orchestrator run --roles planner,coder,tester --mission <id>` で SequentialWorkflow が完走し、ConPTY子プロセスでCodex/Claudeを起動、ログ/ci_evidence/Shadow Audit が記録されること（人間介入用の `:attach <agent>` は Phase3+ で追加予定、v1 DoD には含めない）。
 - 進捗: run v1 で role プロファイル適用（config/roles.json）、message bus handoff(JSON) 記録、workflow_endpoint フック（ベストエフォート）、並列エラー集約を実装。`tests/test_orchestrator_cli_parallel.py` で並列時間短縮と handoff 記録を確認済み。次はチャット/ConPTY ストリームの PoC（attach は後続）と Agent Mail 通知・WorkflowEngine 接着の強化。
+- Phase3+（対話拡張）計画: chat/stream PoC 完了後は新規ブランチ `feature/chat-attach`（Bレーン）で進める。最小ゴールは「人間が既存 chat セッションに TTY attach できる」ことで、ロール間ハンドオフは Message Bus 拡張として別扱い。1バッチ≤5ファイル・130行目安（最大200行）、attach テストは Tレーン（tests/** 限定）で分割する。
 
 ### 補足メモ
 - Signals: 現状は右カラムUI枠のみ。Backend wired: NO（P2実装時に YES へ更新）。
